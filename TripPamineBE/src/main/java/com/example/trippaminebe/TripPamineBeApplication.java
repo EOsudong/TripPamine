@@ -10,4 +10,7 @@ public class TripPamineBeApplication {
 		SpringApplication.run(TripPamineBeApplication.class, args);
 	}
 
+
+
+
 }
