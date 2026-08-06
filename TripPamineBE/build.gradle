@@ -1,41 +1,46 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.1.0'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
-description = 'TripPamineBE'
+description = 'TripPamine-BE'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testAnnotationProcessor 'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+//    implementation 'org.springframework.boot:spring-boot-starter-security' //스프링 시큐리티 임시 주석 처리
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+//	오라클 클라우드 데이터베이스 드라이버 라이브러리 추가
+    implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+    // 오라클 Wallet(SSO KeyStore/TLS) 필수 보안 라이브러리 추가
+    implementation 'com.oracle.database.security:oraclepki:23.2.0.0'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
