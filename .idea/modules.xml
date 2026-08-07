@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/TripPamine-BE.iml" filepath="$PROJECT_DIR$/.idea/TripPamine-BE.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/TripPamine.iml" filepath="$PROJECT_DIR$/.idea/TripPamine.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/TripPamineBE.main.iml" filepath="$PROJECT_DIR$/.idea/modules/TripPamineBE.main.iml" />
     </modules>
   </component>
