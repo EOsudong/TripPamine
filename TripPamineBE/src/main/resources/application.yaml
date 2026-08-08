@@ -1,7 +1,3 @@
-logging:
-  level:
-    oracle.jdbc: DEBUG
-
 spring:
   application:
     name: TripPamineBE
