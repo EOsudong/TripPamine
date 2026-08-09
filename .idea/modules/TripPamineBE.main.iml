@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="AdditionalModuleElements">
+    <content url="file://$MODULE_DIR$/../../TripPamineBE/build/generated/sources/annotationProcessor/java/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../TripPamineBE/build/generated/sources/annotationProcessor/java/main" isTestSource="false" generated="true" />
+    </content>
+  </component>
+  <component name="FacetManager">
+    <facet type="jpa" name="JPA">
+      <configuration>
+        <setting name="validation-enabled" value="true" />
+        <setting name="provider-name" value="Hibernate" />
+        <datasource-mapping>
+          <factory-entry name="TripPamineBE.main" value="eaf27032-78a4-42f3-9094-08e4ec51b332" />
+          <factory-entry name="entityManagerFactory" value="eaf27032-78a4-42f3-9094-08e4ec51b332" />
+        </datasource-mapping>
+        <naming-strategy-map>
+          <unit-entry name="entityManagerFactory" />
+        </naming-strategy-map>
+      </configuration>
+    </facet>
+  </component>
+</module>
