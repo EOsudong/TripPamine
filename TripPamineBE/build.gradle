@@ -21,13 +21,29 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-//    implementation 'org.springframework.boot:spring-boot-starter-security' //스프링 시큐리티 임시 주석 처리
+    implementation 'org.springframework.boot:spring-boot-starter-security' //스프링 시큐리티 임시 주석 처리
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
     annotationProcessor 'org.projectlombok:lombok'
+
+//	오라클 클라우드 데이터베이스 드라이버 라이브러리 추가
+    implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+    // 오라클 Wallet(SSO KeyStore/TLS) 필수 보안 라이브러리 추가
+    implementation 'com.oracle.database.security:oraclepki:23.2.0.0'
+
+    // JWT인증 관련 라이브러리 추가
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Swagger UI 라이브러리 추가
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+
+    // RestTemplate 커넥션 풀 라이브러리
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.5'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
@@ -35,11 +51,6 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
-
-//	오라클 클라우드 데이터베이스 드라이버 라이브러리 추가
-    implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
-    // 오라클 Wallet(SSO KeyStore/TLS) 필수 보안 라이브러리 추가
-    implementation 'com.oracle.database.security:oraclepki:23.2.0.0'
 
 }
 

@@ -1,0 +1,105 @@
+package com.example.trippaminebe.config;
+
+import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailService;
+import com.example.trippaminebe.security.jwt.JWTAuthenticationFilter;
+import com.example.trippaminebe.security.jwt.JWTUtils;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableMethodSecurity
+@RequiredArgsConstructor
+
+public class SecurityConfig {
+  private final JWTUtils jwtUtils;
+  private final CustomUserDetailService customUserDetailService;
+
+  /*
+    로그인 API(/users/login)컨트롤러에 AuthenticationManager주입을 위한 빈 등록
+    - 인증 총괄 수행하는 빈
+    - 로직) 로그인 컨트롤러 => AuthenticationManager객체의 authenticate(...)호출 => 사용자 검증 => JWT발급
+    */
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    return config.getAuthenticationManager();
+  }
+
+  /*
+  비밀번호 해시 생성 및 로그인 시 비밀번호 검증하기 위한 빈 등록
+  */
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(jwtUtils, customUserDetailService);
+    http
+        // CORS 설정
+        .cors(Customizer.withDefaults())
+
+        .formLogin(form -> form.disable())
+        .httpBasic(httpBasic -> httpBasic.disable())
+
+        // CSRF 비활성화 : JWT를 HTTP Authentication Header에 실어 보내는 경우 CSRF 공격 위험이 없음
+        .csrf(csrf -> csrf.disable())
+
+        // 토큰 기반 인증을 사용함으로 세션기반 인증 무효화
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+        // API 요청별 접근 설정
+        .authorizeHttpRequests(auth -> auth
+            //인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
+            .requestMatchers(
+                "/users/login",
+                "/users/signup",
+                "/swagger-ui/**",
+                "/v3/api-docs/**"
+            ).permitAll()
+            // 위에서 지정한 경로 외의 나머지 모든 요청은 인증이 반드시 필요하도록 설정
+            .anyRequest().authenticated()
+        )
+
+        // JWT 필터 위지 지정 : UsernamePasswordAuthenticationFilter 실행 이전에 커스텀 JWT 필터 배치
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+  }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+      CorsConfiguration config = new CorsConfiguration();
+      config.setAllowedOriginPatterns(List.of("*"));
+      config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+      config.setAllowedHeaders(List.of(
+          "Authorization",
+          "Content-Type",
+          "X-Requested-With"
+      ));
+      // Client(프론트)에서 Authorization 헤더를 읽을 수 있게 노출
+      config.setExposedHeaders(List.of("Authorization"));
+      config.setAllowCredentials(true);
+
+      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+      source.registerCorsConfiguration("/**", config);
+      return source;
+    }
+  }
