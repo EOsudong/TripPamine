@@ -19,6 +19,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import com.example.trippaminebe.domain.admin.service.custom.CustomAdminDetailService;
+import com.example.trippaminebe.security.jwt.AdminJWTAuthenticationFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +32,8 @@ import java.util.List;
 public class SecurityConfig {
   private final JWTUtils jwtUtils;
   private final CustomUserDetailService customUserDetailService;
+  // 필드 추가
+  private final CustomAdminDetailService customAdminDetailService; // Admin 로그인 검증용 서비스 주입
 
   /*
     로그인 API(/users/login)컨트롤러에 AuthenticationManager주입을 위한 빈 등록
@@ -52,6 +56,8 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(jwtUtils, customUserDetailService);
+    //관리자 전용 JWT 필터 - /admin 경로에서만 동작 (shouldNotFilter로 범위 제한됨)
+    AdminJWTAuthenticationFilter adminJwtAuthenticationFilter = new AdminJWTAuthenticationFilter(jwtUtils, customAdminDetailService);
     http
         // CORS 설정
         .cors(Customizer.withDefaults())
@@ -69,6 +75,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             //인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
             .requestMatchers(
+                "/admin/auth/login",
                 "/users/login",
                 "/users/signup",
                 "/swagger-ui/**",
@@ -79,7 +86,8 @@ public class SecurityConfig {
         )
 
         // JWT 필터 위지 지정 : UsernamePasswordAuthenticationFilter 실행 이전에 커스텀 JWT 필터 배치
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(adminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }

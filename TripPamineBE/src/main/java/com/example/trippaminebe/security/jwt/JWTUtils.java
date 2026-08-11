@@ -1,5 +1,6 @@
 package com.example.trippaminebe.security.jwt;
 
+import com.example.trippaminebe.domain.admin.entity.Admin;
 import com.example.trippaminebe.domain.user.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -65,5 +66,25 @@ public class JWTUtils {
     }
   }
 
+  // Access Token 생성 (관리자용 오버로드).
+  public String createAccessToken(Admin admin, String status) {
+    Date now = new Date();
+    Date expiryDate = new Date(now.getTime() + expirationTime);
+
+    return Jwts.builder()
+        .setSubject(admin.getAdminLoginId()) // 토큰의 주인이 누구인지 - 여기선 관리자 로그인 아이디
+        .claim("status", status)      // 토큰 발급 시점의 계정 상태 (참고용 클레임)
+        .setIssuedAt(now)                    // 발급 시각
+        .setExpiration(expiryDate)           // 만료 시각
+        .signWith(secretKey)                 // 비밀키로 서명 (위변조 방지)
+        .compact();
+  }
+
+  // 토큰에서 로그인 아이디(subject) 추출 - Admin 토큰 파싱 전용.
+  // getEmailFromToken()과 내부 로직은 동일하지만, "이메일이 아니라 로그인 아이디를 꺼낸다"는 의미를
+  // 헷갈리지 않도록 이름을 따로 둠 (AdminJWTAuthenticationFilter에서 호출)
+  public String getLoginIdFromToken(String token) {
+    return getClaims(token).getSubject();
+  }
 
 }
