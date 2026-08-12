@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -41,8 +43,13 @@ public class SecurityConfig {
     - 로직) 로그인 컨트롤러 => AuthenticationManager객체의 authenticate(...)호출 => 사용자 검증 => JWT발급
     */
   @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-    return config.getAuthenticationManager();
+  public AuthenticationManager authenticationManager(
+      CustomUserDetailService customUserDetailService,
+      PasswordEncoder passwordEncoder) {
+    DaoAuthenticationProvider provider =
+        new DaoAuthenticationProvider(customUserDetailService);
+    provider.setPasswordEncoder(passwordEncoder);
+    return new ProviderManager(provider);
   }
 
   /*
@@ -60,7 +67,7 @@ public class SecurityConfig {
     AdminJWTAuthenticationFilter adminJwtAuthenticationFilter = new AdminJWTAuthenticationFilter(jwtUtils, customAdminDetailService);
     http
         // CORS 설정
-        .cors(Customizer.withDefaults())
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
         .formLogin(form -> form.disable())
         .httpBasic(httpBasic -> httpBasic.disable())
@@ -76,8 +83,11 @@ public class SecurityConfig {
             //인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
             .requestMatchers(
                 "/admin/auth/login",
-                "/users/login",
-                "/users/signup",
+                //  로그인
+                "/users/auth/login",
+                //  회원가입
+                "/users/auth/signup",
+                "/users/auth/check-email",
                 "/swagger-ui/**",
                 "/v3/api-docs/**"
             ).permitAll()
@@ -92,22 +102,23 @@ public class SecurityConfig {
     return http.build();
   }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-      CorsConfiguration config = new CorsConfiguration();
-      config.setAllowedOriginPatterns(List.of("*"));
-      config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-      config.setAllowedHeaders(List.of(
-          "Authorization",
-          "Content-Type",
-          "X-Requested-With"
-      ));
-      // Client(프론트)에서 Authorization 헤더를 읽을 수 있게 노출
-      config.setExposedHeaders(List.of("Authorization"));
-      config.setAllowCredentials(true);
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of("http://localhost:5173"));
+    config.setAllowedOriginPatterns(List.of("*")); // 모든 헤더 허용
+    config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
+    config.setAllowedHeaders(List.of( // 보안상 허용할 수 있는 HTTP 헤더 목록
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With"
+    ));
+    // Client(프론트)에서 Authorization 헤더를 읽을 수 있게 노출
+    config.setExposedHeaders(List.of("Authorization"));
+    config.setAllowCredentials(true); // 쿠키나 인증 헤더를 포함할지 여부
 
-      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-      source.registerCorsConfiguration("/**", config);
-      return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config); // 모든 API 경로에 적용
+    return source;
   }
+}

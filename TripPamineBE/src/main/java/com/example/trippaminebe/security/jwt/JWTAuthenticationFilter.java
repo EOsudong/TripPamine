@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -26,44 +27,62 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-    UsernamePasswordAuthenticationToken authentication = null;
     try {
+      // 1. Authorization 헤더에서 JWT 추출
       String token = resolveToken(request);
 
+      // 2. 토큰이 존재하고 유효한 경우에만 인증 처리
       if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+
+        // 3. JWT에서 이메일 추출
         String email = jwtUtils.getEmailFromToken(token);
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // 4. 아직 인증되지 않은 경우
+        if (email != null && SecurityContextHolder
+            .getContext()
+            .getAuthentication() == null) {
 
-          // UserDetails 조회
-          UserDetails userDetails = customUserDetailService.loadUserByUsername(email);
+          // 5. DB에서 사용자 조회
+          UserDetails userDetails =
+              customUserDetailService.loadUserByUsername(email);
 
-          // 회원이 존재하고 탈퇴 상태가 아닐 때만 인증 객체 생성
-          if (userDetails != null) {
-            authentication = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities() // null이 아님이 보장됨
-            );
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-          }
+          UsernamePasswordAuthenticationToken authentication =
+              new UsernamePasswordAuthenticationToken(
+                  userDetails,
+                  null,
+                  userDetails.getAuthorities()
+              );
+
+          // 7. 요청 정보 추가
+          authentication.setDetails(
+              new WebAuthenticationDetailsSource()
+                  .buildDetails(request)
+          );
+
+          // 8. SecurityContext에 인증 저장
+          SecurityContextHolder
+              .getContext()
+              .setAuthentication(authentication);
         }
       }
-    } catch (UsernameNotFoundException e) {
+    } catch (
+        UsernameNotFoundException e) {
       // 존재하지 않거나 탈퇴된 회원일 경우 SecurityContext를 비우고 로그 남김
       logger.warn("인증 실패 - 존재하지 않는 사용자입니다: " + e.getMessage());
-    } catch (Exception e) {
-      logger.error("Security Context 인증 설정 실패", e);
+    } catch (
+        Exception e) {
+      logger.error("JWT 인증 처리 중 오류 발생", e);
     }
-    SecurityContextHolder
-        .getContext().setAuthentication(authentication);
 
-    // 다음 필터로 진행
+    // JWT가 없어도 다음 필터로 반드시 진행
     filterChain.doFilter(request, response);
   }
 
-  // Header에서 "Authorization: Bearer <token>" 형태의 토큰 추출
+  /**
+   * Authorization: Bearer {JWT}
+   * 에서 JWT만 추출
+   */
+// Header에서 "Authorization: Bearer <token>" 형태의 토큰 추출
   private String resolveToken(HttpServletRequest request) {
     String bearerToken = request.getHeader("Authorization");
     if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {

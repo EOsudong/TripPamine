@@ -6,13 +6,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Builder
 @AllArgsConstructor
+@NoArgsConstructor
 @Schema(description = "JWT 토큰 응답 DTO")
 public class LoginResponseDto {
+  private Long userId;
   private String email;
+  private String userName;
   private String accessToken;
 
   @Builder.Default

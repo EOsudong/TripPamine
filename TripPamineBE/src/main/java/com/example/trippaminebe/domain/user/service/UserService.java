@@ -27,4 +27,7 @@ public interface UserService {
   // 회원탈퇴
   void withdraw(Long userId);
 
+  // 이메일 중복 확인
+  Boolean isEmailAvailable(String email);
+
 }

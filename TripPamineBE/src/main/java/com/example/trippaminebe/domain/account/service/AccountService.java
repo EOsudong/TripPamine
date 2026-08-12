@@ -33,7 +33,7 @@ public class AccountService {
     // ⚠ UserRepository.findById(Long)으로 호출하고 있는데, 현재 UserRepository가
     // JpaRepository<User, String>으로 선언되어 있다면 타입이 안 맞아 컴파일 에러가 남.
     // User 담당자와 UserRepository의 ID 타입(Long/String)을 먼저 맞춰야 함.
-    User user = userRepository.findById(userId.toString())
+    User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
     Account account = Account.builder()

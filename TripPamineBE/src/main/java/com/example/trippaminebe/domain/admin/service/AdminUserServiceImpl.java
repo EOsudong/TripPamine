@@ -29,7 +29,7 @@ public class AdminUserServiceImpl implements AdminUserService {
   @Transactional
   public void suspendUser(Long userId, UserSuspendRequestDto request, Long adminId) {
     // Long -> String 변환 후 조회함
-    User user = userRepository.findById(userId.toString())
+    User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id: " + userId));
 
     // 이미 정지된 회원인지 검증

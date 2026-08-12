@@ -15,6 +15,9 @@ import com.example.trippaminebe.security.jwt.JWTUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,33 +34,39 @@ public class UserServiceImpl implements UserService {
 
   private final PasswordEncoder passwordEncoder;
   private final JWTUtils jwtUtils;
+  private final AuthenticationManager authenticationManager;
 
   //로그인
   @Override
   @Transactional
   public LoginResponseDto login(LoginRequestDto request) {
-    // 이메일 존재 여부 확인
-    User user = userRepository.findByEmail(
-            request.getEmail())
-        .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일 입니다"));
+    // 1. Spring Security에게 이메일 + 비밀번호 인증 요청
+    Authentication authentication = authenticationManager.authenticate(
+        new UsernamePasswordAuthenticationToken(
+            request.getEmail(),
+            request.getPassword()
+        )
+    );
+
+    // 2. 인증 성공한 사용자 가져오기
+    CustomUserDetails userDetails =
+        (CustomUserDetails) authentication.getPrincipal();
+
+    User user = userDetails.getUser();
 
     // 계정 상태 확인 (휴면, 탈퇴, 정지 계정 로그인 방지)
     if (user.getStatus() != UserStatus.ACTIVE) {
-      throw new IllegalArgumentException("로그인 할 수 없는 계정 상태입니다. 상태: " + user.getStatus());
+      throw new IllegalArgumentException(
+          "로그인 할 수 없는 계정 상태입니다. 상태: " + user.getStatus());
     }
 
-    // 비밀번호 일치 검증
-    if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-      throw new IllegalArgumentException("비밀번호가 일치하지 않습니다");
-    }
-
-    //최종 로그인 일시 최신화 (도메인 메서드 호출)
+    // 4. 마지막 로그인 시간 업데이트
     user.updateLastLoginDate();
 
-    // JWT AccessToken 발급
+    // 5. JWT AccessToken 발급
     String accessToken = jwtUtils.createAccessToken(user, "ACTIVE");
 
-    // DTO 반환
+    // 6. 로그인 응답 DTO 반환
     return LoginResponseDto.loginResponseDto(user, accessToken);
   }
 
@@ -107,7 +116,7 @@ public class UserServiceImpl implements UserService {
   @Transactional
   public void withdraw(Long userId) {
     // 회원 존재 여부 검증
-    User user = userRepository.findById(userId.toString())
+    User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id: " + userId));
 
     // 이미 탈퇴한 회원인지 검증
@@ -117,7 +126,12 @@ public class UserServiceImpl implements UserService {
 
     // 소프트 삭제로 실행 (Dirty Checking)
     user.withdraw();
+  }
 
+  // 이메일 중복 확인
+  @Override
+  public Boolean isEmailAvailable(String email) {
+    return !userRepository.existsByEmail(email);
   }
 
 

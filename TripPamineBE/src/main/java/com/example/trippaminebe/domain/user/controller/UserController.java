@@ -23,7 +23,7 @@ public class UserController {
   private final UserServiceImpl userService;
 
   // 회원가입
-  @PostMapping("/signup")
+  @PostMapping("/auth/signup")
   @Operation(summary = "회원가입")
   public ResponseEntity<SignUpResponseDto> signUp(@RequestBody SignUpRequestDto signUpRequestDto) {
     SignUpResponseDto response = userService.register(signUpRequestDto);
@@ -31,7 +31,7 @@ public class UserController {
   }
 
   // 로그인
-  @PostMapping("/login")
+  @PostMapping("/auth/login")
   @Operation(summary = "회원 로그인")
   public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
     LoginResponseDto response = userService.login(loginRequestDto);
@@ -39,7 +39,7 @@ public class UserController {
   }
 
   // 회원탈퇴
-  @DeleteMapping("/withdraw")
+  @DeleteMapping("/auth/withdraw")
   @Operation(summary = "회원탈퇴")
   public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails) {
   // 토큰에서 추출된 인증된 사용자의 이메일을 서비스로 전달
@@ -47,5 +47,14 @@ public class UserController {
 
     return ResponseEntity.noContent().build();
   }
+
+  // 이메일 중복 확인
+  @GetMapping("/auth/check-email")
+  @Operation(summary = "이메일 중복 확인")
+  public ResponseEntity<Boolean> checkEamil (@RequestParam String email){
+    boolean available = userService.isEmailAvailable(email);
+    return ResponseEntity.ok(available);
+  }
+
 
 }
