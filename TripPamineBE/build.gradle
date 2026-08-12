@@ -51,6 +51,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    // 관리자 활동 자동 로그 기록(AOP) 라이브러리 추가
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
 
 }
 

@@ -73,6 +73,17 @@ public class User {
   @Column(name = "WITHDRAW_DATE")
   private LocalDateTime withdrawDate;
 
+  // 관리자 강제 정지 기능 추가 (2026.08.12)
+  @Column(name = "SUSPEND_REASON", length = 200)
+  private String suspendReason; // 정지사유: 관리자가 입력하는 정지 사유
+
+  @Column(name = "SUSPENDED_BY")
+  private Long suspendedBy; // 정지처리자: 정지를 처리한 관리자 ID (Admin 엔티티를 직접 참조(@ManyToOne)하지 않고 ID만 저장 - User 도메인이 Admin 도메인을 몰라도 되게 하기 위함)
+
+  @Column(name = "SUSPENDED_AT")
+  private LocalDateTime suspendedAt; // 정지일시: 회원이 정지 처리된 시각
+  // 여기까지
+
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<UserSocialAccount> socialAccounts = new ArrayList<>();
@@ -105,6 +116,16 @@ public class User {
     this.updateDate = LocalDateTime.now(); // 수정 날짜 갱신
   }
 
+  // 관리자 강제 정지 처리 도메인 메서드.
+  // suspendedBy는 Admin 엔티티를 직접 참조하지 않고 ID(Long)만 저장 - User 도메인이
+  // Admin 도메인을 몰라도 되게 하기 위함(도메인 간 결합도를 낮춤)
+  public void suspend(String reason, Long suspendedBy) {
+    this.status = UserStatus.SUSPENDED; // 계정 상태를 '정지'로 변경
+    this.suspendReason = reason; // 정지 사유 기록
+    this.suspendedBy = suspendedBy; // 정지 처리한 관리자 ID 기록
+    this.suspendedAt = LocalDateTime.now(); // 정지 처리 시각 기록
+    this.updateDate = LocalDateTime.now(); // 수정 날짜 갱신
+  }
 
 
 }//class
