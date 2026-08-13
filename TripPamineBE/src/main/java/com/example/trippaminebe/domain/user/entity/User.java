@@ -120,12 +120,20 @@ public class User {
   // suspendedBy는 Admin 엔티티를 직접 참조하지 않고 ID(Long)만 저장 - User 도메인이
   // Admin 도메인을 몰라도 되게 하기 위함(도메인 간 결합도를 낮춤)
   public void suspend(String reason, Long suspendedBy) {
-    this.status = UserStatus.SUSPENDED; // 계정 상태를 '정지'로 변경
+    this.status = UserStatus.SUSPENDED; // 계정 상태를 '정지(SUSPENDED)'로 변경
     this.suspendReason = reason; // 정지 사유 기록
     this.suspendedBy = suspendedBy; // 정지 처리한 관리자 ID 기록
     this.suspendedAt = LocalDateTime.now(); // 정지 처리 시각 기록
     this.updateDate = LocalDateTime.now(); // 수정 날짜 갱신
   }
 
+  // 관리자 정지 해제(재활성화) 처리 도메인 메서드
+  public void unsuspend() {
+    this.status = UserStatus.ACTIVE; // 계정 상태를 다시 '활동중(ACTIVE)'으로 변경
+    this.suspendReason = null; // 정지 사유 기록 초기화
+    this.suspendedBy = null;   // 정지 처리한 관리자 ID 기록 초기화
+    this.suspendedAt = null;   // 정지일시 초기화
+    this.updateDate = LocalDateTime.now();
+  }
 
 }//class

@@ -40,4 +40,13 @@ public class AdminUserController {
     adminUserService.suspendUser(userId, request, adminDetails.getAdmin().getId());
     return ResponseEntity.noContent().build();
   }
+
+  // 회원 정지 해제
+  @PatchMapping("/{userId}/unsuspend")
+  @Operation(summary = "회원 정지 해제 (관리자용)")
+  @AdminLoggable(actionType = "USER_UNSUSPEND", targetTable = "USERS")
+  public ResponseEntity<Void> unsuspendUser(@PathVariable Long userId) {
+    adminUserService.unsuspendUser(userId);
+    return ResponseEntity.noContent().build();
+  }
 }

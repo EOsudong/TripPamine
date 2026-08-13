@@ -14,4 +14,7 @@ public interface AdminUserService {
 
   // 회원 강제 정지
   void suspendUser(Long userId, UserSuspendRequestDto request, Long adminId);
+
+  // 회원 정지 해제(재활성화)
+  void unsuspendUser(Long userId);
 }

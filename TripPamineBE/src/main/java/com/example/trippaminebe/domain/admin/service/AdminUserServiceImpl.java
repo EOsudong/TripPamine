@@ -40,4 +40,19 @@ public class AdminUserServiceImpl implements AdminUserService {
     // 도메인 메서드 호출로 상태 변경 (Dirty Checking)
     user.suspend(request.getReason(), adminId);
   }
+
+  // 회원 정지 해제
+  @Override
+  @Transactional
+  public void unsuspendUser(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id: " + userId));
+
+    // 정지 상태가 아닌 회원을 해제하려는 경우 방지
+    if (user.getStatus() != UserStatus.SUSPENDED) {
+      throw new IllegalArgumentException("정지 상태인 회원만 정지 해제할 수 있습니다.");
+    }
+
+    user.unsuspend();
+  }
 }
