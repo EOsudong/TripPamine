@@ -87,6 +87,7 @@ public class SecurityConfig {
                 "/users/auth/login",
                 //  회원가입
                 "/users/auth/signup",
+                "/users/logout",
                 "/users/auth/check-email",
                 "/swagger-ui/**",
                 "/v3/api-docs/**"

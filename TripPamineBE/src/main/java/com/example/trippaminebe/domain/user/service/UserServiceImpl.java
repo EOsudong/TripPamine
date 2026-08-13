@@ -100,11 +100,15 @@ public class UserServiceImpl implements UserService {
     return SignUpResponseDto.signUpResponse(savedUser);
   }
 
-  // 회원정보
+  // 회원정보 조회
   @Override
-  public UserResponseDto getUserInfo(UserResponseDto userResponseDto) {
-    return null;
+  public UserResponseDto getUserInfo(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+    return UserResponseDto.userResponse(user);
   }
+
 
   @Override
   public UserResponseDto updateProfile(Long userId, UpdateRequestDto request) {

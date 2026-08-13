@@ -7,15 +7,46 @@
 // props
 // - sidebarOpen     : 사이드바가 열려있는지 여부 (햄버거 아이콘 모양을 X로 바꾸는 데 사용)
 // - onToggleSidebar : 햄버거 버튼 클릭 시 실행할 함수 (Home.jsx 등 상위 페이지에서 내려줌)
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 interface HeaderProps {
-  sidebarOpen: boolean
-  onToggleSidebar: () => void
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const { isLoggedIn, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      await axios.post(
+        "http://localhost:8080/users/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      console.log("로그아웃 성공"); // 콘솔 확인용
+
+      // React 로그인 상태 변경
+      logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("로그아웃 실패:", error);
+    } finally {
+      // 로컬 스토리지에서 JWT 제거
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("user");
+    }
+  };
 
   return (
     <header className="fixed top-0 right-0 left-0 z-50 h-16 bg-white/90 backdrop-blur-md border-b border-slate-100 flex items-center px-4 gap-3">
@@ -26,7 +57,12 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
         className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors shrink-0"
         aria-label="사이드바 토글"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -45,8 +81,18 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
       {/* 검색창: 작은 화면(sm 미만)에서는 숨김. 지금은 입력만 되고 실제 검색 로직은 미구현 */}
       <div className="hidden sm:flex flex-1 max-w-sm mx-auto">
         <div className="flex items-center gap-2 w-full bg-slate-100 rounded-xl px-4 py-2">
-          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          <svg
+            className="w-4 h-4 text-slate-400 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
           </svg>
           <input
             className="flex-1 bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none"
@@ -58,7 +104,12 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
       <div className="ml-auto flex items-center gap-2 shrink-0">
         {/* 알림 아이콘 (UI만 있고 실제 알림 기능은 미구현. 오른쪽 위 점은 "새 알림 있음" 표시) */}
         <button className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors relative">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -69,22 +120,39 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sky-500" />
         </button>
 
-        {/* 단일 로그인/회원가입 버튼 -> /login 페이지로 이동 */}
-        <button
-          onClick={() => navigate("/login")}
-          className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-sky-200"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          로그인 / 회원가입
-        </button>
+        {/* 로그아웃 버튼 => 로그인 시 활성화 */}
+        {isLoggedIn ? (
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-sky-200"
+          >
+            로그아웃
+          </button>
+        ) : (
+          <>
+            {/* 단일 로그인/회원가입 버튼 -> /login 페이지로 이동 */}
+            <button
+              onClick={() => navigate("/login")}
+              className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-sky-200"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              로그인 / 회원가입
+            </button>
+          </>
+        )}
       </div>
     </header>
-  )
+  );
 }

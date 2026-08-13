@@ -19,7 +19,7 @@ public interface UserService {
   SignUpResponseDto register(SignUpRequestDto request);
 
   // 회원조회
-  UserResponseDto getUserInfo(UserResponseDto userResponseDto);
+  UserResponseDto getUserInfo(Long userId);
 
   // 프로필 수정
   UserResponseDto updateProfile(Long userId, UpdateRequestDto request);

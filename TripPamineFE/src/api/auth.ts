@@ -18,6 +18,7 @@ export interface SignupResponse {
   email: string;
   userName: string;
   accessToken: string;
+  tokenType: string;
 }
 
 // 로그인 요청 데이터 타입 (백엔드 DTO 필드명과 일치시키기)
@@ -29,9 +30,8 @@ export interface LoginRequest {
 // 로그인 응답 데이터 타입 (백엔드 Return 형태에 맞춰 수정)
 export interface LoginResponse {
   userId: number;
-  email: string;
-  userName: string;
   accessToken: string;
+  tokenType: string;
 }
 
 // 2. API 함수 정의
