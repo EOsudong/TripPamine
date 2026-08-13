@@ -107,7 +107,7 @@ public class SecurityConfig {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(List.of("http://localhost:5173"));
     config.setAllowedOriginPatterns(List.of("*")); // 모든 헤더 허용
-    config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
+    config.setAllowedMethods(Arrays.asList("GET", "POST","PATCH", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
     config.setAllowedHeaders(List.of( // 보안상 허용할 수 있는 HTTP 헤더 목록
         "Authorization",
         "Content-Type",

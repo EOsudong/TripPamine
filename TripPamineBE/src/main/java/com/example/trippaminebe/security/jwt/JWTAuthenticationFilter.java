@@ -24,6 +24,12 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
   private final JWTUtils jwtUtils;
   private final CustomUserDetailService customUserDetailService;
 
+  // JWTAuthenticationFilter "/users"로 시작하는 요청에만 적용되게 제한
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    return !request.getRequestURI().startsWith("/users");
+  }
+
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
