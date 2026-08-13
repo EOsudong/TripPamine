@@ -15,8 +15,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "JWT 토큰 응답 DTO")
 public class LoginResponseDto {
   private Long userId;
-  private String email;
-  private String userName;
   private String accessToken;
 
   @Builder.Default
@@ -24,7 +22,7 @@ public class LoginResponseDto {
 
   public static LoginResponseDto loginResponseDto(User user, String accessToken) {
     return LoginResponseDto.builder()
-        .email(user.getEmail())
+        .userId(user.getId())
         .accessToken(accessToken)
         .build();
   }

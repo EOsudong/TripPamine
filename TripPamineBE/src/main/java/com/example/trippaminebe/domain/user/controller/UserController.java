@@ -4,6 +4,7 @@ import com.example.trippaminebe.domain.user.dto.request.LoginRequestDto;
 import com.example.trippaminebe.domain.user.dto.request.SignUpRequestDto;
 import com.example.trippaminebe.domain.user.dto.response.LoginResponseDto;
 import com.example.trippaminebe.domain.user.dto.response.SignUpResponseDto;
+import com.example.trippaminebe.domain.user.dto.response.UserResponseDto;
 import com.example.trippaminebe.domain.user.service.UserServiceImpl;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +44,7 @@ public class UserController {
   @DeleteMapping("/auth/withdraw")
   @Operation(summary = "회원탈퇴")
   public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails) {
-  // 토큰에서 추출된 인증된 사용자의 이메일을 서비스로 전달
+    // 토큰에서 추출된 인증된 사용자의 이메일을 서비스로 전달
     userService.withdraw(userDetails.getUser().getId());
 
     return ResponseEntity.noContent().build();
@@ -51,10 +53,25 @@ public class UserController {
   // 이메일 중복 확인
   @GetMapping("/auth/check-email")
   @Operation(summary = "이메일 중복 확인")
-  public ResponseEntity<Boolean> checkEamil (@RequestParam String email){
+  public ResponseEntity<Boolean> checkEamil(@RequestParam String email) {
     boolean available = userService.isEmailAvailable(email);
     return ResponseEntity.ok(available);
   }
 
+  // 회원정보 불러오기
+  @GetMapping("/me")
+  @Operation(summary = "회원정보 불러오기")
+  public ResponseEntity<UserResponseDto> getMyInfo(
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
+    Long userId = userDetails.getUser().getId();
+    UserResponseDto response = userService.getUserInfo(userId);
+    return ResponseEntity.ok(response);
+  }
 
+  // 로그아웃
+  @PostMapping("/logout")
+  @Operation(summary = "로그아웃")
+  public ResponseEntity<Void> logout() {
+    return ResponseEntity.ok().build();
+  }
 }

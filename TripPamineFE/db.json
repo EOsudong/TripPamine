@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "email": "test@test.com",
+      "name": "홍길동"
+    }
+  ],
+  "posts": [
+    {
+      "id": 1,
+      "title": "첫 번째 게시글",
+      "content": "테스트 게시글입니다."
+    }
+  ]
+}

@@ -6,10 +6,12 @@ import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SocialLoginButtons from "../components/SocialLoginButtons";
 import { loginApi } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
+  const { login } = useAuth();
 
   // 로그인 폼 제출 처리.
   // 지금은 실제 서버 인증 없이 바로 홈으로 이동만 시키는 더미 로직입니다.
@@ -27,7 +29,11 @@ export default function Login() {
         email: form.email,
         password: form.password,
       });
-      console.log("로그인 성공:", response);
+
+      console.log("로그인 성공:", response); // 콘솔 확인용
+
+      // AuthContext의 login 함수 호출하여 로그인 상태 업데이트
+      login(response.accessToken, response.userId);
 
       // JWT 로컬 스토리지 저장
       localStorage.setItem("accessToken", response.accessToken);
@@ -37,13 +43,18 @@ export default function Login() {
         "user",
         JSON.stringify({
           userId: response.userId,
-          email: response.email,
-          userName: response.userName,
+          tokenType: response.tokenType,
+          accessToken: response.accessToken,
         }),
       );
 
-      console.log("사용자 정보:", JSON.parse(localStorage.getItem("user") || "{}"));
-      alert("로그인 성공");
+      // 콘솔 확인용
+      console.log(
+        "사용자 정보:",
+        JSON.parse(localStorage.getItem("user") || "{}"),
+      );
+
+      alert("로그인 성공! 홈으로 이동합니다.");
       navigate("/"); // 로그인 성공 시 홈으로 이동
     } catch (error: any) {
       console.error("로그인 실패:", error);
