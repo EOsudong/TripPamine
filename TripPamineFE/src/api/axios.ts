@@ -12,9 +12,9 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // 요청 전 처리 로직 (예: 토큰 첨부)
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -38,3 +38,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export default api;

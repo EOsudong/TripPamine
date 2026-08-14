@@ -1,16 +1,15 @@
 package com.example.trippaminebe.config;
 
-import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailService;
+import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailsService;
 import com.example.trippaminebe.security.jwt.JWTAuthenticationFilter;
 import com.example.trippaminebe.security.jwt.JWTUtils;
+import com.example.trippaminebe.security.jwt.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -33,7 +32,8 @@ import java.util.List;
 
 public class SecurityConfig {
   private final JWTUtils jwtUtils;
-  private final CustomUserDetailService customUserDetailService;
+  private final CustomUserDetailsService customUserDetailsService;
+  private final TokenBlacklistService tokenBlacklistService;
   // 필드 추가
   private final CustomAdminDetailService customAdminDetailService; // Admin 로그인 검증용 서비스 주입
 
@@ -44,10 +44,10 @@ public class SecurityConfig {
     */
   @Bean
   public AuthenticationManager authenticationManager(
-      CustomUserDetailService customUserDetailService,
+      CustomUserDetailsService customUserDetailsService,
       PasswordEncoder passwordEncoder) {
     DaoAuthenticationProvider provider =
-        new DaoAuthenticationProvider(customUserDetailService);
+        new DaoAuthenticationProvider(customUserDetailsService);
     provider.setPasswordEncoder(passwordEncoder);
     return new ProviderManager(provider);
   }
@@ -62,7 +62,12 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(jwtUtils, customUserDetailService);
+    JWTAuthenticationFilter jwtAuthenticationFilter =
+        new JWTAuthenticationFilter(
+            jwtUtils,
+            customUserDetailsService,
+            tokenBlacklistService
+            );
     //관리자 전용 JWT 필터 - /admin 경로에서만 동작 (shouldNotFilter로 범위 제한됨)
     AdminJWTAuthenticationFilter adminJwtAuthenticationFilter = new AdminJWTAuthenticationFilter(jwtUtils, customAdminDetailService);
     http
@@ -87,11 +92,12 @@ public class SecurityConfig {
                 "/users/auth/login",
                 //  회원가입
                 "/users/auth/signup",
-                "/users/logout",
                 "/users/auth/check-email",
                 "/swagger-ui/**",
                 "/v3/api-docs/**"
             ).permitAll()
+            .requestMatchers("/users/**")
+            .authenticated()
             // 위에서 지정한 경로 외의 나머지 모든 요청은 인증이 반드시 필요하도록 설정
             .anyRequest().authenticated()
         )

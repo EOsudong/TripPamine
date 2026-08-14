@@ -1,14 +1,12 @@
 package com.example.trippaminebe.security.jwt;
 
-import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailService;
-import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
+import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -22,7 +20,10 @@ import java.io.IOException;
 public class JWTAuthenticationFilter extends OncePerRequestFilter {
   //JWTUtils 및 커스텀 UserDetailService 생성자 주입
   private final JWTUtils jwtUtils;
-  private final CustomUserDetailService customUserDetailService;
+  private final CustomUserDetailsService customUserDetailsService;
+
+  //로그아웃 검증 생성자 주입
+  private final TokenBlacklistService tokenBlacklistService;
 
   // JWTAuthenticationFilter "/users"로 시작하는 요청에만 적용되게 제한
   @Override
@@ -31,17 +32,33 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+  protected void doFilterInternal(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      FilterChain filterChain)
+      throws ServletException, IOException {
 
     try {
       // 1. Authorization 헤더에서 JWT 추출
       String token = resolveToken(request);
 
       // 2. 토큰이 존재하고 유효한 경우에만 인증 처리
-      if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+      if (StringUtils.hasText(token)
+          && jwtUtils.validateToken(token)
+          && !tokenBlacklistService.isBlacklisted(token)) {
 
         // 3. JWT에서 이메일 추출
         String email = jwtUtils.getEmailFromToken(token);
+
+        //로그아웃된 토큰인지 확인
+/*        if (tokenBlacklistService.isBlacklisted(token)){
+          logger.warn("로그아웃된 JWT입니다.");
+
+          filterChain.doFilter(request,response);
+
+          return;
+        }*/
+
 
         // 4. 아직 인증되지 않은 경우
         if (email != null && SecurityContextHolder
@@ -50,7 +67,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
 
           // 5. DB에서 사용자 조회
           UserDetails userDetails =
-              customUserDetailService.loadUserByUsername(email);
+              customUserDetailsService.loadUserByUsername(email);
 
           UsernamePasswordAuthenticationToken authentication =
               new UsernamePasswordAuthenticationToken(

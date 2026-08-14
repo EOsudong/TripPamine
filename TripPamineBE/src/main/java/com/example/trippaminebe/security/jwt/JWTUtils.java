@@ -87,4 +87,8 @@ public class JWTUtils {
     return getClaims(token).getSubject();
   }
 
+  //로그아웃된 토큰인지 확인
+  public String tokenBlacklistService(String token){
+    return token;
+  }
 }

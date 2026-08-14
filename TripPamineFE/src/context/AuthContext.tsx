@@ -1,10 +1,11 @@
 import { useState, createContext, useContext } from "react";
+import { logoutApi } from "../api/auth";
 
 const AuthContext = createContext<
   | {
       isLoggedIn: boolean;
       login: (accessToken: string, userId: number) => void;
-      logout: () => void;
+      logout: () => Promise<void>;
     }
   | undefined
 >(undefined);
@@ -21,11 +22,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoggedIn(true);
   };
 
-  const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("userId");
+  const logout = async () => {
+    try {
+      // 백엔드에 로그아웃 요청
+      await logoutApi();
+    } catch (error) {
+      console.error("로그아웃 API 실패:",error);
+    }finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userId");
 
-    setIsLoggedIn(false);
+      setIsLoggedIn(false);
+    }
   };
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>

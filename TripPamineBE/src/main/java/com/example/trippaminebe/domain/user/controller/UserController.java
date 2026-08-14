@@ -6,13 +6,13 @@ import com.example.trippaminebe.domain.user.dto.response.LoginResponseDto;
 import com.example.trippaminebe.domain.user.dto.response.SignUpResponseDto;
 import com.example.trippaminebe.domain.user.dto.response.UserResponseDto;
 import com.example.trippaminebe.domain.user.service.UserServiceImpl;
-import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
+import com.example.trippaminebe.security.jwt.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   private final UserServiceImpl userService;
+  private final TokenBlacklistService tokenBlacklistService;
 
   // 회원가입
   @PostMapping("/auth/signup")
@@ -59,7 +60,7 @@ public class UserController {
   }
 
   // 회원정보 불러오기
-  @GetMapping("/me")
+  @GetMapping("/auth/me")
   @Operation(summary = "회원정보 불러오기")
   public ResponseEntity<UserResponseDto> getMyInfo(
       @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -69,9 +70,32 @@ public class UserController {
   }
 
   // 로그아웃
-  @PostMapping("/logout")
+  @PostMapping("/auth/logout")
   @Operation(summary = "로그아웃")
-  public ResponseEntity<Void> logout() {
-    return ResponseEntity.ok().build();
+  public ResponseEntity<String> logout(
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      HttpServletRequest request) {
+
+    String authorization = request.getHeader("Authorization");
+
+    // authorization 검증
+    if (authorization == null || !authorization.startsWith("Bearer ")) {
+      return ResponseEntity.status(401).body("인증 토큰이 없습니다.");
+    }
+
+    // Bearer 제거
+    String token = authorization.substring(7);
+
+    System.out.println("====== LOGOUT ======");
+
+    if (userDetails != null) {
+      System.out.println("사용자 = " + userDetails.getUser().getEmail());
+    }
+    System.out.println("JWT = " + token);
+
+    // JWT 폐기
+    tokenBlacklistService.blacklist(token);
+
+    return ResponseEntity.ok("로그아웃 완료");
   }
 }

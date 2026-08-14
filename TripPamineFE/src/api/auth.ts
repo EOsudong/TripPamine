@@ -1,4 +1,3 @@
-
 import { api } from "./axios";
 
 // 1. DTO (Date Transfer Object) 타입 정의
@@ -44,7 +43,10 @@ export const signupApi = async (
   signupData: SignupRequest,
 ): Promise<SignupResponse> => {
   // POST /users/auth/signup 엔드포인트 호출
-  const response = await api.post<SignupResponse>("/users/auth/signup", signupData);
+  const response = await api.post<SignupResponse>(
+    "/users/auth/signup",
+    signupData,
+  );
   return response.data;
 };
 
@@ -55,7 +57,7 @@ export const signupApi = async (
  */
 export const checkEmailApi = async (email: string): Promise<boolean> => {
   // GET /users/auth/check-email 엔드포인트 호출
-  const response = await api.get< boolean >("/users/auth/check-email", {
+  const response = await api.get<boolean>("/users/auth/check-email", {
     params: { email },
   });
   return response.data;
@@ -67,9 +69,20 @@ export const checkEmailApi = async (email: string): Promise<boolean> => {
  * @returns 로그인 성공 시 응답 데이터 (email, accessToken)
  */
 export const loginApi = async (
-  loginData: LoginRequest
+  loginData: LoginRequest,
 ): Promise<LoginResponse> => {
   // POST /users/auth/login 엔드포인트 호출
-  const response = await api.post<LoginResponse>("/users/auth/login", loginData);
+  const response = await api.post<LoginResponse>(
+    "/users/auth/login",
+    loginData,
+  );
   return response.data;
+};
+
+/**
+ * 로그아웃 API
+ *
+ */
+export const logoutApi = async (): Promise<void> => {
+  await api.post("/users/auth/logout");
 };
