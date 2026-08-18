@@ -21,6 +21,8 @@ public class TravelPlanRequest {
 
     private String companionType;
 
+    private String locationCd; // 💡 추가
+
     private String blindYn;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")

@@ -94,7 +94,8 @@ public class SecurityConfig {
                 "/users/auth/signup",
                 "/users/auth/check-email",
                 "/swagger-ui/**",
-                "/v3/api-docs/**"
+                "/v3/api-docs/**",
+                "/travel-plans/**"
             ).permitAll()
             .requestMatchers("/users/**")
             .authenticated()

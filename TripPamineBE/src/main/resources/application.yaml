@@ -5,7 +5,8 @@ spring:
     # 오라클 JDBC 드라이버
     driver-class-name: oracle.jdbc.OracleDriver
     # URL 구성: jdbc:oracle:thin:@<TNS_ALIAS>?TNS_ADMIN=<지갑_ZIP파일_경로>
-    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./TripPamineBE/src/main/resources/wallets
+    #url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./TripPamineBE/src/main/resources/wallets
+    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
     # DB 계정 정보
     username: TripPamine
     password: TeamProj1234

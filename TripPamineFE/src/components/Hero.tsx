@@ -1,58 +1,139 @@
-// 메인 페이지 최상단 히어로 섹션.
-// - 배경 이미지 + "AI 여행 조건 입력 폼"(인원/일정/예산/테마)이 핵심
-// - 폼 제출 시 더미로 2단계 로딩 → 결과 카드로 전환되는 흐름을 보여줌 (실제 AI 연동은 아직 없음)
-// - 하단에는 AI 테마 칩과 통계 바가 있음
-import { useState } from "react"
-import type { ReactNode } from "react"
-import { travelTypes } from "../data/categories"
-import type { PlannerForm } from "../types"
+import { useState, useEffect } from "react"
+import type { ChangeEvent, FormEvent } from "react"
+import type { TravelPlan, TravelPlanFormState } from "../types"
+import {
+  getTravelPlansApi,
+  createTravelPlanApi,
+  updateTravelPlanApi,
+  deleteTravelPlanApi,
+} from "../api/travel"
 
 export default function Hero() {
-  // 폼 입력값을 하나의 객체 상태로 관리 (인원/기간/예산/테마/추가요청)
-  const [form, setForm] = useState<PlannerForm>({
-    people: "",
+  const [plans, setPlans] = useState<TravelPlan[]>([])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const [form, setForm] = useState<TravelPlanFormState>({
+    planName: "",
+    totalBudget: "",
+    companionType: "",
+    blindYn: "N",
     startDate: "",
     endDate: "",
-    budget: "",
-    travelType: "",
-    extra: "",
   })
-  const [aiLoading, setAiLoading] = useState(false) // "AI가 플랜을 생성 중"인지 여부 (버튼 로딩 스피너 표시용)
-  const [aiResult, setAiResult] = useState("") // AI가 만들어준 추천 플랜 텍스트. 값이 있으면 폼 대신 결과 화면을 보여줌
 
-  // 필수 항목(인원/시작일/종료일/예산/테마)이 모두 채워졌는지 확인 → 제출 버튼 활성화 조건
-  function canSubmit() {
-    return !!form.people && !!form.startDate && !!form.endDate && !!form.budget && !!form.travelType
+  // 여행 목록 조회
+  const loadPlans = async () => {
+    try {
+      const data = await getTravelPlansApi()
+      setPlans(data)
+    } catch (error) {
+      console.error("여행 계획 조회 실패:", error)
+    }
   }
 
-  // 제출 버튼 클릭 시 실행.
-  // 지금은 실제 AI API 대신 1.8초 대기 후 미리 정해둔 문구를 채워 넣는 "가짜(mock) 응답"입니다.
-  // 나중에 실제 AI 추천 기능을 붙일 때는 이 부분을 fetch(API 호출)로 교체하면 됩니다.
-  async function handleSubmit() {
-    setAiLoading(true)
-    setAiResult("")
-    // TODO: 실제 AI 추천 API 연동
-    await new Promise((r) => setTimeout(r, 1800))
-    setAiResult(
-      `✈️ **${form.people} · ${form.startDate} ~ ${form.endDate} · ${form.travelType}** 여행 추천 플랜\n\n` +
-        `예산 **${form.budget}** 기준으로 아래 코스를 추천드립니다:\n\n` +
-        `📍 **1일차** — 제주 공항 도착 → 성산일출봉 트레킹 → 우도 자전거 투어 → 숙소 체크인\n` +
-        `📍 **2일차** — 한라산 영실 코스 (3시간) → 천지연 폭포 → 서귀포 매일올레시장 저녁\n` +
-        `📍 **3일차** — 협재 해수욕장 → 오설록 티뮤지엄 → 귀가\n\n` +
-        `💡 ${form.extra ? `"${form.extra}" 요청을 반영해 일정을 구성했습니다.` : "추가 요청 사항이 없어 기본 코스로 구성했습니다."}`,
-    )
-    setAiLoading(false)
+  useEffect(() => {
+    loadPlans()
+  }, [])
+
+  // 입력값 변경 핸들러
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  // "다시 만들기" 클릭 시 결과를 지우고 입력 폼을 초기 상태로 되돌림
-  function handleReset() {
-    setAiResult("")
-    setForm({ people: "", startDate: "", endDate: "", budget: "", travelType: "", extra: "" })
+  // 폼 초기화
+  const resetForm = () => {
+    setEditingId(null)
+    setForm({
+      planName: "",
+      totalBudget: "",
+      companionType: "",
+      blindYn: "N",
+      startDate: "",
+      endDate: "",
+    })
   }
+
+  // 등록 / 수정 제출
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+
+    const requestData = {
+      planName: form.planName,
+      totalBudget: Number(form.totalBudget),
+      companionType: form.companionType || null,
+      blindYn: form.blindYn,
+      startDate: form.startDate && form.startDate.trim() !== "" ? form.startDate : null,
+      endDate: form.endDate && form.endDate.trim() !== "" ? form.endDate : null,
+    }
+
+    try {
+      setLoading(true)
+      if (editingId) {
+        await updateTravelPlanApi(editingId, requestData)
+        alert("여행 계획이 수정되었습니다!")
+      } else {
+        await createTravelPlanApi(requestData)
+        alert("여행 계획이 등록되었습니다!")
+      }
+      resetForm()
+      loadPlans()
+    } catch (error) {
+      console.error("저장 실패:", error)
+      alert("저장 중 오류가 발생했습니다.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 수정 시작
+  const handleEdit = (plan: TravelPlan) => {
+    setEditingId(plan.planId)
+    setForm({
+      planName: plan.planName,
+      totalBudget: String(plan.totalBudget),
+      companionType: plan.companionType || "",
+      blindYn: plan.blindYn || "N",
+      startDate: plan.startDate ? plan.startDate.slice(0, 16) : "",
+      endDate: plan.endDate ? plan.endDate.slice(0, 16) : "",
+    })
+
+    document.getElementById("ai-planner")?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  // 삭제
+  const handleDelete = async (planId: number) => {
+    if (!window.confirm("정말 이 여행 계획을 삭제하시겠습니까?")) return
+
+    try {
+      await deleteTravelPlanApi(planId)
+      alert("여행 계획이 삭제되었습니다.")
+      loadPlans()
+    } catch (error) {
+      console.error("삭제 실패:", error)
+      alert("삭제 중 오류가 발생했습니다.")
+    }
+  }
+
+  const companionLabel = (type: string | null) => {
+    switch (type) {
+      case "ALONE": return "혼자"
+      case "FRIEND": return "친구"
+      case "FAMILY": return "가족"
+      case "COUPLE": return "연인"
+      default: return type || "미선택"
+    }
+  }
+
+  const now = new Date()
+  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16)
 
   return (
-    <section id="ai-planner" className="relative min-h-[680px] flex items-center justify-center overflow-hidden">
-      {/* 배경 사진 + 위에 어두운 그라데이션을 덮어서 흰색 글씨가 잘 보이도록 처리 */}
+    <section id="ai-planner" className="relative min-h-[680px] flex items-center justify-center overflow-hidden py-10">
+      {/* 배경 사진 + 그라데이션 */}
       <img
         src="https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=1600&h=900&fit=crop&auto=format"
         alt="Korean coastal travel"
@@ -60,257 +141,218 @@ export default function Hero() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-sky-900/55 via-sky-800/35 to-slate-900/70" />
 
-      <div className="relative z-10 w-full max-w-3xl mx-auto px-4 pt-14 pb-24 text-center">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-sky-200 text-xs font-semibold tracking-widest uppercase mb-4 backdrop-blur-sm">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          AI Travel Planner
-        </span>
-        <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-lg">
-          어떤 여행을 하고싶으신가요?
-        </h1>
-        <p className="text-white/75 text-base mb-8">AI가 당신만의 국내 여행 플랜을 짜드립니다</p>
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 pt-10 pb-16">
+        {/* 상단 텍스트 */}
+        <div className="text-center mb-8">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-sky-200 text-xs font-semibold tracking-widest uppercase mb-3 backdrop-blur-sm">
+            ✈ Travel Planner
+          </span>
+          <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-lg">
+            나의 여행 계획 관리
+          </h1>
+          <p className="text-white/80 text-sm md:text-base">여행 일정과 예산을 등록하고 간편하게 관리해보세요</p>
+        </div>
 
-        {/* AI 여행 플래너 카드 — 흰색 카드 하나 안에서 "입력 폼"과 "결과 화면"을
-            aiResult 값의 유무로 서로 바꿔가며 보여줌 (조건부 렌더링) */}
-        <div className="bg-white/96 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden text-left">
-          {!aiResult ? (
-            // ── 결과가 아직 없을 때: 입력 폼 화면 ──────────────────────
-            <div className="p-6 space-y-5">
-              {/* Card header */}
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                <div className="w-8 h-8 rounded-xl bg-sky-500 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800 text-sm">AI 여행 플래너</p>
-                  <p className="text-xs text-slate-400">조건을 입력하면 맞춤 국내 여행 코스를 추천해드려요</p>
-                </div>
-              </div>
+        {/* 폼과 목록을 2열 레이아웃으로 배치 */}
+        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
+          {/* 1열: 등록 / 수정 폼 */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-white/40">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+              <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
+                {editingId ? "EDIT PLAN" : "NEW PLAN"}
+              </span>
+              <h3 className="font-bold text-slate-800 text-lg">
+                {editingId ? "여행 계획 수정" : "새 여행 계획 생성"}
+              </h3>
+            </div>
 
-              {/* Row 1: 인원 + 일정
-                  FieldBlock = "①번 매겨진 라벨 + 내용" 틀을 잡아주는 공용 컴포넌트 (파일 맨 아래 정의)
-                  ChipBtn    = 선택형 버튼 하나 (선택되면 파란 테두리로 강조되는 공용 컴포넌트) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <FieldBlock num={1} label="여행 인원">
-                  <div className="grid grid-cols-4 gap-2">
-                    {["1명", "2명", "3~4명", "5명+"].map((opt) => (
-                      <ChipBtn
-                        key={opt}
-                        label={opt}
-                        active={form.people === opt}
-                        onClick={() => setForm((f) => ({ ...f, people: opt }))}
-                      />
-                    ))}
-                  </div>
-                </FieldBlock>
-
-                <FieldBlock num={2} label="여행 일정">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] text-slate-400 block mb-1">출발일</label>
-                      <input
-                        type="date"
-                        value={form.startDate}
-                        onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-700 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block mb-1">귀가일</label>
-                      <input
-                        type="date"
-                        value={form.endDate}
-                        onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-700 transition-colors"
-                      />
-                    </div>
-                  </div>
-                </FieldBlock>
-              </div>
-
-              {/* Row 2: 예산 */}
-              <FieldBlock num={3} label="1인당 예산">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {["10만원 이하", "10~30만원", "30~50만원", "50만원 이상"].map((opt) => (
-                    <ChipBtn
-                      key={opt}
-                      label={opt}
-                      active={form.budget === opt}
-                      onClick={() => setForm((f) => ({ ...f, budget: opt }))}
-                    />
-                  ))}
-                </div>
-              </FieldBlock>
-
-              {/* Row 3: 여행 유형(테마) */}
-              <FieldBlock num={4} label="여행 유형">
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {travelTypes.map((opt) => (
-                    <ChipBtn
-                      key={opt}
-                      label={opt}
-                      active={form.travelType === opt}
-                      onClick={() => setForm((f) => ({ ...f, travelType: opt }))}
-                    />
-                  ))}
-                </div>
-              </FieldBlock>
-
-              {/* Row 4: 추가 요청 */}
-              <FieldBlock num={5} label="추가 요청" optional>
-                <textarea
-                  value={form.extra}
-                  onChange={(e) => setForm((f) => ({ ...f, extra: e.target.value }))}
-                  placeholder="예) 반려동물 동반, 어린이 포함, 특정 지역 꼭 방문 등"
-                  rows={2}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-700 resize-none transition-colors placeholder-slate-400"
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">여행 이름</label>
+                <input
+                  type="text"
+                  name="planName"
+                  value={form.planName}
+                  onChange={handleChange}
+                  placeholder="예: 제주도 3박 4일 여행"
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
                 />
-              </FieldBlock>
+              </div>
 
-              {/* 제출 버튼: 필수값 미입력(canSubmit()==false) 또는 로딩 중이면 비활성화(회색) 처리 */}
-              <button
-                onClick={handleSubmit}
-                disabled={!canSubmit() || aiLoading}
-                className={`w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  canSubmit() && !aiLoading
-                    ? "bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-200"
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                }`}
-              >
-                {aiLoading ? (
-                  <>
-                    <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    AI가 플랜을 생성하고 있어요...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    AI 여행 플랜 생성하기
-                  </>
-                )}
-              </button>
-            </div>
-          ) : (
-            // ── aiResult에 값이 채워지면: 결과 화면으로 전환 ──────────────
-            <div className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">총 예산</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="totalBudget"
+                    min="0"
+                    value={form.totalBudget}
+                    onChange={handleChange}
+                    placeholder="500000"
+                    required
+                    className="w-full px-3.5 py-2.5 pr-8 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">원</span>
                 </div>
-                <p className="font-bold text-slate-800">AI 여행 플랜이 완성됐습니다!</p>
               </div>
-              <div className="bg-sky-50 rounded-2xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-line mb-4">
-                {aiResult}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">동행자</label>
+                  <select
+                    name="companionType"
+                    value={form.companionType}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  >
+                    <option value="">선택</option>
+                    <option value="ALONE">혼자</option>
+                    <option value="FRIEND">친구</option>
+                    <option value="FAMILY">가족</option>
+                    <option value="COUPLE">연인</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">미스터리 투어</label>
+                  <select
+                    name="blindYn"
+                    value={form.blindYn}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  >
+                    <option value="N">신청 안 함</option>
+                    <option value="Y">신청</option>
+                  </select>
+                </div>
               </div>
-              <div className="flex gap-3">
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">출발 일시</label>
+                <input
+                  type="datetime-local"
+                  name="startDate"
+                  value={form.startDate}
+                  onChange={handleChange}
+                  min={minDateTime}
+                  className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">종료 일시</label>
+                <input
+                  type="datetime-local"
+                  name="endDate"
+                  value={form.endDate}
+                  onChange={handleChange}
+                  min={form.startDate || minDateTime}
+                  className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
                 <button
-                  onClick={handleReset}
-                  className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-semibold hover:border-sky-300 transition-colors"
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
                 >
-                  다시 만들기
+                  {loading ? "저장 중..." : editingId ? "수정 완료" : "여행 등록"}
                 </button>
-                <button className="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors">
-                  🔖 플랜 저장하기
-                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
+                  >
+                    취소
+                  </button>
+                )}
               </div>
-            </div>
-          )}
-        </div>
+            </form>
+          </div>
 
-        {/* AI 테마 추천 칩 — 클릭하면 위 폼의 '여행 유형'이 자동으로 채워집니다 */}
-        <div className="flex flex-wrap justify-center items-center gap-2 mt-7">
-          <span className="hidden sm:inline text-white/60 text-xs mr-1">이런 테마는 어때요?</span>
-          {travelTypes.map((t) => (
-            <button
-              key={t}
-              onClick={() => setForm((f) => ({ ...f, travelType: t }))}
-              className={`px-3 py-1 text-xs font-semibold rounded-full backdrop-blur-sm border transition-colors ${
-                form.travelType === t
-                  ? "bg-white text-sky-600 border-white"
-                  : "text-white/90 bg-white/20 hover:bg-white/30 border-white/30"
-              }`}
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats bar — AI/축제 연계 강점 중심 지표 */}
-      <div className="absolute bottom-0 left-0 right-0 bg-slate-900/40 backdrop-blur-md border-t border-white/20">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-around text-center">
-          {[
-            ["12,400+", "AI 추천 완료"],
-            ["32곳", "연계 축제"],
-            [`${travelTypes.length}가지`, "여행 테마"],
-            ["4.8★", "평균 추천 만족도"],
-          ].map(([val, label]) => (
-            <div key={label}>
-              <div className="text-white font-bold text-base md:text-lg">{val}</div>
-              <div className="text-white/70 text-xs">{label}</div>
+          {/* 2열: 등록된 여행 카드리스트 */}
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            <div className="flex items-center justify-between text-white mb-2">
+              <h3 className="font-bold text-lg drop-shadow">등록된 여행 목록</h3>
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
+                총 {plans.length}개
+              </span>
             </div>
-          ))}
+
+            {plans.length === 0 ? (
+              <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center border border-white/50 shadow-xl">
+                <div className="text-4xl mb-3">🌏</div>
+                <h4 className="font-bold text-slate-700 text-base">등록된 여행이 없습니다.</h4>
+                <p className="text-xs text-slate-400 mt-1">좌측 폼에서 첫 번째 여행 계획을 세워보세요!</p>
+              </div>
+            ) : (
+              plans.map((plan) => (
+                <div
+                  key={plan.planId}
+                  className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between transition-all hover:shadow-xl"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="px-2.5 py-0.5 bg-sky-50 text-sky-600 text-[10px] font-bold rounded-full">
+                        ✈ TRAVEL
+                      </span>
+                      {plan.blindYn === "Y" && (
+                        <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full">
+                          🎁 MYSTERY TOUR
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-lg mb-3">{plan.planName}</h4>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+                      <div className="bg-slate-50 p-2.5 rounded-xl">
+                        <span className="text-slate-400 block text-[10px] mb-0.5">총 예산</span>
+                        <span className="font-bold text-slate-700">
+                          💰 {Number(plan.totalBudget).toLocaleString()}원
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl">
+                        <span className="text-slate-400 block text-[10px] mb-0.5">동행자</span>
+                        <span className="font-bold text-slate-700">
+                          👥 {companionLabel(plan.companionType)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(plan.startDate || plan.endDate) && (
+                      <div className="bg-emerald-50 px-3 py-2 rounded-xl text-xs text-emerald-800 flex items-center gap-1.5 mb-3">
+                        <span>📅</span>
+                        <span>
+                          {plan.startDate ? plan.startDate.slice(0, 10) : "미정"} ~{" "}
+                          {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => handleEdit(plan)}
+                      className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDelete(plan.planId)}
+                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold rounded-lg transition-colors"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </section>
-  )
-}
-
-// 폼의 각 항목(①여행 인원, ②여행 일정 ...)마다 반복되는
-// "번호 배지 + 라벨 + 내용" 레이아웃을 재사용하기 위해 분리한 작은 컴포넌트
-interface FieldBlockProps {
-  num: number
-  label: string
-  optional?: boolean
-  children: ReactNode
-}
-
-function FieldBlock({ num, label, optional, children }: FieldBlockProps) {
-  return (
-    <div>
-      <p className="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-        <span
-          className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
-            optional ? "bg-slate-100 text-slate-400" : "bg-sky-100 text-sky-600"
-          }`}
-        >
-          {num}
-        </span>
-        {label}
-        {optional && <span className="text-slate-400 font-normal">(선택)</span>}
-      </p>
-      {children}
-    </div>
-  )
-}
-
-// 인원/예산/여행유형 선택에 공통으로 쓰이는 "선택형 칩 버튼".
-// active가 true면 파란 테두리+배경으로 선택된 상태를 표시
-interface ChipBtnProps {
-  label: string
-  active: boolean
-  onClick: () => void
-}
-
-function ChipBtn({ label, active, onClick }: ChipBtnProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`py-2.5 px-1 rounded-xl text-xs font-semibold border-2 transition-all ${
-        active
-          ? "border-sky-500 bg-sky-50 text-sky-600"
-          : "border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-500"
-      }`}
-    >
-      {label}
-    </button>
   )
 }

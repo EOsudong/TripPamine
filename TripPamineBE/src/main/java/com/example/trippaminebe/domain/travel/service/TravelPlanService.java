@@ -45,6 +45,7 @@ public class TravelPlanService {
         travelPlan.setBlindYn(request.getBlindYn() != null ? request.getBlindYn() : "N");
         travelPlan.setStartDate(request.getStartDate());
         travelPlan.setEndDate(request.getEndDate());
+        travelPlan.setLocationCd(request.getLocationCd() != null ? request.getLocationCd() : "ETC");
         travelPlan.setDelYn("N");
 
         TravelPlan saved = travelPlanRepository.save(travelPlan);
@@ -88,6 +89,7 @@ public class TravelPlanService {
         travelPlan.setBlindYn(request.getBlindYn());
         travelPlan.setStartDate(request.getStartDate());
         travelPlan.setEndDate(request.getEndDate());
+        travelPlan.setLocationCd(request.getLocationCd() != null ? request.getLocationCd() : "ETC");
 
         return TravelPlanResponse.from(travelPlan);
     }

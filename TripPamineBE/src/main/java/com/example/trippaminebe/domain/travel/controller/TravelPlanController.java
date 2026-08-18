@@ -21,13 +21,21 @@ public class TravelPlanController {
 
     private final TravelPlanService travelPlanService;
 
+    // NPE 방지 헬퍼 메서드
+    private Long getUserIdSafely(CustomUserDetails userDetails) {
+        if (userDetails != null && userDetails.getUser() != null) {
+            return userDetails.getUser().getId();
+        }
+        return 10L; // 로그인 정보가 없을 시 임시 사용할 DB USERS ID (test1@trippamine.com)
+    }
+
     @PostMapping
     @Operation(summary = "여행 계획 등록")
     public ResponseEntity<TravelPlanResponse> create(
         @AuthenticationPrincipal CustomUserDetails userDetails,
         @Valid @RequestBody TravelPlanRequest request
     ) {
-        TravelPlanResponse response = travelPlanService.create(userDetails.getUser().getId(), request);
+        TravelPlanResponse response = travelPlanService.create(getUserIdSafely(userDetails), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -37,7 +45,7 @@ public class TravelPlanController {
         @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
-            travelPlanService.findAllByUserId(userDetails.getUser().getId())
+            travelPlanService.findAllByUserId(getUserIdSafely(userDetails))
         );
     }
 
@@ -48,7 +56,7 @@ public class TravelPlanController {
         @PathVariable Long planId
     ) {
         return ResponseEntity.ok(
-            travelPlanService.findById(planId, userDetails.getUser().getId())
+            travelPlanService.findById(planId, getUserIdSafely(userDetails))
         );
     }
 
@@ -60,7 +68,7 @@ public class TravelPlanController {
         @Valid @RequestBody TravelPlanRequest request
     ) {
         return ResponseEntity.ok(
-            travelPlanService.update(planId, userDetails.getUser().getId(), request)
+            travelPlanService.update(planId, getUserIdSafely(userDetails), request)
         );
     }
 
@@ -70,7 +78,7 @@ public class TravelPlanController {
         @AuthenticationPrincipal CustomUserDetails userDetails,
         @PathVariable Long planId
     ) {
-        travelPlanService.delete(planId, userDetails.getUser().getId());
+        travelPlanService.delete(planId, getUserIdSafely(userDetails));
         return ResponseEntity.noContent().build();
     }
 }

@@ -17,15 +17,8 @@ import java.time.LocalDateTime;
 public class TravelPlan {
 
     @Id
-    @GeneratedValue(
-        strategy = GenerationType.SEQUENCE,
-        generator = "travelPlanSeq"
-    )
-    @SequenceGenerator(
-        name = "travelPlanSeq",
-        sequenceName = "SEQ_TRAVEL_PLANS",
-        allocationSize = 1
-    )
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "travelPlanSeq")
+    @SequenceGenerator(name = "travelPlanSeq", sequenceName = "SEQ_TRAVEL_PLANS", allocationSize = 1)
     @Column(name = "PLAN_ID")
     private Long planId;
 
@@ -42,7 +35,10 @@ public class TravelPlan {
     @Column(name = "COMPANION_TYPE", length = 30)
     private String companionType;
 
-    // columnDefinition = "CHAR(1)" 추가
+    // 💡 [추가] DB NOT NULL 제약조건 대응용 지역 코드
+    @Column(name = "LOCATION_CD", length = 20)
+    private String locationCd;
+
     @Column(name = "BLIND_YN", nullable = false, columnDefinition = "CHAR(1)")
     private String blindYn = "N";
 
@@ -52,7 +48,6 @@ public class TravelPlan {
     @Column(name = "END_DATE")
     private LocalDateTime endDate;
 
-    // columnDefinition = "CHAR(1)" 추가
     @Column(name = "DEL_YN", nullable = false, columnDefinition = "CHAR(1)")
     private String delYn = "N";
 }

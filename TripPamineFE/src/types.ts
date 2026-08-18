@@ -37,3 +37,25 @@ export interface PlannerForm {
   travelType: string
   extra: string
 }
+
+// 여행 플래너 기능 merge
+// 여행 계획 데이터 타입 (travel-project)
+export interface TravelPlan {
+  planId: number
+  planName: string
+  totalBudget: number
+  companionType: string | null
+  blindYn: string
+  startDate: string | null
+  endDate: string | null
+}
+
+// 여행 계획 입력 폼 상태 타입
+export interface TravelPlanFormState {
+  planName: string
+  totalBudget: string
+  companionType: string
+  blindYn: string
+  startDate: string
+  endDate: string
+}
