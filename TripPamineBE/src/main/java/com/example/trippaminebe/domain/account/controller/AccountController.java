@@ -5,6 +5,7 @@ import com.example.trippaminebe.domain.account.dto.request.AccountLinkRequest;
 import com.example.trippaminebe.domain.account.dto.response.AccountHistoryResponse;
 import com.example.trippaminebe.domain.account.dto.response.AccountResponse;
 import com.example.trippaminebe.domain.account.service.AccountService;
+import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,16 +13,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * 주의: 로그인한 사용자의 userId를 어떻게 꺼내는지는 project의 security 설정에 따라 다름.
- * 지금은 @RequestHeader("X-USER-ID") 로 임시 대체해둔 상태이고,
- * 실제로는 SecurityContext에서 인증된 사용자 정보를 꺼내는 방식(예: @AuthenticationPrincipal
- * CustomUserDetails userDetails)으로 교체해야 함. domain/security 패키지 구현 확인 후 수정 필요.
- * (User/Admin 컨트롤러는 이미 @AuthenticationPrincipal 방식을 쓰고 있으니, 그 패턴으로 맞추면 됨)
+ * [수정한 부분]
+ * 기존에는 @RequestHeader("X-USER-ID")로 사용자를 임시로 받고 있었는데
+ * User/Admin/TravelPlan 컨트롤러와 동일하게
+ * @AuthenticationPrincipal CustomUserDetails 방식으로 통일함.
  */
 @RestController
 @RequestMapping("/accounts")
@@ -30,13 +31,14 @@ public class AccountController {
 
   private final AccountService accountService;
 
-  // 계좌 연동 등록
+  // 계좌 등록 (사용자가 직접 입력한 계좌정보를 그대로 저장)
   @PostMapping
-  @Operation(summary = "계좌 연동 등록")
+  @Operation(summary = "계좌 등록")
   public ResponseEntity<AccountResponse> linkAccount(
-      @RequestHeader("X-USER-ID") Long userId, // TODO: 실제 인증 방식으로 교체
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid @RequestBody AccountLinkRequest request
   ) {
+    Long userId = userDetails.getUser().getId();
     AccountResponse response = accountService.linkAccount(userId, request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
@@ -45,8 +47,9 @@ public class AccountController {
   @GetMapping
   @Operation(summary = "내 계좌 목록 조회")
   public ResponseEntity<List<AccountResponse>> getMyAccounts(
-      @RequestHeader("X-USER-ID") Long userId // TODO: 실제 인증 방식으로 교체
+      @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
+    Long userId = userDetails.getUser().getId();
     return ResponseEntity.ok(accountService.getMyAccounts(userId));
   }
 
@@ -54,20 +57,22 @@ public class AccountController {
   @PatchMapping("/{accountId}")
   @Operation(summary = "계좌 별칭 수정")
   public ResponseEntity<AccountResponse> updateAlias(
-      @RequestHeader("X-USER-ID") Long userId, // TODO: 실제 인증 방식으로 교체
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable Long accountId,
       @Valid @RequestBody AccountAliasUpdateRequest request
   ) {
+    Long userId = userDetails.getUser().getId();
     return ResponseEntity.ok(accountService.updateAlias(userId, accountId, request));
   }
 
-  // 계좌 연동 해지
+  // 계좌 삭제(해지)
   @DeleteMapping("/{accountId}")
-  @Operation(summary = "계좌 연동 해지")
+  @Operation(summary = "계좌 삭제")
   public ResponseEntity<Void> unlinkAccount(
-      @RequestHeader("X-USER-ID") Long userId, // TODO: 실제 인증 방식으로 교체
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable Long accountId
   ) {
+    Long userId = userDetails.getUser().getId();
     accountService.unlinkAccount(userId, accountId);
     return ResponseEntity.noContent().build();
   }
@@ -76,10 +81,11 @@ public class AccountController {
   @GetMapping("/{accountId}/history")
   @Operation(summary = "계좌 거래내역 조회")
   public ResponseEntity<Page<AccountHistoryResponse>> getHistory(
-      @RequestHeader("X-USER-ID") Long userId, // TODO: 실제 인증 방식으로 교체
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable Long accountId,
       Pageable pageable
   ) {
+    Long userId = userDetails.getUser().getId();
     return ResponseEntity.ok(accountService.getHistory(userId, accountId, pageable));
   }
 }

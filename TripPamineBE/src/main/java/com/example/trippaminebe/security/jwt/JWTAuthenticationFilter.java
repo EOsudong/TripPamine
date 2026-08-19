@@ -26,9 +26,11 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
   private final TokenBlacklistService tokenBlacklistService;
 
   // JWTAuthenticationFilter "/users"로 시작하는 요청에만 적용되게 제한
+  // + "/accounts"로 시작하는 요청에도 적용되게 제한
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    return !request.getRequestURI().startsWith("/users");
+    String uri = request.getRequestURI();
+    return !(uri.startsWith("/users") || uri.startsWith("/accounts"));
   }
 
   @Override
