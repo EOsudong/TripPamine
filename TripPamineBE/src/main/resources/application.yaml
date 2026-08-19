@@ -5,8 +5,8 @@ spring:
     # 오라클 JDBC 드라이버
     driver-class-name: oracle.jdbc.OracleDriver
     # URL 구성: jdbc:oracle:thin:@<TNS_ALIAS>?TNS_ADMIN=<지갑_ZIP파일_경로>
-    #url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./TripPamineBE/src/main/resources/wallets
-    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
+    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./TripPamineBE/src/main/resources/wallets
+    #url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
     # DB 계정 정보
     username: TripPamine
     password: TeamProj1234
@@ -14,7 +14,7 @@ spring:
   # 애플리케이션 실행 시 DDL(테이블 생성/수정) 자동 관리 옵션
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
       # SQL 출력 및 포맷팅 설정
     show-sql: true
     properties:
@@ -24,12 +24,25 @@ spring:
         use_sql_comments: true       # Executing 어떤 쿼리/메서드인지 주석 표시
         default_batch_fetch_size: 100 # 성능 최적화 (N+1 문제 방지용 지연 로딩 일괄 조회)
 
+  # 파일 업로드 용량 설정 (영수증 OCR 이미지 첨부용)
+  servlet:
+    multipart:
+      max-file-size: 10MB       # 파일 하나당 최대 용량
+      max-request-size: 10MB    # 한 요청당 전체 최대 용량
+
 server:
   port: 8080
 
   jwt:
     secret: {"JWT_SECRET_KEY"}
     expiration: 3600000
+
+# 구글 OCR API 사용을 위한 서비스 계정 키 파일 경로 설정
+google:
+  cloud:
+    vision:
+      credentials:
+        location: classpath:API/google-credentials.json
 
 
 

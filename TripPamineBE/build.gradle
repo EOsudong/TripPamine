@@ -54,6 +54,12 @@ dependencies {
     // 관리자 활동 자동 로그 기록(AOP) 라이브러리 추가
     implementation 'org.springframework.boot:spring-boot-starter-aspectj'
 
+    // 외부 OCR API 호출용 WebClient
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    // Google Cloud Vision (OCR) 라이브러리 패키지
+    implementation 'com.google.cloud:google-cloud-vision:3.38.0'
+    // Google Cloud 라이브러리 간 버전 호환성을 맞춰주는 BOM 설정
+    implementation platform('com.google.cloud:libraries-bom:26.38.0')
 }
 
 tasks.named('test') {
