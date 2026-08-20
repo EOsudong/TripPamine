@@ -196,7 +196,7 @@ export default function Hero({ username = "여행자" }: HeroProps) {
           /* 1. 여행 플래너 2열 레이아웃 */
           <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
             {/* 1열: 등록 / 수정 폼 */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-white/40">
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 py-13 border border-white/40">
               <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
                 <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
                   {editingId ? "EDIT PLAN" : "NEW PLAN"}
