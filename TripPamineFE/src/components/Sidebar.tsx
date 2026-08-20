@@ -47,7 +47,7 @@ const navItems: NavGroup[] = [
   {
     group: "정보",
     items: [
-      { icon: "💬", label: "여행 후기", to: null },
+      { icon: "💬", label: "자유게시판", to: null },
       { icon: "⚙️", label: "설정", to: null },
     ],
   },
