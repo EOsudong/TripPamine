@@ -8,7 +8,6 @@
 // - sidebarOpen     : 사이드바가 열려있는지 여부 (햄버거 아이콘 모양을 X로 바꾸는 데 사용)
 // - onToggleSidebar : 햄버거 버튼 클릭 시 실행할 함수 (Home.jsx 등 상위 페이지에서 내려줌)
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
 interface HeaderProps {
@@ -18,33 +17,38 @@ interface HeaderProps {
 
 export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
   const navigate = useNavigate();
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn } = useAuth();
 
   const handleLogout = async () => {
+    const token = localStorage.getItem("accessToken");
+
     try {
-      const accessToken = localStorage.getItem("accessToken");
-      await axios.post(
-        "http://localhost:8080/users/logout",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+      const response = await fetch("http://localhost:8080/users/auth/logout", {
+        // 백엔드 Full URL 확인
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
-      console.log("로그아웃 성공"); // 콘솔 확인용
+      console.log("HTTP 응답 상태 코드:", response.status);
 
-      // React 로그인 상태 변경
-      logout();
-      navigate("/login");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("백엔드 에러 응답 내용:", errorText);
+      } else {
+        console.log("로그아웃 성공!");
+        // 로그아웃 시 스토리지 전체 초기화
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "/login";
+      }
     } catch (error) {
-      console.error("로그아웃 실패:", error);
-    } finally {
-      // 로컬 스토리지에서 JWT 제거
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
+      console.error("실제 발생한 에러:", error);
+      // } finally {
+      //   // 에러 발생 여부와 무관하게 무조건 클라이언트 토큰 삭제 및 페이지 이동
+      //   localStorage.removeItem("accessToken");
+      //   window.location.href = "/login";
     }
   };
 

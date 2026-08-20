@@ -8,6 +8,7 @@ import FindId from "../pages/FindId"
 import FindPw from "../pages/FindPw"
 import MyPage from "../pages/MyPage"
 import Detail from "../pages/Detail"
+import OAuthCallback from "../pages/Oauthcallback"
 
 export default function Router() {
   return (
@@ -19,6 +20,9 @@ export default function Router() {
         <Route path="/find-id" element={<FindId />} />    {/* 아이디 찾기 */}
         <Route path="/find-pw" element={<FindPw />} />    {/* 비밀번호 찾기 */}
         <Route path="/mypage" element={<MyPage />} />     {/* 마이페이지 (북마크/저장된 코스) */}
+        {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
+          여기로 리다이렉트함.*/}
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
         {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
             type(destination|festival)과 id 값을 URL에서 그대로 받아서 Detail.jsx에서 분기 처리 */}
         <Route path="/detail/:type/:id" element={<Detail />} />

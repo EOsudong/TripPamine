@@ -28,8 +28,9 @@ public class UserSocialAccount {
   @JoinColumn(name = "USER_ID", nullable = false)
   private User user;
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "OAUTH_PROVIDER", nullable = false, length = 20)
-  private String oauthProvider; // GOOGLE, KAKAO, NAVER
+  private UserSocialProvider oauthProvider; // GOOGLE, KAKAO, NAVER
 
   @Column(name = "PROVIDER_USER_ID", nullable = false, length = 100)
   private String providerUserId;

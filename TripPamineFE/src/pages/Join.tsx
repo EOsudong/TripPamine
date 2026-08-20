@@ -206,7 +206,6 @@ export default function Join() {
             {/* 버튼 비활성화 및 로딩 문구 처리 */}
             <SubmitBtn
               label={loading ? "가입 처리중..." : "회원가입"}
-              disabled={loading}
             />
             <p className="text-center text-xs text-slate-400 pt-1">
               이미 계정이 있으신가요?{" "}

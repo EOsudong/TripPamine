@@ -30,8 +30,6 @@ export default function Login() {
         password: form.password,
       });
 
-      console.log("로그인 성공:", response); // 콘솔 확인용
-
       // AuthContext의 login 함수 호출하여 로그인 상태 업데이트
       login(response.accessToken, response.userId);
 

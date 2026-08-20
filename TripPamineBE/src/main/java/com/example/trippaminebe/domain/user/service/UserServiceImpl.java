@@ -10,6 +10,7 @@ import com.example.trippaminebe.domain.user.dto.response.UserResponseDto;
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.entity.UserStatus;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
+import com.example.trippaminebe.domain.user.repository.UserSocialAccountRepository;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import com.example.trippaminebe.security.jwt.JWTUtils;
 import jakarta.persistence.EntityManager;
@@ -31,6 +32,7 @@ public class UserServiceImpl implements UserService {
   private final EntityManager entityManager;
   // 리포지토리 주입
   private final UserRepository userRepository;
+  private final UserSocialAccountRepository userSocialAccountRepository;
 
   private final PasswordEncoder passwordEncoder;
   private final JWTUtils jwtUtils;

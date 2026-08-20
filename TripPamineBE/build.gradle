@@ -29,7 +29,7 @@ dependencies {
     runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
     annotationProcessor 'org.projectlombok:lombok'
 
-//	오라클 클라우드 데이터베이스 드라이버 라이브러리 추가
+    //	오라클 클라우드 데이터베이스 드라이버 라이브러리 추가
     implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
     // 오라클 Wallet(SSO KeyStore/TLS) 필수 보안 라이브러리 추가
     implementation 'com.oracle.database.security:oraclepki:23.2.0.0'
@@ -60,6 +60,9 @@ dependencies {
     implementation 'com.google.cloud:google-cloud-vision:3.38.0'
     // Google Cloud 라이브러리 간 버전 호환성을 맞춰주는 BOM 설정
     implementation platform('com.google.cloud:libraries-bom:26.38.0')
+
+    // oauth2 라이브러리 추가
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 }
 
 tasks.named('test') {

@@ -7,10 +7,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 
-// 사용자등급: Bronze, Silver, Gold, Platinum 여행자 등급
-public enum UserGrade {
-  BRONZE,
-  SILVER,
-  GOLD,
-  PLATINUM
+public enum UserSocialProvider {
+  KAKAO,
+  NAVER,
+  GOOGLE,
 }

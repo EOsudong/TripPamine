@@ -1,9 +1,13 @@
 package com.example.trippaminebe.config;
 
+import com.example.trippaminebe.domain.admin.service.custom.CustomAdminDetailService;
+import com.example.trippaminebe.domain.user.service.custom.CustomOAuth2UserService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailsService;
+import com.example.trippaminebe.security.jwt.AdminJWTAuthenticationFilter;
 import com.example.trippaminebe.security.jwt.JWTAuthenticationFilter;
 import com.example.trippaminebe.security.jwt.JWTUtils;
 import com.example.trippaminebe.security.jwt.TokenBlacklistService;
+import com.example.trippaminebe.security.oauth2.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,15 +17,12 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import com.example.trippaminebe.domain.admin.service.custom.CustomAdminDetailService;
-import com.example.trippaminebe.security.jwt.AdminJWTAuthenticationFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,6 +37,8 @@ public class SecurityConfig {
   private final TokenBlacklistService tokenBlacklistService;
   // 필드 추가
   private final CustomAdminDetailService customAdminDetailService; // Admin 로그인 검증용 서비스 주입
+  private final CustomOAuth2UserService customOAuth2UserService; // 주입 추가
+  private final OAuth2LoginSuccessHandler oAuth;
 
   /*
     로그인 API(/users/login)컨트롤러에 AuthenticationManager주입을 위한 빈 등록
@@ -52,13 +55,6 @@ public class SecurityConfig {
     return new ProviderManager(provider);
   }
 
-  /*
-  비밀번호 해시 생성 및 로그인 시 비밀번호 검증하기 위한 빈 등록
-  */
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -67,7 +63,7 @@ public class SecurityConfig {
             jwtUtils,
             customUserDetailsService,
             tokenBlacklistService
-            );
+        );
     //관리자 전용 JWT 필터 - /admin 경로에서만 동작 (shouldNotFilter로 범위 제한됨)
     AdminJWTAuthenticationFilter adminJwtAuthenticationFilter = new AdminJWTAuthenticationFilter(jwtUtils, customAdminDetailService);
     http
@@ -83,6 +79,24 @@ public class SecurityConfig {
         // 토큰 기반 인증을 사용함으로 세션기반 인증 무효화
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+
+        .exceptionHandling(exception -> exception
+            .authenticationEntryPoint((request, response, authException) -> {
+              response.setContentType("application/json;charset=UTF-8");
+              response.setStatus(org.springframework.http.HttpStatus.UNAUTHORIZED.value());
+              response.getWriter().write(
+                  "{\"status\":401,\"message\":\"인증이 필요합니다. 로그인 후 Authorization 헤더에 Bearer 토큰을 담아 요청해주세요.\"}"
+              );
+            })
+            .accessDeniedHandler((request, response, accessDeniedException) -> {
+              response.setContentType("application/json;charset=UTF-8");
+              response.setStatus(org.springframework.http.HttpStatus.FORBIDDEN.value());
+              response.getWriter().write(
+                  "{\"status\":403,\"message\":\"접근 권한이 없습니다.\"}"
+              );
+            })
+        )
+
         // API 요청별 접근 설정
         .authorizeHttpRequests(auth -> auth
             //인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
@@ -96,12 +110,22 @@ public class SecurityConfig {
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/travel-plans/**",
-                "/accountbook/**"
+                "/oauth2/**",
+                "/login/oauth2/**"
             ).permitAll()
             .requestMatchers("/users/**")
             .authenticated()
             // 위에서 지정한 경로 외의 나머지 모든 요청은 인증이 반드시 필요하도록 설정
             .anyRequest().authenticated()
+        )
+        // 소셜 로그인(OAuth2) 핸들러 연결
+        .oauth2Login(oauth2 -> oauth2
+            .redirectionEndpoint(
+                redirection -> redirection.baseUri(
+                    "/login/oauth2/code/*"))
+            .userInfoEndpoint(
+                userInfo -> userInfo.userService(customOAuth2UserService)) // UserService 연결
+            .successHandler(oAuth) // SuccessHandler 연결
         )
 
         // JWT 필터 위지 지정 : UsernamePasswordAuthenticationFilter 실행 이전에 커스텀 JWT 필터 배치
@@ -116,7 +140,7 @@ public class SecurityConfig {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(List.of("http://localhost:5173"));
     config.setAllowedOriginPatterns(List.of("*")); // 모든 헤더 허용
-    config.setAllowedMethods(Arrays.asList("GET", "POST","PATCH", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
+    config.setAllowedMethods(Arrays.asList("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
     config.setAllowedHeaders(List.of( // 보안상 허용할 수 있는 HTTP 헤더 목록
         "Authorization",
         "Content-Type",

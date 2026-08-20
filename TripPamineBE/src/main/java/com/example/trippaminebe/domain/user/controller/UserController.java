@@ -88,14 +88,15 @@ public class UserController {
 
     System.out.println("====== LOGOUT ======");
 
-    if (userDetails != null) {
-      System.out.println("사용자 = " + userDetails.getUser().getEmail());
-    }
-    System.out.println("JWT = " + token);
-
-    // JWT 폐기
+    // JWT 블랙리스트 등록 (소셜/일반 사용자 공통 적용)
     tokenBlacklistService.blacklist(token);
 
-    return ResponseEntity.ok("로그아웃 완료");
+    if (userDetails != null && userDetails.getUser() != null) {
+      // 필요한 경우 소셜 유저 로그인 접속 기록/로그아웃 시간 갱신 로직 추가 가능
+      System.out.println("로그아웃 완료 - User Email: " + userDetails.getUser().getEmail());
+    }
+
+    return ResponseEntity.ok("로그아웃되었습니다.");
   }
-}
+
+}//class
