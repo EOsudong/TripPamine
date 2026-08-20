@@ -5,11 +5,11 @@ spring:
     # 오라클 JDBC 드라이버
     driver-class-name: oracle.jdbc.OracleDriver
     # URL 구성: jdbc:oracle:thin:@<TNS_ALIAS>?TNS_ADMIN=<지갑_ZIP파일_경로>
-    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./TripPamineBE/src/main/resources/wallets
+    url: ${DB_URL}
     #url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
     # DB 계정 정보
-    username: TripPamine
-    password: TeamProj1234
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   # 애플리케이션 실행 시 DDL(테이블 생성/수정) 자동 관리 옵션
   jpa:
@@ -37,7 +37,7 @@ spring:
             client-authentication-method: client_secret_post
             scope:
               - profile_nickname
-          #              - account_email
+          #              - account_email # 카카오 API 현재 미지원
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
@@ -69,12 +69,12 @@ spring:
       max-file-size: 10MB       # 파일 하나당 최대 용량
       max-request-size: 10MB    # 한 요청당 전체 최대 용량
 
+jwt:
+  secret: ${JWT_SECRET_KEY}
+  expiration: ${jwt.expiration}
+
 server:
   port: 8080
-
-  jwt:
-    secret: {"JWT_SECRET_KEY"}
-    expiration: 3600000
 
 # 구글 OCR API 사용을 위한 서비스 계정 키 파일 경로 설정
 google:

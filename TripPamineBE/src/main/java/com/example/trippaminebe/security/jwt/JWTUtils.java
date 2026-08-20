@@ -21,8 +21,8 @@ public class JWTUtils {
   private final long expirationTime; // 토큰 유효시간(ms)
 
   public JWTUtils(
-      @Value("${jwt.secret:trippamine_default_secret_key_must_be_at_least_32_bytes_long_123456}") String secret,
-      @Value("${jwt.expiration:3600000}") long expirationTime // 기본 1시간 설정(단위: ms)
+      @Value("${JWT_SECRET_KEY}") String secret,
+      @Value("${jwt.expiration}") long expirationTime // 기본 1시간 설정(단위: ms)
   ) {
     this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     this.expirationTime = expirationTime;

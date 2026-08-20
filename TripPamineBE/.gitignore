@@ -40,3 +40,6 @@ node_modules/
 
 ### Google Cloud OCR Credentials ###
 src/main/resources/API/google-credentials.json
+
+### .env 등록 ###
+.env
