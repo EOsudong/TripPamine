@@ -36,7 +36,8 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         || uri.startsWith("/oauth2")
         || uri.startsWith("/login/oauth2")
         || uri.startsWith("/swagger-ui")
-        || uri.startsWith("/v3/api-docs");
+        || uri.startsWith("/v3/api-docs")
+        || uri.startsWith("/travel-plans"); // SecurityConfig에서 permitAll로 열려있는 경로
   }
 
   @Override
