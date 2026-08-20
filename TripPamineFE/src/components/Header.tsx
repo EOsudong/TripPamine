@@ -82,6 +82,16 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
         <span className="text-slate-800">Pamin</span>
       </a>
 
+      {/* 슬로건 문구 추가 */}
+      <a
+        href="#ai-planner"
+        className="text-lg font-bold tracking-tight shrink-0"
+      >
+        <span className="text-xs text-gray-500 border-l border-gray-300 pl-3">
+          "계획은 AI가 짜릿함은 당신이"
+        </span>
+      </a>
+
       {/* 검색창: 작은 화면(sm 미만)에서는 숨김. 지금은 입력만 되고 실제 검색 로직은 미구현 */}
       <div className="hidden sm:flex flex-1 max-w-sm mx-auto">
         <div className="flex items-center gap-2 w-full bg-slate-100 rounded-xl px-4 py-2">
