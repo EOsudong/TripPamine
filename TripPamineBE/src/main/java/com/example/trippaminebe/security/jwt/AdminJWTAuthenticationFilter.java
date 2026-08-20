@@ -55,15 +55,17 @@ public class AdminJWTAuthenticationFilter extends OncePerRequestFilter {
           }
         }
       }
-    }
-    catch (UsernameNotFoundException e) {
+    } catch (UsernameNotFoundException e) {
       // 존재하지 않거나 정지된 관리자일 경우 - 인증 없이 다음 필터로 넘어감 (로그만 남김)
       logger.warn("관리자 인증 실패 - 존재하지 않는 관리자입니다: " + e.getMessage());
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       logger.error("Admin Security Context 인증 설정 실패", e);
     }
-    SecurityContextHolder.getContext().setAuthentication(authentication);
+    // 기존 코드가 try-catch 밖에서 무조건 실행되어,
+    // authentication이 실제로 세팅된 경우에만 SecurityContext에 반영하도록 수정.
+    if (authentication != null) {
+      SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
 
     // 다음 필터로 진행
     filterChain.doFilter(request, response);
