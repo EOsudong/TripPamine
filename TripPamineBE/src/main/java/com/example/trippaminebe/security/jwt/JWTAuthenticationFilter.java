@@ -25,12 +25,18 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
   //로그아웃 검증 생성자 주입
   private final TokenBlacklistService tokenBlacklistService;
 
-  // JWTAuthenticationFilter "/users"로 시작하는 요청에만 적용되게 제한
-  // + "/accounts"로 시작하는 요청에도 적용되게 제한
+  // 코드 수정 -- 인증이 필요없는 공개 경로만 추가하도록 수정
+  // ====== permitAll로 열린 경로를 여기에 계속 추가해주세요. ======
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String uri = request.getRequestURI();
-    return !(uri.startsWith("/users") || uri.startsWith("/accounts"));
+    return uri.startsWith("/users/auth/login")
+        || uri.startsWith("/users/auth/signup")
+        || uri.startsWith("/users/auth/check-email")
+        || uri.startsWith("/oauth2")
+        || uri.startsWith("/login/oauth2")
+        || uri.startsWith("/swagger-ui")
+        || uri.startsWith("/v3/api-docs");
   }
 
   @Override
