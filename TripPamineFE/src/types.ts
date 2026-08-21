@@ -59,3 +59,23 @@ export interface TravelPlanFormState {
   startDate: string
   endDate: string
 }
+
+// 한국관광공사 오픈API(한국관광콘텐츠랩) 연동 데이터 하나의 구조.
+// 백엔드 /tour/festivals, /tour/destinations, /tour/industry가 공통으로 이 형태로 내려줍니다.
+// (data/tourCategories.ts의 소분류 필터, components/TourItemCard.tsx, pages/TourCategoryPage.tsx에서 사용)
+export interface TourItem {
+  contentId: string
+  contentTypeId: string
+  title: string
+  category: string
+  address: string | null
+  imageUrl: string | null
+  mapX: number | null
+  mapY: number | null
+  eventStartDate: string | null // yyyyMMdd, 축제만 값이 있음
+  eventEndDate: string | null // yyyyMMdd, 축제만 값이 있음
+  status: "ongoing" | "upcoming" | null // 축제만 값이 있음
+}
+
+// 사이드바 "정보" 그룹에 노출되는 3개 대분류 키
+export type TourMainCategoryKey = "festivals" | "destinations" | "industry"

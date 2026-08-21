@@ -14,7 +14,7 @@ spring:
   # 애플리케이션 실행 시 DDL(테이블 생성/수정) 자동 관리 옵션
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
       # SQL 출력 및 포맷팅 설정
     show-sql: true
     properties:
@@ -83,5 +83,11 @@ google:
       credentials:
         location: classpath:API/google-credentials.json
 
-
+# 한국관광공사 오픈API(한국관광콘텐츠랩, TourAPI) 설정
+tour:
+  api:
+    base-url: https://apis.data.go.kr/B551011/KorService2
+    service-key: ${TOUR_API_KEY}
+    mobile-app: TripPamine
+    mobile-os: ETC
 

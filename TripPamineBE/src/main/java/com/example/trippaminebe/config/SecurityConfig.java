@@ -111,7 +111,9 @@ public class SecurityConfig {
                 "/v3/api-docs/**",
                 "/travel-plans/**",
                 "/oauth2/**",
-                "/login/oauth2/**"
+                "/login/oauth2/**",
+                //  국내 축제/여행지/관광산업 - 로그인 여부와 무관한 공개 관광정보(한국관광공사 오픈API 연동)
+                "/tour/**"
             ).permitAll()
             .requestMatchers("/users/**")
             .authenticated()
