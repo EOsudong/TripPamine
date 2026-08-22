@@ -9,6 +9,7 @@ import FindPw from "../pages/FindPw"
 import MyPage from "../pages/MyPage"
 import Detail from "../pages/Detail"
 import OAuthCallback from "../pages/Oauthcallback"
+import AiRecommendPage from "../pages/AiRecommendPage";
 
 export default function Router() {
   return (
@@ -26,6 +27,7 @@ export default function Router() {
         {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
             type(destination|festival)과 id 값을 URL에서 그대로 받아서 Detail.jsx에서 분기 처리 */}
         <Route path="/detail/:type/:id" element={<Detail />} />
+        <Route path="/ai-recommend" element={<AiRecommendPage />} />
       </Routes>
     </BrowserRouter>
   )

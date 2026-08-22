@@ -1,25 +1,28 @@
-import { useState, useEffect } from "react"
-import type { ChangeEvent, FormEvent } from "react"
-import type { TravelPlan, TravelPlanFormState } from "../types"
+import { useState, useEffect } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import type { TravelPlan, TravelPlanFormState } from "../types";
 import {
   getTravelPlansApi,
   createTravelPlanApi,
   updateTravelPlanApi,
   deleteTravelPlanApi,
-} from "../api/travel"
-import AccountBook from "./AccountBook" // 🌟 가계부 컴포넌트 불러오기
+} from "../api/travel";
+import AccountBook from "./AccountBook"; // 🌟 가계부 컴포넌트 불러오기
+import { useNavigate } from "react-router-dom";
 
 interface HeroProps {
-  username?: string
+  username?: string;
 }
 
 export default function Hero({ username = "여행자" }: HeroProps) {
   // 🌟 탭 상태 추가 ('planner': 여행 플래너 / 'accountBook': 여행 가계부)
-  const [activeTab, setActiveTab] = useState<"planner" | "accountBook">("planner")
+  const [activeTab, setActiveTab] = useState<"planner" | "accountBook">(
+    "planner",
+  );
 
-  const [plans, setPlans] = useState<TravelPlan[]>([])
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [plans, setPlans] = useState<TravelPlan[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState<TravelPlanFormState>({
     planName: "",
@@ -28,31 +31,33 @@ export default function Hero({ username = "여행자" }: HeroProps) {
     blindYn: "N",
     startDate: "",
     endDate: "",
-  })
+  });
 
   // 여행 목록 조회
   const loadPlans = async () => {
     try {
-      const data = await getTravelPlansApi()
-      setPlans(data)
+      const data = await getTravelPlansApi();
+      setPlans(data);
     } catch (error) {
-      console.error("여행 계획 조회 실패:", error)
+      console.error("여행 계획 조회 실패:", error);
     }
-  }
+  };
 
   useEffect(() => {
-    loadPlans()
-  }, [])
+    loadPlans();
+  }, []);
 
   // 입력값 변경 핸들러
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   // 폼 초기화
   const resetForm = () => {
-    setEditingId(null)
+    setEditingId(null);
     setForm({
       planName: "",
       totalBudget: "",
@@ -60,44 +65,45 @@ export default function Hero({ username = "여행자" }: HeroProps) {
       blindYn: "N",
       startDate: "",
       endDate: "",
-    })
-  }
+    });
+  };
 
   // 등록 / 수정 제출
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const requestData = {
       planName: form.planName,
       totalBudget: Number(form.totalBudget),
       companionType: form.companionType || null,
       blindYn: form.blindYn,
-      startDate: form.startDate && form.startDate.trim() !== "" ? form.startDate : null,
+      startDate:
+        form.startDate && form.startDate.trim() !== "" ? form.startDate : null,
       endDate: form.endDate && form.endDate.trim() !== "" ? form.endDate : null,
-    }
+    };
 
     try {
-      setLoading(true)
+      setLoading(true);
       if (editingId) {
-        await updateTravelPlanApi(editingId, requestData)
-        alert("여행 계획이 수정되었습니다!")
+        await updateTravelPlanApi(editingId, requestData);
+        alert("여행 계획이 수정되었습니다!");
       } else {
-        await createTravelPlanApi(requestData)
-        alert("여행 계획이 등록되었습니다!")
+        await createTravelPlanApi(requestData);
+        alert("여행 계획이 등록되었습니다!");
       }
-      resetForm()
-      loadPlans()
+      resetForm();
+      loadPlans();
     } catch (error) {
-      console.error("저장 실패:", error)
-      alert("저장 중 오류가 발생했습니다.")
+      console.error("저장 실패:", error);
+      alert("저장 중 오류가 발생했습니다.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // 수정 시작
   const handleEdit = (plan: TravelPlan) => {
-    setEditingId(plan.planId)
+    setEditingId(plan.planId);
     setForm({
       planName: plan.planName,
       totalBudget: String(plan.totalBudget),
@@ -105,42 +111,54 @@ export default function Hero({ username = "여행자" }: HeroProps) {
       blindYn: plan.blindYn || "N",
       startDate: plan.startDate ? plan.startDate.slice(0, 16) : "",
       endDate: plan.endDate ? plan.endDate.slice(0, 16) : "",
-    })
+    });
 
-    document.getElementById("ai-planner")?.scrollIntoView({ behavior: "smooth" })
-  }
+    document
+      .getElementById("ai-planner")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // 삭제
   const handleDelete = async (planId: number) => {
-    if (!window.confirm("정말 이 여행 계획을 삭제하시겠습니까?")) return
+    if (!window.confirm("정말 이 여행 계획을 삭제하시겠습니까?")) return;
 
     try {
-      await deleteTravelPlanApi(planId)
-      alert("여행 계획이 삭제되었습니다.")
-      loadPlans()
+      await deleteTravelPlanApi(planId);
+      alert("여행 계획이 삭제되었습니다.");
+      loadPlans();
     } catch (error) {
-      console.error("삭제 실패:", error)
-      alert("삭제 중 오류가 발생했습니다.")
+      console.error("삭제 실패:", error);
+      alert("삭제 중 오류가 발생했습니다.");
     }
-  }
+  };
 
   const companionLabel = (type: string | null) => {
     switch (type) {
-      case "ALONE": return "혼자"
-      case "FRIEND": return "친구"
-      case "FAMILY": return "가족"
-      case "COUPLE": return "연인"
-      default: return type || "미선택"
+      case "ALONE":
+        return "혼자";
+      case "FRIEND":
+        return "친구";
+      case "FAMILY":
+        return "가족";
+      case "COUPLE":
+        return "연인";
+      default:
+        return type || "미선택";
     }
-  }
+  };
 
-  const now = new Date()
+  const navigate = useNavigate();
+
+  const now = new Date();
   const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
     .toISOString()
-    .slice(0, 16)
+    .slice(0, 16);
 
   return (
-    <section id="ai-planner" className="relative min-h-[680px] flex items-center justify-center overflow-hidden py-10">
+    <section
+      id="ai-planner"
+      className="relative min-h-[680px] flex items-center justify-center overflow-hidden py-10"
+    >
       {/* 배경 사진 + 그라데이션 */}
       <img
         src="https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=1600&h=900&fit=crop&auto=format"
@@ -156,11 +174,13 @@ export default function Hero({ username = "여행자" }: HeroProps) {
             ✈ TripPamine Manager
           </span>
           <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-lg">
-            {activeTab === "planner" ? "나의 여행 계획 관리" : "스마트 여행 가계부"}
+            {activeTab === "planner"
+              ? "나의 여행 계획 관리"
+              : "스마트 여행 가계부"}
           </h1>
           <p className="text-white/80 text-sm md:text-base">
-            {activeTab === "planner" 
-              ? "여행 일정과 예산을 등록하고 간편하게 관리해보세요" 
+            {activeTab === "planner"
+              ? "여행 일정과 예산을 등록하고 간편하게 관리해보세요"
               : "영수증 스캔 OCR 기능으로 손쉽게 여행 지출을 기록해보세요"}
           </p>
         </div>
@@ -208,7 +228,9 @@ export default function Hero({ username = "여행자" }: HeroProps) {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">여행 이름</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    여행 이름
+                  </label>
                   <input
                     type="text"
                     name="planName"
@@ -221,7 +243,9 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">총 예산</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    총 예산
+                  </label>
                   <div className="relative">
                     <input
                       type="number"
@@ -233,13 +257,17 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                       required
                       className="w-full px-3.5 py-2.5 pr-8 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">원</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                      원
+                    </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">동행자</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      동행자
+                    </label>
                     <select
                       name="companionType"
                       value={form.companionType}
@@ -255,7 +283,9 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">미스터리 투어</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      미스터리 투어
+                    </label>
                     <select
                       name="blindYn"
                       value={form.blindYn}
@@ -269,7 +299,9 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">출발 일시</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    출발 일시
+                  </label>
                   <input
                     type="datetime-local"
                     name="startDate"
@@ -281,7 +313,9 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">종료 일시</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    종료 일시
+                  </label>
                   <input
                     type="datetime-local"
                     name="endDate"
@@ -298,7 +332,11 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                     disabled={loading}
                     className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
                   >
-                    {loading ? "저장 중..." : editingId ? "수정 완료" : "여행 등록"}
+                    {loading
+                      ? "저장 중..."
+                      : editingId
+                        ? "수정 완료"
+                        : "여행 등록"}
                   </button>
                   {editingId && (
                     <button
@@ -316,17 +354,34 @@ export default function Hero({ username = "여행자" }: HeroProps) {
             {/* 2열: 등록된 여행 카드리스트 */}
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
               <div className="flex items-center justify-between text-white mb-2">
-                <h3 className="font-bold text-lg drop-shadow">등록된 여행 목록</h3>
-                <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
-                  총 {plans.length}개
-                </span>
+                <h3 className="font-bold text-lg drop-shadow">
+                  등록된 여행 목록
+                </h3>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
+                    총 {plans.length}개
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/ai-recommend")}
+                    className="  px-4 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-sky-500/30 border border-white/30 transition-all duration-300 hover:scale-105 active:scale-95"
+                  >
+                    ✨ AI 추천 보기
+                  </button>
+                </div>
               </div>
 
               {plans.length === 0 ? (
                 <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center border border-white/50 shadow-xl">
                   <div className="text-4xl mb-3">🌏</div>
-                  <h4 className="font-bold text-slate-700 text-base">등록된 여행이 없습니다.</h4>
-                  <p className="text-xs text-slate-400 mt-1">좌측 폼에서 첫 번째 여행 계획을 세워보세요!</p>
+                  <h4 className="font-bold text-slate-700 text-base">
+                    등록된 여행이 없습니다.
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    좌측 폼에서 첫 번째 여행 계획을 세워보세요!
+                  </p>
                 </div>
               ) : (
                 plans.map((plan) => (
@@ -345,17 +400,23 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                           </span>
                         )}
                       </div>
-                      <h4 className="font-bold text-slate-800 text-lg mb-3">{plan.planName}</h4>
+                      <h4 className="font-bold text-slate-800 text-lg mb-3">
+                        {plan.planName}
+                      </h4>
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
                         <div className="bg-slate-50 p-2.5 rounded-xl">
-                          <span className="text-slate-400 block text-[10px] mb-0.5">총 예산</span>
+                          <span className="text-slate-400 block text-[10px] mb-0.5">
+                            총 예산
+                          </span>
                           <span className="font-bold text-slate-700">
                             💰 {Number(plan.totalBudget).toLocaleString()}원
                           </span>
                         </div>
                         <div className="bg-slate-50 p-2.5 rounded-xl">
-                          <span className="text-slate-400 block text-[10px] mb-0.5">동행자</span>
+                          <span className="text-slate-400 block text-[10px] mb-0.5">
+                            동행자
+                          </span>
                           <span className="font-bold text-slate-700">
                             👥 {companionLabel(plan.companionType)}
                           </span>
@@ -366,7 +427,10 @@ export default function Hero({ username = "여행자" }: HeroProps) {
                         <div className="bg-emerald-50 px-3 py-2 rounded-xl text-xs text-emerald-800 flex items-center gap-1.5 mb-3">
                           <span>📅</span>
                           <span>
-                            {plan.startDate ? plan.startDate.slice(0, 10) : "미정"} ~{" "}
+                            {plan.startDate
+                              ? plan.startDate.slice(0, 10)
+                              : "미정"}{" "}
+                            ~{" "}
                             {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
                           </span>
                         </div>
@@ -400,5 +464,5 @@ export default function Hero({ username = "여행자" }: HeroProps) {
         )}
       </div>
     </section>
-  )
+  );
 }
