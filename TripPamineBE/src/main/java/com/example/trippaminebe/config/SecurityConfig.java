@@ -111,7 +111,8 @@ public class SecurityConfig {
                 "/v3/api-docs/**",
                 "/travel-plans/**",
                 "/oauth2/**",
-                "/login/oauth2/**"
+                "/login/oauth2/**",
+                "/recommendations/**"
             ).permitAll()
             .requestMatchers("/users/**")
             .authenticated()
