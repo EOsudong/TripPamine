@@ -1,15 +1,18 @@
-// 마이페이지 — 북마크(저장)한 여행지/축제를 모아 보여주는 페이지.
+// 마이페이지 — 로그인한 사용자만 접근 가능 (router/Router.tsx의 ProtectedRoute가 보호함).
+// 북마크(저장)한 여행지/축제를 모아 보여주고, 가계부도 여기서 관리합니다.
 // 실제 로그인·서버 저장 기능은 아직 없어서, savedDestinationIds/savedFestivalIds에
 // 하드코딩된 id로 "이미 저장되어 있다고 가정한" 더미 데이터를 보여줍니다.
 // (실제 서비스에서는 로그인한 사용자의 북마크 목록을 서버에서 받아오면 됩니다)
 //
 // [계좌 기능 추가] 사용자가 계좌정보를 직접 입력해 등록/조회하는 ManualAccountSection을 추가함.
+// [가계부 이동] 메인 페이지(Hero.tsx)에 있던 여행 가계부(AccountBook)를 이 페이지의 "가계부" 탭으로 옮김.
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import Header from "../components/Header"
 import Sidebar from "../components/Sidebar"
 import Footer from "../components/Footer"
 import ManualAccountSection from "../components/ManualAccountSection"
+import AccountBook from "../components/AccountBook"
 import { destinations } from "../data/destinations"
 import { festivals } from "../data/festivals"
 
@@ -19,7 +22,8 @@ const savedFestivalIds = [festivals[0].id, festivals[1].id]
 
 export default function MyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [tab, setTab] = useState<"courses" | "festivals">("courses") // 현재 선택된 탭: "courses"(저장된 여행지) | "festivals"(저장된 축제)
+  // 현재 선택된 탭: "courses"(저장된 여행지) | "festivals"(저장된 축제) | "accountBook"(가계부)
+  const [tab, setTab] = useState<"courses" | "festivals" | "accountBook">("courses")
 
   // 위 id 목록에 해당하는 실제 데이터만 골라냄
   const savedDestinations = destinations.filter((d) => savedDestinationIds.includes(d.id))
@@ -73,6 +77,14 @@ export default function MyPage() {
               >
                 🎉 저장된 축제
               </button>
+              <button
+                  onClick={() => setTab("accountBook")}
+                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                      tab === "accountBook" ? "bg-sky-500 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200"
+                  }`}
+              >
+                🧾 가계부
+              </button>
             </div>
 
             {/* 저장된 여행지 */}
@@ -118,6 +130,14 @@ export default function MyPage() {
                   ))}
                 </div>
             )}
+
+            {/* 가계부 (여행 지출 기록 + 영수증 OCR) — 예전엔 메인 페이지 탭이었는데, 로그인 후에만
+                볼 수 있는 마이페이지로 옮겨왔습니다 */}
+            {tab === "accountBook" && (
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
+                  <AccountBook />
+                </div>
+            )}
           </div>
 
           <Footer />
@@ -134,3 +154,6 @@ function EmptyState({ label }: { label: string }) {
       </div>
   )
 }
+
+
+

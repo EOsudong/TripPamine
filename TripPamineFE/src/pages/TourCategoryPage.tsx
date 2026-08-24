@@ -104,7 +104,7 @@ export default function TourCategoryPage() {
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                     {items.map((item) => (
-                                        <TourItemCard key={item.contentId} item={item} />
+                                        <TourItemCard key={item.contentId} item={item} categoryKey={category.key} />
                                     ))}
                                 </div>
                             )}
@@ -135,3 +135,6 @@ function StateMessage({ label }: { label: string }) {
         </div>
     )
 }
+
+
+

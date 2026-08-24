@@ -7,19 +7,13 @@ import {
   updateTravelPlanApi,
   deleteTravelPlanApi,
 } from "../api/travel";
-import AccountBook from "./AccountBook"; // 🌟 가계부 컴포넌트 불러오기
 import { useNavigate } from "react-router-dom";
 
-interface HeroProps {
-  username?: string;
-}
+// 가계부(AccountBook)는 마이페이지(/mypage)로 이동했습니다.
+// 로그인 여부와 무관하게 노출되던 메인 페이지 대신, 로그인 후에만 접근 가능한
+// 마이페이지 탭에서 확인할 수 있어요. (src/pages/MyPage.tsx 참고)
 
-export default function Hero({ username = "여행자" }: HeroProps) {
-  // 🌟 탭 상태 추가 ('planner': 여행 플래너 / 'accountBook': 여행 가계부)
-  const [activeTab, setActiveTab] = useState<"planner" | "accountBook">(
-      "planner",
-  );
-
+export default function Hero() {
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,295 +168,260 @@ export default function Hero({ username = "여행자" }: HeroProps) {
             ✈ TripPamine Manager
           </span>
             <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-lg">
-              {activeTab === "planner"
-                  ? "나의 여행 계획 관리"
-                  : "스마트 여행 가계부"}
+              나의 여행 계획 관리
             </h1>
             <p className="text-white/80 text-sm md:text-base">
-              {activeTab === "planner"
-                  ? "여행 일정과 예산을 등록하고 간편하게 관리해보세요"
-                  : "영수증 스캔 OCR 기능으로 손쉽게 여행 지출을 기록해보세요"}
+              여행 일정과 예산을 등록하고 간편하게 관리해보세요
             </p>
           </div>
 
-          {/* 🌟 요청하신 반응형 슬라이더 탭 스위처 UI */}
-          <div className="max-w-md mx-auto bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex p-1.5 gap-1 mb-8 border border-white/50">
-            <button
-                type="button"
-                onClick={() => setActiveTab("planner")}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 ${
-                    activeTab === "planner"
-                        ? "bg-sky-500 text-white shadow-md scale-[1.01]"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-                }`}
-            >
-              <span>✈️</span> 여행 플래너
-            </button>
-            <button
-                type="button"
-                onClick={() => setActiveTab("accountBook")}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out flex items-center justify-center gap-2 ${
-                    activeTab === "accountBook"
-                        ? "bg-sky-500 text-white shadow-md scale-[1.01]"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-                }`}
-            >
-              <span>🧾</span> 가계부
-            </button>
-          </div>
-
-          {/* 🌟 탭 스위칭에 따른 컨텐츠 분기 */}
-          {activeTab === "planner" ? (
-              /* 1. 여행 플래너 2열 레이아웃 */
-              <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
-                {/* 1열: 등록 / 수정 폼 */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 py-13 border border-white/40">
-                  <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+          {/* 여행 플래너 2열 레이아웃 */}
+          <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
+            {/* 1열: 등록 / 수정 폼 */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 py-13 border border-white/40">
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
                 <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
                   {editingId ? "EDIT PLAN" : "NEW PLAN"}
                 </span>
-                    <h3 className="font-bold text-slate-800 text-lg">
-                      {editingId ? "여행 계획 수정" : "새 여행 계획 생성"}
-                    </h3>
-                  </div>
+                <h3 className="font-bold text-slate-800 text-lg">
+                  {editingId ? "여행 계획 수정" : "새 여행 계획 생성"}
+                </h3>
+              </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        여행 이름
-                      </label>
-                      <input
-                          type="text"
-                          name="planName"
-                          value={form.planName}
-                          onChange={handleChange}
-                          placeholder="예: 제주도 3박 4일 여행"
-                          required
-                          className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        총 예산
-                      </label>
-                      <div className="relative">
-                        <input
-                            type="number"
-                            name="totalBudget"
-                            min="0"
-                            value={form.totalBudget}
-                            onChange={handleChange}
-                            placeholder="500000"
-                            required
-                            className="w-full px-3.5 py-2.5 pr-8 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                      원
-                    </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          동행자
-                        </label>
-                        <select
-                            name="companionType"
-                            value={form.companionType}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                        >
-                          <option value="">선택</option>
-                          <option value="ALONE">혼자</option>
-                          <option value="FRIEND">친구</option>
-                          <option value="FAMILY">가족</option>
-                          <option value="COUPLE">연인</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          미스터리 투어
-                        </label>
-                        <select
-                            name="blindYn"
-                            value={form.blindYn}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                        >
-                          <option value="N">신청 안 함</option>
-                          <option value="Y">신청</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        출발 일시
-                      </label>
-                      <input
-                          type="datetime-local"
-                          name="startDate"
-                          value={form.startDate}
-                          onChange={handleChange}
-                          min={minDateTime}
-                          className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        종료 일시
-                      </label>
-                      <input
-                          type="datetime-local"
-                          name="endDate"
-                          value={form.endDate}
-                          onChange={handleChange}
-                          min={form.startDate || minDateTime}
-                          className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
-                      />
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <button
-                          type="submit"
-                          disabled={loading}
-                          className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
-                      >
-                        {loading
-                            ? "저장 중..."
-                            : editingId
-                                ? "수정 완료"
-                                : "여행 등록"}
-                      </button>
-                      {editingId && (
-                          <button
-                              type="button"
-                              onClick={resetForm}
-                              className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
-                          >
-                            취소
-                          </button>
-                      )}
-                    </div>
-                  </form>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    여행 이름
+                  </label>
+                  <input
+                      type="text"
+                      name="planName"
+                      value={form.planName}
+                      onChange={handleChange}
+                      placeholder="예: 제주도 3박 4일 여행"
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  />
                 </div>
 
-                {/* 2열: 등록된 여행 카드리스트 */}
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-                  <div className="flex items-center justify-between text-white mb-2">
-                    <h3 className="font-bold text-lg drop-shadow">
-                      등록된 여행 목록
-                    </h3>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    총 예산
+                  </label>
+                  <div className="relative">
+                    <input
+                        type="number"
+                        name="totalBudget"
+                        min="0"
+                        value={form.totalBudget}
+                        onChange={handleChange}
+                        placeholder="500000"
+                        required
+                        className="w-full px-3.5 py-2.5 pr-8 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                      원
+                    </span>
+                  </div>
+                </div>
 
-                    <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      동행자
+                    </label>
+                    <select
+                        name="companionType"
+                        value={form.companionType}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    >
+                      <option value="">선택</option>
+                      <option value="ALONE">혼자</option>
+                      <option value="FRIEND">친구</option>
+                      <option value="FAMILY">가족</option>
+                      <option value="COUPLE">연인</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      미스터리 투어
+                    </label>
+                    <select
+                        name="blindYn"
+                        value={form.blindYn}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    >
+                      <option value="N">신청 안 함</option>
+                      <option value="Y">신청</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    출발 일시
+                  </label>
+                  <input
+                      type="datetime-local"
+                      name="startDate"
+                      value={form.startDate}
+                      onChange={handleChange}
+                      min={minDateTime}
+                      className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    종료 일시
+                  </label>
+                  <input
+                      type="datetime-local"
+                      name="endDate"
+                      value={form.endDate}
+                      onChange={handleChange}
+                      min={form.startDate || minDateTime}
+                      className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
+                  >
+                    {loading
+                        ? "저장 중..."
+                        : editingId
+                            ? "수정 완료"
+                            : "여행 등록"}
+                  </button>
+                  {editingId && (
+                      <button
+                          type="button"
+                          onClick={resetForm}
+                          className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
+                      >
+                        취소
+                      </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* 2열: 등록된 여행 카드리스트 */}
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+              <div className="flex items-center justify-between text-white mb-2">
+                <h3 className="font-bold text-lg drop-shadow">
+                  등록된 여행 목록
+                </h3>
+
+                <div className="flex items-center gap-2">
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
                     총 {plans.length}개
                   </span>
 
-                      <button
-                          type="button"
-                          onClick={() => navigate("/ai-recommend")}
-                          className="  px-4 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-sky-500/30 border border-white/30 transition-all duration-300 hover:scale-105 active:scale-95"
-                      >
-                        ✨ AI 추천 보기
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                      type="button"
+                      onClick={() => navigate("/ai-recommend")}
+                      className="  px-4 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-sky-500/30 border border-white/30 transition-all duration-300 hover:scale-105 active:scale-95"
+                  >
+                    ✨ AI 추천 보기
+                  </button>
+                </div>
+              </div>
 
-                  {plans.length === 0 ? (
-                      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center border border-white/50 shadow-xl">
-                        <div className="text-4xl mb-3">🌏</div>
-                        <h4 className="font-bold text-slate-700 text-base">
-                          등록된 여행이 없습니다.
-                        </h4>
-                        <p className="text-xs text-slate-400 mt-1">
-                          좌측 폼에서 첫 번째 여행 계획을 세워보세요!
-                        </p>
-                      </div>
-                  ) : (
-                      plans.map((plan) => (
-                          <div
-                              key={plan.planId}
-                              className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between transition-all hover:shadow-xl"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between gap-2 mb-2">
+              {plans.length === 0 ? (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center border border-white/50 shadow-xl">
+                    <div className="text-4xl mb-3">🌏</div>
+                    <h4 className="font-bold text-slate-700 text-base">
+                      등록된 여행이 없습니다.
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      좌측 폼에서 첫 번째 여행 계획을 세워보세요!
+                    </p>
+                  </div>
+              ) : (
+                  plans.map((plan) => (
+                      <div
+                          key={plan.planId}
+                          className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between transition-all hover:shadow-xl"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="px-2.5 py-0.5 bg-sky-50 text-sky-600 text-[10px] font-bold rounded-full">
                           ✈ TRAVEL
                         </span>
-                                {plan.blindYn === "Y" && (
-                                    <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full">
+                            {plan.blindYn === "Y" && (
+                                <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full">
                             🎁 MYSTERY TOUR
                           </span>
-                                )}
-                              </div>
-                              <h4 className="font-bold text-slate-800 text-lg mb-3">
-                                {plan.planName}
-                              </h4>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-lg mb-3">
+                            {plan.planName}
+                          </h4>
 
-                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
-                                <div className="bg-slate-50 p-2.5 rounded-xl">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+                            <div className="bg-slate-50 p-2.5 rounded-xl">
                           <span className="text-slate-400 block text-[10px] mb-0.5">
                             총 예산
                           </span>
-                                  <span className="font-bold text-slate-700">
+                              <span className="font-bold text-slate-700">
                             💰 {Number(plan.totalBudget).toLocaleString()}원
                           </span>
-                                </div>
-                                <div className="bg-slate-50 p-2.5 rounded-xl">
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded-xl">
                           <span className="text-slate-400 block text-[10px] mb-0.5">
                             동행자
                           </span>
-                                  <span className="font-bold text-slate-700">
+                              <span className="font-bold text-slate-700">
                             👥 {companionLabel(plan.companionType)}
                           </span>
-                                </div>
-                              </div>
+                            </div>
+                          </div>
 
-                              {(plan.startDate || plan.endDate) && (
-                                  <div className="bg-emerald-50 px-3 py-2 rounded-xl text-xs text-emerald-800 flex items-center gap-1.5 mb-3">
-                                    <span>📅</span>
-                                    <span>
+                          {(plan.startDate || plan.endDate) && (
+                              <div className="bg-emerald-50 px-3 py-2 rounded-xl text-xs text-emerald-800 flex items-center gap-1.5 mb-3">
+                                <span>📅</span>
+                                <span>
                             {plan.startDate
                                 ? plan.startDate.slice(0, 10)
                                 : "미정"}{" "}
-                                      ~{" "}
-                                      {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
+                                  ~{" "}
+                                  {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
                           </span>
-                                  </div>
-                              )}
-                            </div>
+                              </div>
+                          )}
+                        </div>
 
-                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                              <button
-                                  onClick={() => handleEdit(plan)}
-                                  className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
-                              >
-                                수정
-                              </button>
-                              <button
-                                  onClick={() => handleDelete(plan.planId)}
-                                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold rounded-lg transition-colors"
-                              >
-                                삭제
-                              </button>
-                            </div>
-                          </div>
-                      ))
-                  )}
-                </div>
-              </div>
-          ) : (
-              /* 2. 가계부 컴포넌트 렌더링 카드 */
-              <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 md:p-8 border border-white/50 text-left">
-                <AccountBook username={username} />
-              </div>
-          )}
+                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                          <button
+                              onClick={() => handleEdit(plan)}
+                              className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
+                          >
+                            수정
+                          </button>
+                          <button
+                              onClick={() => handleDelete(plan.planId)}
+                              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold rounded-lg transition-colors"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                  ))
+              )}
+            </div>
+          </div>
         </div>
       </section>
   );
 }
+
+
+

@@ -10,7 +10,9 @@ import MyPage from "../pages/MyPage"
 import Detail from "../pages/Detail"
 import OAuthCallback from "../pages/Oauthcallback"
 import TourCategoryPage from "../pages/TourCategoryPage"
+import TourDetailPage from "../pages/TourDetailPage"
 import AiRecommendPage from "../pages/AiRecommendPage";
+import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
     return (
@@ -21,7 +23,16 @@ export default function Router() {
                 <Route path="/join" element={<Join />} />         {/* 회원가입 */}
                 <Route path="/find-id" element={<FindId />} />    {/* 아이디 찾기 */}
                 <Route path="/find-pw" element={<FindPw />} />    {/* 비밀번호 찾기 */}
-                <Route path="/mypage" element={<MyPage />} />     {/* 마이페이지 (북마크/저장된 코스) */}
+                {/* 마이페이지 (북마크/저장된 코스/가계부) — 로그인한 사용자만 접근 가능.
+            로그인 안 한 상태로 들어오면 ProtectedRoute가 /login으로 보내고, 로그인 성공 후 다시 여기로 돌아옴 */}
+                <Route
+                    path="/mypage"
+                    element={
+                        <ProtectedRoute>
+                            <MyPage />
+                        </ProtectedRoute>
+                    }
+                />
                 {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
           여기로 리다이렉트함.*/}
                 <Route path="/oauth/callback" element={<OAuthCallback />} />
@@ -31,10 +42,14 @@ export default function Router() {
                 {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
             categoryKey는 data/tourCategories.ts의 key("festivals"|"destinations"|"industry")와 매칭됨 */}
                 <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
-                <Route path="/detail/:type/:id" element={<Detail />} />
+                {/* 위 목록 페이지에서 카드를 클릭하면 이동하는 상세 페이지 (TourItemCard.tsx -> TourDetailPage.tsx) */}
+                <Route path="/tour/:categoryKey/:contentId" element={<TourDetailPage />} />
                 <Route path="/ai-recommend" element={<AiRecommendPage />} />
             </Routes>
         </BrowserRouter>
 
     )
 }
+
+
+

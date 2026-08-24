@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -44,6 +45,13 @@ public class TourCacheService {
 
   // refreshAll()이 채우는 캐시 키 총 개수 (festivals 1 + destinations 5 + industry 4)
   private static final int EXPECTED_CACHE_KEY_COUNT = 10;
+
+  // findByContentId()가 상세 페이지 진입 시 뒤질 캐시 키 전체 목록 (refreshAll()이 채우는 키와 동일)
+  private static final String[] ALL_CACHE_KEYS = {
+      FESTIVALS_ALL,
+      "destinations:전체", "destinations:체험 관광", "destinations:역사 관광", "destinations:자연 관광", "destinations:문화 관광",
+      "industry:숙박", "industry:음식", "industry:레저 스포츠", "industry:쇼핑"
+  };
 
   // 캐시가 이 시간 안에 갱신된 적이 있으면, 재시작하더라도 웜업을 건너뛴다.
   // (개발 중 재배포/재시작을 자주 할 때마다 TourAPI를 다시 호출하는 걸 막기 위함)
@@ -76,6 +84,27 @@ public class TourCacheService {
           log.warn("TourAPI 캐시가 아직 없습니다 (cacheKey={}). 다음 새로고침 전까지는 빈 목록을 반환합니다.", cacheKey);
           return List.of();
         });
+  }
+
+  /**
+   * 상세 페이지(TourController "/tour/detail/{contentId}")에서 사용.
+   * 캐시된 10개 키를 전부 뒤져서 contentId가 일치하는 항목 하나를 찾는다.
+   * 목록 페이지에서 이미 한 번 노출됐던 항목이라 카테고리 라벨/축제 기간 등 기본 정보를 여기서 복원하고,
+   * 개요/전화번호/홈페이지 같은 나머지 상세 필드는 TourService가 TourApiClient로 직접 채운다.
+   */
+  public Optional<TourItemResponse> findByContentId(String contentId) {
+    if (contentId == null || contentId.isBlank()) {
+      return Optional.empty();
+    }
+    for (String cacheKey : ALL_CACHE_KEYS) {
+      Optional<TourItemResponse> match = getCached(cacheKey).stream()
+          .filter(item -> contentId.equals(item.getContentId()))
+          .findFirst();
+      if (match.isPresent()) {
+        return match;
+      }
+    }
+    return Optional.empty();
   }
 
   /**
@@ -265,3 +294,6 @@ public class TourCacheService {
     return (s == null || s.isBlank()) ? null : s;
   }
 }
+
+
+

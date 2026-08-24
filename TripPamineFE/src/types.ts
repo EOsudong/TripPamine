@@ -79,3 +79,24 @@ export interface TourItem {
 
 // 사이드바 "정보" 그룹에 노출되는 3개 대분류 키
 export type TourMainCategoryKey = "festivals" | "destinations" | "industry"
+
+// TourItemCard 클릭 시 이동하는 상세 페이지(/tour/:categoryKey/:contentId)에서 사용하는 구조.
+// 백엔드 /tour/detail/{contentId}가 내려주며, TourItem의 필드 + 개요/전화번호/홈페이지가 추가됨.
+export interface TourDetail {
+  contentId: string
+  contentTypeId: string | null
+  title: string
+  category: string | null
+  address: string | null
+  imageUrl: string | null
+  mapX: number | null
+  mapY: number | null
+  tel: string | null
+  homepage: string | null
+  overview: string | null
+  eventStartDate: string | null // yyyyMMdd, 축제만 값이 있음
+  eventEndDate: string | null // yyyyMMdd, 축제만 값이 있음
+  status: "ongoing" | "upcoming" | null // 축제만 값이 있음
+}
+
+

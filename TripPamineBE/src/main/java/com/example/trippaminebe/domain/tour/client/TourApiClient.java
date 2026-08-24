@@ -58,6 +58,15 @@ public class TourApiClient {
     return objectMapper.createArrayNode().add(items);
   }
 
+  /**
+   * detailCommon2처럼 contentId 하나에 대한 상세 정보를 돌려주는 단건 조회 operation을 호출해서
+   * items.item 항목 하나만 돌려준다. 결과가 없으면(잘못된 contentId 등) null.
+   */
+  public JsonNode callDetail(String operation, Map<String, String> extraParams) {
+    JsonNode items = callList(operation, extraParams);
+    return items.size() > 0 ? items.get(0) : null;
+  }
+
   private JsonNode call(String operation, Map<String, String> extraParams) {
     Map<String, String> params = new LinkedHashMap<>();
     params.put("MobileOS", mobileOs);
@@ -102,3 +111,5 @@ public class TourApiClient {
     return URLEncoder.encode(key, StandardCharsets.UTF_8);
   }
 }
+
+

@@ -1,7 +1,9 @@
 // 한국관광공사 오픈API 데이터 카드 한 장을 그리는 공용 컴포넌트.
 // festivals/destinations/industry 세 대분류가 전부 이 카드를 재사용합니다.
 // festival 항목만 status/eventStartDate/eventEndDate가 채워져 있어서, 있을 때만 관련 UI를 보여줍니다.
-import type { TourItem } from "../types"
+// 카드를 클릭하면 /tour/:categoryKey/:contentId 상세 페이지로 이동합니다 (TourDetailPage.tsx).
+import { Link } from "react-router-dom"
+import type { TourItem, TourMainCategoryKey } from "../types"
 
 const FALLBACK_IMAGE =
     "https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=900&h=600&fit=crop&auto=format"
@@ -11,7 +13,12 @@ function formatEventDate(yyyymmdd: string | null): string {
     return `${yyyymmdd.slice(0, 4)}.${yyyymmdd.slice(4, 6)}.${yyyymmdd.slice(6, 8)}`
 }
 
-export default function TourItemCard({ item }: { item: TourItem }) {
+interface TourItemCardProps {
+    item: TourItem
+    categoryKey: TourMainCategoryKey
+}
+
+export default function TourItemCard({ item, categoryKey }: TourItemCardProps) {
     const statusConfig =
         item.status === "ongoing"
             ? { label: "진행중", bg: "bg-emerald-500", text: "text-white" }
@@ -20,7 +27,9 @@ export default function TourItemCard({ item }: { item: TourItem }) {
                 : null
 
     return (
-        <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-100 transition-all duration-300 flex flex-col">
+        <Link
+            to={`/tour/${categoryKey}/${item.contentId}?contentTypeId=${item.contentTypeId}`}
+            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-100 transition-all duration-300 flex flex-col">
             <div className="relative overflow-hidden h-44 shrink-0 bg-slate-100">
                 <img
                     src={item.imageUrl ?? FALLBACK_IMAGE}
@@ -76,6 +85,9 @@ export default function TourItemCard({ item }: { item: TourItem }) {
                     </p>
                 )}
             </div>
-        </div>
+        </Link>
     )
 }
+
+
+
