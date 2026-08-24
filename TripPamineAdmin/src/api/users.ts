@@ -13,3 +13,8 @@ export function suspendUser(userId: number, request: UserSuspendRequest): Promis
     body: request,
   })
 }
+
+// PATCH /admin/users/{userId}/unsuspend - 회원 정지 해제
+export function unsuspendUser(userId: number): Promise<void> {
+  return apiRequest<void>(`/admin/users/${userId}/unsuspend`, { method: "PATCH" })
+}
