@@ -91,3 +91,6 @@ tour:
     mobile-app: TripPamine
     mobile-os: ETC
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY}

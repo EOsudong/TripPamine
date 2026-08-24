@@ -10,27 +10,31 @@ import MyPage from "../pages/MyPage"
 import Detail from "../pages/Detail"
 import OAuthCallback from "../pages/Oauthcallback"
 import TourCategoryPage from "../pages/TourCategoryPage"
+import AiRecommendPage from "../pages/AiRecommendPage";
 
 export default function Router() {
-  return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />           {/* 메인 페이지 */}
-          <Route path="/login" element={<Login />} />       {/* 로그인 */}
-          <Route path="/join" element={<Join />} />         {/* 회원가입 */}
-          <Route path="/find-id" element={<FindId />} />    {/* 아이디 찾기 */}
-          <Route path="/find-pw" element={<FindPw />} />    {/* 비밀번호 찾기 */}
-          <Route path="/mypage" element={<MyPage />} />     {/* 마이페이지 (북마크/저장된 코스) */}
-          {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Home />} />           {/* 메인 페이지 */}
+                <Route path="/login" element={<Login />} />       {/* 로그인 */}
+                <Route path="/join" element={<Join />} />         {/* 회원가입 */}
+                <Route path="/find-id" element={<FindId />} />    {/* 아이디 찾기 */}
+                <Route path="/find-pw" element={<FindPw />} />    {/* 비밀번호 찾기 */}
+                <Route path="/mypage" element={<MyPage />} />     {/* 마이페이지 (북마크/저장된 코스) */}
+                {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
           여기로 리다이렉트함.*/}
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
-          {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
+                {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
             type(destination|festival)과 id 값을 URL에서 그대로 받아서 Detail.jsx에서 분기 처리 */}
-          <Route path="/detail/:type/:id" element={<Detail />} />
-          {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
+                <Route path="/detail/:type/:id" element={<Detail />} />
+                {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
             categoryKey는 data/tourCategories.ts의 key("festivals"|"destinations"|"industry")와 매칭됨 */}
-          <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
-        </Routes>
-      </BrowserRouter>
-  )
+                <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
+                <Route path="/detail/:type/:id" element={<Detail />} />
+                <Route path="/ai-recommend" element={<AiRecommendPage />} />
+            </Routes>
+        </BrowserRouter>
+
+    )
 }
