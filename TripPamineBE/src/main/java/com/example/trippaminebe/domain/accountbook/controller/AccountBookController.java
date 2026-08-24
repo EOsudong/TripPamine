@@ -40,6 +40,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/accountbook")
@@ -49,12 +51,12 @@ public class AccountBookController {
 
    private final AccountBookService accountBookService;
 
-   // 서비스가 username(String)을 사용하므로 username을 안전하게 추출
+   // 로그인 점검
    private String getUsernameSafely(CustomUserDetails userDetails) {
       if (userDetails != null && userDetails.getUsername() != null) {
          return userDetails.getUsername();
       }
-      return "test1@trippamine.com"; // 로그인 정보가 없을 시 임시 사용할 계정 ID/이메일
+      return "ANONYMOUS_GUEST_USER"; // 로그인 정보가 없을 시 임시 사용할 계정 ID/이메일
    }
 
    // 1. 거래 내역 조회 (서비스: getTransactions(String username))
@@ -90,6 +92,9 @@ public class AccountBookController {
       return ResponseEntity.ok().build();
    }
 
+   @Value("${google.vision.api-key}")
+   private String apiKey;
+
    // 5. 영수증 OCR 분석[cite: 6]
    @PostMapping("/ocr")
    public ResponseEntity<?> analyzeReceipt(@RequestParam("file") MultipartFile file) {
@@ -97,33 +102,14 @@ public class AccountBookController {
          return ResponseEntity.badRequest().body("파일이 존재하지 않습니다.");
       }
 
-      // 1. API/google-credentials.json 파일 읽기
-      ClassPathResource resource = new ClassPathResource("API/google-credentials.json");
-      if (!resource.exists()) {
-         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-             .body("API/google-credentials.json 키 파일을 찾을 수 없습니다.");
-      }
-
-      try (InputStream keyStream = resource.getInputStream()) {
-
-         // 2. JSON 파일에서 api_key 추출 (하드코딩 방지)
-         ObjectMapper mapper = new ObjectMapper();
-         JsonNode rootNode = mapper.readTree(keyStream);
-
-         if (!rootNode.has("api_key")) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("google-credentials.json 파일 내에 'api_key' 항목이 없습니다.");
-         }
-
-         String apiKey = rootNode.get("api_key").asText();
-
-         // 3. Vision REST API URL 구성
+      try {
+         // 1. Vision REST API URL 구성 (주입받은 apiKey 사용)
          String url = "https://vision.googleapis.com/v1/images:annotate?key=" + apiKey;
 
-         // 4. 업로드된 이미지를 Base64로 인코딩
+         // 2. 업로드된 이미지를 Base64로 인코딩
          String base64Image = Base64.getEncoder().encodeToString(file.getBytes());
 
-         // 5. REST API Request Body 구성
+         // 3. REST API Request Body 구성
          Map<String, Object> requestBody = Map.of(
              "requests", List.of(
                  Map.of(
@@ -133,7 +119,7 @@ public class AccountBookController {
              )
          );
 
-         // 6. RestTemplate을 통한 API 호출
+         // 4. RestTemplate을 통한 API 호출
          HttpHeaders headers = new HttpHeaders();
          headers.setContentType(MediaType.APPLICATION_JSON);
          HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
@@ -141,7 +127,7 @@ public class AccountBookController {
          RestTemplate restTemplate = new RestTemplate();
          ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
-         // 7. 응답 결과에서 텍스트 추출
+         // 5. 응답 결과에서 텍스트 추출
          List<Map<String, Object>> responses = (List<Map<String, Object>>) response.getBody().get("responses");
          String extractedText = "";
 
@@ -150,7 +136,7 @@ public class AccountBookController {
             extractedText = (String) fullTextAnnotation.get("text");
          }
 
-         // 8. 추출된 텍스트 파싱 후 결과 반환
+         // 6. 추출된 텍스트 파싱 후 결과 반환
          Map<String, Object> result = analyzeReceiptDetails(extractedText);
          return ResponseEntity.ok(result);
 

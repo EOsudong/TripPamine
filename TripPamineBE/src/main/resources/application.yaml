@@ -5,8 +5,8 @@ spring:
     # 오라클 JDBC 드라이버
     driver-class-name: oracle.jdbc.OracleDriver
     # URL 구성: jdbc:oracle:thin:@<TNS_ALIAS>?TNS_ADMIN=<지갑_ZIP파일_경로>
-    url: ${DB_URL}
-    #url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
+    # url: ${DB_URL}
+    url: jdbc:oracle:thin:@trippamine_high?TNS_ADMIN=./src/main/resources/wallets
     # DB 계정 정보
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -78,10 +78,8 @@ server:
 
 # 구글 OCR API 사용을 위한 서비스 계정 키 파일 경로 설정
 google:
-  cloud:
-    vision:
-      credentials:
-        location: classpath:API/google-credentials.json
+  vision:
+    api-key: ${GOOGLE_VISION_API_KEY}
 
 # 한국관광공사 오픈API(한국관광콘텐츠랩, TourAPI) 설정
 tour:
