@@ -3,6 +3,7 @@ import type { QuestResponse, UserQuestLogResponse } from "../api/quest";
 import { usePreciseGeolocation } from "../custom/usePreciseGeolocation";
 
 type QuestMapStatus = "NOT_STARTED" | UserQuestLogResponse["status"];
+type QuestRadiusFilter = 1000 | 5000 | 10000 | "ALL";
 
 interface QuestWorldMapProps {
   quests: QuestResponse[];
@@ -18,6 +19,15 @@ const STATUS_COLOR: Record<QuestMapStatus, string> = {
 };
 
 const SEOUL_CENTER = { latitude: 37.5665, longitude: 126.978 };
+const RADIUS_FILTER_OPTIONS: Array<{
+  label: string;
+  value: QuestRadiusFilter;
+}> = [
+  { label: "1km", value: 1000 },
+  { label: "5km", value: 5000 },
+  { label: "10km", value: 10000 },
+  { label: "전체", value: "ALL" },
+];
 
 function distanceMeters(
   latitude1: number,
@@ -56,6 +66,7 @@ export default function QuestWorldMap({
   const centeredOnUserRef = useRef(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [radiusFilter, setRadiusFilter] = useState<QuestRadiusFilter>(10000);
 
   const { latitude, longitude, accuracy, gpsSignalStrength, error } =
     usePreciseGeolocation(true);
@@ -66,12 +77,24 @@ export default function QuestWorldMap({
     return map;
   }, [logs]);
 
+  const visibleQuests = useMemo(() => {
+    if (radiusFilter === "ALL" || latitude == null || longitude == null) {
+      return quests;
+    }
+
+    return quests.filter(
+      (quest) =>
+        distanceMeters(latitude, longitude, quest.targetLat, quest.targetLng) <=
+        radiusFilter,
+    );
+  }, [latitude, longitude, quests, radiusFilter]);
+
   const nearestQuest = useMemo(() => {
-    if (latitude == null || longitude == null || quests.length === 0) {
+    if (latitude == null || longitude == null || visibleQuests.length === 0) {
       return null;
     }
 
-    return quests
+    return visibleQuests
       .map((quest) => ({
         quest,
         distance: distanceMeters(
@@ -82,7 +105,7 @@ export default function QuestWorldMap({
         ),
       }))
       .sort((left, right) => left.distance - right.distance)[0];
-  }, [latitude, longitude, quests]);
+  }, [latitude, longitude, visibleQuests]);
 
   const hasCurrentLocation = latitude != null && longitude != null;
   const canInitializeMap = hasCurrentLocation || error != null;
@@ -90,7 +113,7 @@ export default function QuestWorldMap({
   useEffect(() => {
     if (!mapContainerRef.current || !canInitializeMap) return;
 
-    if (!window.kakao?.maps) {
+    if (typeof window.kakao?.maps?.load !== "function") {
       setMapError(
         "Kakao Map SDK를 불러오지 못했습니다. JavaScript 키와 등록 도메인을 확인해주세요.",
       );
@@ -98,23 +121,66 @@ export default function QuestWorldMap({
     }
 
     const kakao = window.kakao;
-    const initialQuest = quests[0];
-    const center = new kakao.maps.LatLng(
-      hasCurrentLocation
-        ? latitude
-        : (initialQuest?.targetLat ?? SEOUL_CENTER.latitude),
-      hasCurrentLocation
-        ? longitude
-        : (initialQuest?.targetLng ?? SEOUL_CENTER.longitude),
-    );
-    const map = new kakao.maps.Map(mapContainerRef.current, {
-      center,
-      level: hasCurrentLocation ? 5 : 7,
+    let disposed = false;
+
+    setMapReady(false);
+    setMapError(null);
+
+    const clearMapObjects = () => {
+      questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
+      questOverlaysRef.current = [];
+      userOverlayRef.current?.setMap(null);
+      accuracyCircleRef.current?.setMap(null);
+      userOverlayRef.current = null;
+      accuracyCircleRef.current = null;
+      mapRef.current = null;
+      centeredOnUserRef.current = false;
+    };
+
+    kakao.maps.load(() => {
+      if (disposed || !mapContainerRef.current) return;
+
+      try {
+        const initialQuest = quests[0];
+        const center = new kakao.maps.LatLng(
+          hasCurrentLocation
+            ? latitude
+            : (initialQuest?.targetLat ?? SEOUL_CENTER.latitude),
+          hasCurrentLocation
+            ? longitude
+            : (initialQuest?.targetLng ?? SEOUL_CENTER.longitude),
+        );
+        const map = new kakao.maps.Map(mapContainerRef.current, {
+          center,
+          level: hasCurrentLocation ? 5 : 7,
+        });
+
+        mapRef.current = map;
+        centeredOnUserRef.current = hasCurrentLocation;
+        setMapReady(true);
+        setMapError(null);
+      } catch (initializationError) {
+        console.error("Kakao Map 초기화 실패:", initializationError);
+        clearMapObjects();
+        setMapReady(false);
+        setMapError("지도를 초기화하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      }
     });
 
-    mapRef.current = map;
-    centeredOnUserRef.current = hasCurrentLocation;
-    questOverlaysRef.current = quests.map((quest) => {
+    return () => {
+      disposed = true;
+      clearMapObjects();
+    };
+  }, [canInitializeMap, hasCurrentLocation, quests]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    const kakao = window.kakao;
+    const map = mapRef.current;
+
+    questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
+    questOverlaysRef.current = visibleQuests.map((quest) => {
       const status: QuestMapStatus =
         logByQuestId.get(quest.questId)?.status ?? "NOT_STARTED";
       const position = new kakao.maps.LatLng(quest.targetLat, quest.targetLng);
@@ -151,27 +217,11 @@ export default function QuestWorldMap({
       return overlay;
     });
 
-    setMapReady(true);
-    setMapError(null);
-
     return () => {
       questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
       questOverlaysRef.current = [];
-      userOverlayRef.current?.setMap(null);
-      accuracyCircleRef.current?.setMap(null);
-      userOverlayRef.current = null;
-      accuracyCircleRef.current = null;
-      mapRef.current = null;
-      centeredOnUserRef.current = false;
-      setMapReady(false);
     };
-  }, [
-    canInitializeMap,
-    hasCurrentLocation,
-    quests,
-    logByQuestId,
-    onQuestSelect,
-  ]);
+  }, [mapReady, visibleQuests, logByQuestId, onQuestSelect]);
 
   useEffect(() => {
     if (!mapReady || latitude == null || longitude == null) return;
@@ -237,6 +287,33 @@ export default function QuestWorldMap({
           </p>
           <h2 className="mt-1 text-xl font-black">주변 퀘스트 지도</h2>
         </div>
+        <div
+          className="flex rounded-xl border border-slate-700 bg-slate-950 p-1"
+          role="group"
+          aria-label="퀘스트 검색 반경"
+        >
+          {RADIUS_FILTER_OPTIONS.map((option) => {
+            const selected = radiusFilter === option.value;
+            const requiresLocation = option.value !== "ALL";
+
+            return (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => setRadiusFilter(option.value)}
+                disabled={requiresLocation && !hasCurrentLocation}
+                aria-pressed={selected}
+                className={`rounded-lg px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  selected
+                    ? "bg-cyan-500 text-slate-950"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
           onClick={moveToMyLocation}
@@ -250,6 +327,11 @@ export default function QuestWorldMap({
       <div className="grid lg:grid-cols-[1fr_280px]">
         <div className="relative h-[440px] bg-slate-800">
           <div ref={mapContainerRef} className="h-full w-full" />
+          {mapReady && (
+            <div className="absolute left-4 top-4 z-10 rounded-full border border-cyan-500/30 bg-slate-950/90 px-3 py-1.5 text-xs font-black text-cyan-300 shadow-lg">
+              표시 중 {visibleQuests.length}개
+            </div>
+          )}
           {!mapReady && !mapError && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900 text-center">
               <span className="h-7 w-7 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
@@ -264,6 +346,11 @@ export default function QuestWorldMap({
           {mapError && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/90 p-6 text-center text-sm text-rose-300">
               {mapError}
+            </div>
+          )}
+          {mapReady && visibleQuests.length === 0 && (
+            <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-center text-xs text-slate-300 shadow-xl">
+              선택한 반경 안에 등록된 퀘스트가 없습니다.
             </div>
           )}
         </div>
