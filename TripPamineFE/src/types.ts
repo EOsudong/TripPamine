@@ -80,6 +80,22 @@ export interface TourItem {
 // 사이드바 "정보" 그룹에 노출되는 3개 대분류 키
 export type TourMainCategoryKey = "festivals" | "destinations" | "industry"
 
+// 마이페이지 "저장된 축제 및 행사 / 저장된 관광 여행지 / 저장된 관광 산업" 탭에서 쓰는 북마크 구조.
+// 백엔드 /bookmarks가 내려주며, 북마크 시점의 카드 정보를 스냅샷으로 그대로 들고 있음.
+export interface TourBookmark {
+  categoryKey: TourMainCategoryKey
+  contentId: string
+  contentTypeId: string | null
+  title: string
+  category: string | null
+  address: string | null
+  imageUrl: string | null
+  eventStartDate: string | null
+  eventEndDate: string | null
+  status: "ongoing" | "upcoming" | null
+  createdAt: string
+}
+
 // TourItemCard 클릭 시 이동하는 상세 페이지(/tour/:categoryKey/:contentId)에서 사용하는 구조.
 // 백엔드 /tour/detail/{contentId}가 내려주며, TourItem의 필드 + 개요/전화번호/홈페이지가 추가됨.
 export interface TourDetail {

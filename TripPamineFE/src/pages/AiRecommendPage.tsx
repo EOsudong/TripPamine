@@ -7,6 +7,7 @@ import {
     type AiRecommendationResponse,
 } from "../api/recommendation";
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
+import { KakaoMapModal } from '../components/KakaoMapModal';
 
 export default function AiRecommendPage() {
     const [plans, setPlans] = useState<TravelPlan[]>([]);
@@ -20,6 +21,9 @@ export default function AiRecommendPage() {
     const [recommendLoading, setRecommendLoading] = useState(false);
 
     const [recommendError, setRecommendError] = useState("");
+
+    // 지도 모달 열림/닫힘 상태
+    const [isMapOpen, setIsMapOpen] = useState(false);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -117,6 +121,15 @@ export default function AiRecommendPage() {
             }[];
         }[];
     }
+
+    // KakaoMapModal에 전달할 1차원 평탄화(Flat) 장소 리스트 변환
+    const mapPlaces = parsedRecommendation?.days.flatMap((d) =>
+        d.places.map((p) => ({
+            name: p.name,
+            address: p.name, // 장소명 자체로 카카오 지오코딩/검색 수행
+            day: d.day,
+        }))
+    ) || [];
 
     return (
         <div
@@ -278,24 +291,43 @@ export default function AiRecommendPage() {
                                                                 </p>
                                                             </div>
 
-                                                            <button
-                                                                type="button"
-                                                                onClick={handleRegenerate}
-                                                                disabled={recommendLoading}
-                                                                className="
-          shrink-0 px-4 py-2
-          bg-gradient-to-r from-sky-500 to-indigo-500
-          hover:from-sky-600 hover:to-indigo-600
-          disabled:opacity-50
-          text-white text-xs font-bold
-          rounded-xl
-          shadow-lg shadow-sky-500/20
-          transition-all duration-300
-          hover:scale-105
-        "
-                                                            >
-                                                                🔄 추천 다시 받기
-                                                            </button>
+                                                            <div className="flex flex-col sm:flex-row items-end gap-2 shrink-0">
+                                                                {/* 지도로 일정 보기 버튼 */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsMapOpen(true)}
+                                                                    className="
+                                                                        px-4 py-2
+                                                                        bg-sky-500 hover:bg-sky-600
+                                                                        text-white text-xs font-bold
+                                                                        rounded-xl shadow-md shadow-sky-500/20
+                                                                        transition-all duration-300
+                                                                        hover:scale-105
+                                                                    "
+                                                                >
+                                                                    🗺️ 지도로 일정 보기
+                                                                </button>
+
+                                                                {/* 추천 다시 받기 버튼 */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleRegenerate}
+                                                                    disabled={recommendLoading}
+                                                                    className="
+                                                                        px-4 py-2
+                                                                        bg-gradient-to-r from-sky-500 to-indigo-500
+                                                                        hover:from-sky-600 hover:to-indigo-600
+                                                                        disabled:opacity-50
+                                                                        text-white text-xs font-bold
+                                                                        rounded-xl
+                                                                        shadow-lg shadow-sky-500/20
+                                                                        transition-all duration-300
+                                                                        hover:scale-105
+                                                                    "
+                                                                >
+                                                                    🔄 추천 다시 받기
+                                                                </button>
+                                                            </div>
                                                         </div>
 
                                                         <div className="bg-emerald-50 rounded-2xl p-4">
@@ -374,6 +406,13 @@ export default function AiRecommendPage() {
                     </div>
                 </div>
             </div>
+
+            {/* 카카오 지도 모달 */}
+            <KakaoMapModal
+                isOpen={isMapOpen}
+                onClose={() => setIsMapOpen(false)}
+                places={mapPlaces}
+            />
         </div>
     );
 }
