@@ -78,6 +78,18 @@ export default function Join() {
       return;
     }
 
+    if (!emailChecked) {
+      setErrorMessage("이메일 중복 확인을 진행해주세요.");
+      return;
+    }
+
+    if (!emailAvailable) {
+      setErrorMessage(
+        "사용할 수 없는 이메일입니다. 다른 이메일을 입력해주세요.",
+      );
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -204,9 +216,7 @@ export default function Join() {
               onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))}
             />
             {/* 버튼 비활성화 및 로딩 문구 처리 */}
-            <SubmitBtn
-              label={loading ? "가입 처리중..." : "회원가입"}
-            />
+            <SubmitBtn label={loading ? "가입 처리중..." : "회원가입"} />
             <p className="text-center text-xs text-slate-400 pt-1">
               이미 계정이 있으신가요?{" "}
               <Link to="/login" className="text-sky-500 font-semibold">
