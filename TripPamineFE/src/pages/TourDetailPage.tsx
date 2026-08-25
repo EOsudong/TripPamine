@@ -2,13 +2,15 @@
 // 라우트: /tour/:categoryKey/:contentId (TourItemCard.tsx에서 카드를 클릭하면 여기로 옴)
 // 한국관광공사 오픈API(detailCommon2)를 백엔드가 실시간으로 호출해서 개요/전화번호/홈페이지 등을 내려줍니다.
 import { useEffect, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import Header from "../components/Header"
 import Sidebar from "../components/Sidebar"
 import Footer from "../components/Footer"
 import { findTourMainCategory } from "../data/tourCategories"
 import { getTourDetailApi } from "../api/tour"
-import type { TourDetail } from "../types"
+import { addBookmarkApi, getBookmarkStatusApi, removeBookmarkApi } from "../api/bookmark"
+import { useAuth } from "../context/AuthContext"
+import type { TourDetail, TourMainCategoryKey } from "../types"
 
 const FALLBACK_IMAGE =
     "https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=1200&h=800&fit=crop&auto=format"
@@ -26,10 +28,18 @@ export default function TourDetailPage() {
     const contentTypeId = searchParams.get("contentTypeId")
     const category = findTourMainCategory(categoryKey)
 
+    const { isLoggedIn } = useAuth()
+    const navigate = useNavigate()
+    const location = useLocation()
+
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [detail, setDetail] = useState<TourDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    // 북마크 상태 ("저장된 축제 및 행사 / 저장된 관광 여행지 / 저장된 관광 산업"에 반영됨 — MyPage.tsx 참고)
+    const [bookmarked, setBookmarked] = useState(false)
+    const [bookmarkBusy, setBookmarkBusy] = useState(false)
 
     useEffect(() => {
         if (!contentId) return
@@ -53,6 +63,65 @@ export default function TourDetailPage() {
             cancelled = true
         }
     }, [contentId, contentTypeId])
+
+    // 로그인한 상태에서만 "이미 북마크했는지" 확인해서 버튼 초기 상태를 맞춤
+    useEffect(() => {
+        if (!contentId || !isLoggedIn) {
+            setBookmarked(false)
+            return
+        }
+
+        let cancelled = false
+        getBookmarkStatusApi(contentId)
+            .then((isBookmarked) => {
+                if (!cancelled) setBookmarked(isBookmarked)
+            })
+            .catch(() => {
+                // 상태 확인 실패는 조용히 무시 — 버튼은 "저장 안 함" 상태로 남아있고, 눌러보면 다시 시도됨
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [contentId, isLoggedIn])
+
+    const handleToggleBookmark = async () => {
+        if (!contentId || !detail) return
+
+        // 로그인 안 한 상태로 북마크를 누르면 로그인 페이지로 보내고, 로그인 성공 후 이 페이지로 돌아오게 함
+        // (ProtectedRoute.tsx / Login.tsx가 쓰는 것과 동일한 location.state.from 패턴)
+        if (!isLoggedIn) {
+            navigate("/login", { state: { from: location } })
+            return
+        }
+
+        setBookmarkBusy(true)
+        try {
+            if (bookmarked) {
+                await removeBookmarkApi(contentId)
+                setBookmarked(false)
+            } else {
+                await addBookmarkApi({
+                    categoryKey: (categoryKey as TourMainCategoryKey) ?? "festivals",
+                    contentId: detail.contentId,
+                    contentTypeId: detail.contentTypeId,
+                    title: detail.title,
+                    category: detail.category,
+                    address: detail.address,
+                    imageUrl: detail.imageUrl,
+                    eventStartDate: detail.eventStartDate,
+                    eventEndDate: detail.eventEndDate,
+                    status: detail.status,
+                })
+                setBookmarked(true)
+            }
+        } catch (e) {
+            console.error("북마크 처리 실패:", e)
+            alert("북마크 처리 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.")
+        } finally {
+            setBookmarkBusy(false)
+        }
+    }
 
     const statusConfig =
         detail?.status === "ongoing"
@@ -123,6 +192,20 @@ export default function TourDetailPage() {
                             </div>
 
                             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit space-y-4">
+                                <button
+                                    type="button"
+                                    onClick={handleToggleBookmark}
+                                    disabled={bookmarkBusy}
+                                    className={`w-full py-3 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                                        bookmarked
+                                            ? "bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200"
+                                            : "bg-sky-500 text-white shadow-sky-200 hover:bg-sky-600"
+                                    }`}
+                                >
+                                    <span>{bookmarked ? "🔖" : "🔖"}</span>
+                                    {bookmarkBusy ? "처리 중..." : bookmarked ? "북마크됨 (해제하기)" : "북마크 저장"}
+                                </button>
+
                                 {(detail.eventStartDate || detail.eventEndDate) && (
                                     <div>
                                         <p className="text-xs text-slate-400 mb-1">행사 기간</p>

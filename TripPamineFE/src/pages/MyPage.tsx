@@ -1,33 +1,98 @@
 // 마이페이지 — 로그인한 사용자만 접근 가능 (router/Router.tsx의 ProtectedRoute가 보호함).
-// 북마크(저장)한 여행지/축제를 모아 보여주고, 가계부도 여기서 관리합니다.
-// 실제 로그인·서버 저장 기능은 아직 없어서, savedDestinationIds/savedFestivalIds에
-// 하드코딩된 id로 "이미 저장되어 있다고 가정한" 더미 데이터를 보여줍니다.
-// (실제 서비스에서는 로그인한 사용자의 북마크 목록을 서버에서 받아오면 됩니다)
+// 북마크(저장)한 관광정보를 "저장된 축제 및 행사 / 저장된 관광 여행지 / 저장된 관광 산업" 3개 탭으로
+// 모아 보여주고, 가계부도 여기서 관리
+//
+// [닉네임] "여행자님" 고정 문구 대신 로그인한 사용자의 실제 닉네임(userName)을 /users/auth/me로 받아와 표시합니다.
 //
 // [계좌 기능 추가] 사용자가 계좌정보를 직접 입력해 등록/조회하는 ManualAccountSection을 추가함.
 // [가계부 이동] 메인 페이지(Hero.tsx)에 있던 여행 가계부(AccountBook)를 이 페이지의 "가계부" 탭으로 옮김.
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import Header from "../components/Header"
 import Sidebar from "../components/Sidebar"
 import Footer from "../components/Footer"
 import ManualAccountSection from "../components/ManualAccountSection"
 import AccountBook from "../components/AccountBook"
-import { destinations } from "../data/destinations"
-import { festivals } from "../data/festivals"
+import { getMyInfoApi } from "../api/auth"
+import { getBookmarksApi, removeBookmarkApi } from "../api/bookmark"
+import type { TourBookmark, TourMainCategoryKey } from "../types"
 
-// 데모용 더미 북마크: 여행지 2개 + 축제 2개를 저장된 항목으로 가정
-const savedDestinationIds = [destinations[0].id, destinations[3].id]
-const savedFestivalIds = [festivals[0].id, festivals[1].id]
+const FALLBACK_IMAGE =
+    "https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=900&h=600&fit=crop&auto=format"
+
+// 북마크 탭 3개 — data/tourCategories.ts의 대분류(festivals/destinations/industry)와 동일한 키를 씀
+const BOOKMARK_TABS: { key: TourMainCategoryKey; label: string; icon: string }[] = [
+  { key: "festivals", label: "저장된 축제 및 행사", icon: "🎉" },
+  { key: "destinations", label: "저장된 관광 여행지", icon: "🗺️" },
+  { key: "industry", label: "저장된 관광 산업", icon: "🏨" },
+]
+
+type Tab = TourMainCategoryKey | "accountBook"
+
+function formatEventDate(yyyymmdd: string | null): string {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return ""
+  return `${yyyymmdd.slice(0, 4)}.${yyyymmdd.slice(4, 6)}.${yyyymmdd.slice(6, 8)}`
+}
 
 export default function MyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  // 현재 선택된 탭: "courses"(저장된 여행지) | "festivals"(저장된 축제) | "accountBook"(가계부)
-  const [tab, setTab] = useState<"courses" | "festivals" | "accountBook">("courses")
+  const [tab, setTab] = useState<Tab>("festivals")
 
-  // 위 id 목록에 해당하는 실제 데이터만 골라냄
-  const savedDestinations = destinations.filter((d) => savedDestinationIds.includes(d.id))
-  const savedFestivals = festivals.filter((f) => savedFestivalIds.includes(f.id))
+  const [userName, setUserName] = useState<string | null>(null)
+
+  const [bookmarks, setBookmarks] = useState<TourBookmark[]>([])
+  const [bookmarksLoading, setBookmarksLoading] = useState(true)
+  const [bookmarksError, setBookmarksError] = useState<string | null>(null)
+
+  // 로그인한 사용자 닉네임 조회 (프로필 카드 인사말에 사용)
+  useEffect(() => {
+    getMyInfoApi()
+        .then((info) => setUserName(info.userName))
+        .catch((error) => {
+          console.error("내 정보 조회 실패:", error)
+          // 실패해도 화면은 기본 문구("여행자님")로 정상 동작하도록 조용히 넘어감
+        })
+  }, [])
+
+  // 탭이 3개 북마크 카테고리 중 하나로 바뀔 때마다 해당 카테고리 북마크 목록을 새로 받아옴
+  useEffect(() => {
+    if (tab === "accountBook") return
+
+    let cancelled = false
+    setBookmarksLoading(true)
+    setBookmarksError(null)
+
+    getBookmarksApi(tab)
+        .then((data) => {
+          if (!cancelled) setBookmarks(data)
+        })
+        .catch((error) => {
+          console.error("북마크 조회 실패:", error)
+          if (!cancelled) setBookmarksError("저장된 항목을 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+        })
+        .finally(() => {
+          if (!cancelled) setBookmarksLoading(false)
+        })
+
+    return () => {
+      cancelled = true
+    }
+  }, [tab])
+
+  const handleRemoveBookmark = async (contentId: string) => {
+    // 낙관적 업데이트: 서버 응답 기다리지 않고 화면에서 먼저 지움 (실패하면 목록을 다시 불러와서 복구)
+    const prev = bookmarks
+    setBookmarks((list) => list.filter((b) => b.contentId !== contentId))
+    try {
+      await removeBookmarkApi(contentId)
+    } catch (error) {
+      console.error("북마크 해제 실패:", error)
+      alert("북마크 해제 중 오류가 발생했어요.")
+      setBookmarks(prev)
+    }
+  }
+
+  const activeBookmarkTab = BOOKMARK_TABS.find((t) => t.key === tab)
 
   return (
       <div className="min-h-screen bg-slate-50">
@@ -50,8 +115,8 @@ export default function MyPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800 text-lg">여행자님, 안녕하세요 👋</p>
-                  <p className="text-sm text-slate-400">저장한 여행지와 축제를 한눈에 확인해보세요</p>
+                  <p className="font-bold text-slate-800 text-lg">{userName ?? "여행자"}님, 안녕하세요 👋</p>
+                  <p className="text-sm text-slate-400">저장한 축제·여행지·관광정보를 한눈에 확인해보세요</p>
                 </div>
               </div>
             </div>
@@ -60,23 +125,18 @@ export default function MyPage() {
             <ManualAccountSection />
 
             {/* 탭 */}
-            <div className="flex gap-2 mb-6">
-              <button
-                  onClick={() => setTab("courses")}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      tab === "courses" ? "bg-sky-500 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200"
-                  }`}
-              >
-                🔖 저장된 여행지
-              </button>
-              <button
-                  onClick={() => setTab("festivals")}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      tab === "festivals" ? "bg-sky-500 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200"
-                  }`}
-              >
-                🎉 저장된 축제
-              </button>
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {BOOKMARK_TABS.map((t) => (
+                  <button
+                      key={t.key}
+                      onClick={() => setTab(t.key)}
+                      className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                          tab === t.key ? "bg-sky-500 text-white shadow-sm" : "bg-white text-slate-600 border border-slate-200"
+                      }`}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+              ))}
               <button
                   onClick={() => setTab("accountBook")}
                   className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
@@ -87,48 +147,21 @@ export default function MyPage() {
               </button>
             </div>
 
-            {/* 저장된 여행지 */}
-            {tab === "courses" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {savedDestinations.length === 0 && <EmptyState label="저장된 여행지가 없어요" />}
-                  {savedDestinations.map((d) => (
-                      <Link
-                          key={d.id}
-                          to={`/detail/destination/${d.id}`}
-                          className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-100 transition-all"
-                      >
-                        <div className="relative h-36 overflow-hidden">
-                          <img src={d.img} alt={d.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-bold text-slate-800 text-sm mb-1">{d.name}</h3>
-                          <p className="text-xs text-slate-400">{d.region}</p>
-                        </div>
-                      </Link>
-                  ))}
-                </div>
-            )}
-
-            {/* 저장된 축제 */}
-            {tab === "festivals" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {savedFestivals.length === 0 && <EmptyState label="저장된 축제가 없어요" />}
-                  {savedFestivals.map((f) => (
-                      <Link
-                          key={f.id}
-                          to={`/detail/festival/${f.id}`}
-                          className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-100 transition-all"
-                      >
-                        <div className="relative h-36 overflow-hidden">
-                          <img src={f.img} alt={f.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-bold text-slate-800 text-sm mb-1 line-clamp-1">{f.name}</h3>
-                          <p className="text-xs text-slate-400">{f.location}</p>
-                        </div>
-                      </Link>
-                  ))}
-                </div>
+            {/* 저장된 축제 및 행사 / 관광 여행지 / 관광 산업 (탭에 따라 categoryKey만 다름, 카드 구조는 동일) */}
+            {activeBookmarkTab && (
+                bookmarksLoading ? (
+                    <BookmarkGridSkeleton />
+                ) : bookmarksError ? (
+                    <EmptyState label={bookmarksError} />
+                ) : bookmarks.length === 0 ? (
+                    <EmptyState label={`${activeBookmarkTab.label.replace("저장된 ", "")} 중 저장된 항목이 없어요`} />
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {bookmarks.map((b) => (
+                          <BookmarkCard key={b.contentId} bookmark={b} onRemove={() => handleRemoveBookmark(b.contentId)} />
+                      ))}
+                    </div>
+                )
             )}
 
             {/* 가계부 (여행 지출 기록 + 영수증 OCR) — 예전엔 메인 페이지 탭이었는데, 로그인 후에만
@@ -146,6 +179,74 @@ export default function MyPage() {
   )
 }
 
+// 북마크 카드 한 장. TourItemCard.tsx와 거의 같은 구조지만, 저장 해제(✕) 버튼과
+// Link 대신 감싸는 방식(버튼 클릭이 카드 이동과 겹치지 않도록)만 다름.
+function BookmarkCard({ bookmark: b, onRemove }: { bookmark: TourBookmark; onRemove: () => void }) {
+  const statusConfig =
+      b.status === "ongoing"
+          ? { label: "진행중", bg: "bg-emerald-500" }
+          : b.status === "upcoming"
+              ? { label: "예정", bg: "bg-sky-500" }
+              : null
+
+  return (
+      <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-100 transition-all">
+        <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              onRemove()
+            }}
+            title="북마크 해제"
+            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white text-xs flex items-center justify-center transition-colors"
+        >
+          ✕
+        </button>
+
+        <Link
+            to={`/tour/${b.categoryKey}/${b.contentId}${b.contentTypeId ? `?contentTypeId=${b.contentTypeId}` : ""}`}
+            className="block"
+        >
+          <div className="relative h-36 overflow-hidden bg-slate-100">
+            <img
+                src={b.imageUrl ?? FALLBACK_IMAGE}
+                alt={b.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  e.currentTarget.src = FALLBACK_IMAGE
+                }}
+            />
+            {statusConfig && (
+                <span className={`absolute top-2 left-2 px-2 py-0.5 ${statusConfig.bg} text-white text-[10px] font-bold rounded-full`}>
+              {statusConfig.label}
+            </span>
+            )}
+          </div>
+          <div className="p-4">
+            <h3 className="font-bold text-slate-800 text-sm mb-1 line-clamp-1">{b.title}</h3>
+            <p className="text-xs text-slate-400 line-clamp-1">{b.address ?? b.category ?? ""}</p>
+            {(b.eventStartDate || b.eventEndDate) && (
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {formatEventDate(b.eventStartDate)} ~ {formatEventDate(b.eventEndDate)}
+                </p>
+            )}
+          </div>
+        </Link>
+      </div>
+  )
+}
+
+// 북마크 목록 로딩 중 보여주는 스켈레톤 그리드
+function BookmarkGridSkeleton() {
+  return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-56 rounded-2xl bg-white border border-slate-100 animate-pulse" />
+        ))}
+      </div>
+  )
+}
+
 // 저장된 항목이 하나도 없을 때 보여주는 빈 상태 안내 문구
 function EmptyState({ label }: { label: string }) {
   return (
@@ -154,6 +255,3 @@ function EmptyState({ label }: { label: string }) {
       </div>
   )
 }
-
-
-

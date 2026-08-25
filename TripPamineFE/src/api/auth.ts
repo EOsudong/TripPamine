@@ -33,6 +33,22 @@ export interface LoginResponse {
   tokenType: string;
 }
 
+// 내 정보 조회 응답 데이터 타입 (백엔드 UserResponseDto와 일치)
+// MyPage.tsx에서 "OOO님, 안녕하세요" 인사말에 쓰는 닉네임(userName)이 여기 들어있음
+export interface MyInfoResponse {
+  userId: number;
+  email: string;
+  name: string;
+  userName: string;
+  phoneNumber: string | null;
+  totalPoints: number;
+  grade: string;
+  subscribeYn: string;
+  profileImageUrl: string | null;
+  status: string;
+  createDate: string;
+}
+
 // 2. API 함수 정의
 /**
  * 회원가입 API
@@ -40,12 +56,12 @@ export interface LoginResponse {
  * @returns 회원가입 성공 시 응답 데이터 (userId, email, userName, accessToken)
  */
 export const signupApi = async (
-  signupData: SignupRequest,
+    signupData: SignupRequest,
 ): Promise<SignupResponse> => {
   // POST /users/auth/signup 엔드포인트 호출
   const response = await api.post<SignupResponse>(
-    "/users/auth/signup",
-    signupData,
+      "/users/auth/signup",
+      signupData,
   );
   return response.data;
 };
@@ -69,12 +85,12 @@ export const checkEmailApi = async (email: string): Promise<boolean> => {
  * @returns 로그인 성공 시 응답 데이터 (email, accessToken)
  */
 export const loginApi = async (
-  loginData: LoginRequest,
+    loginData: LoginRequest,
 ): Promise<LoginResponse> => {
   // POST /users/auth/login 엔드포인트 호출
   const response = await api.post<LoginResponse>(
-    "/users/auth/login",
-    loginData,
+      "/users/auth/login",
+      loginData,
   );
   return response.data;
 };
@@ -86,3 +102,15 @@ export const loginApi = async (
 export const logoutApi = async (): Promise<void> => {
   await api.post("/users/auth/logout");
 };
+
+/**
+ * 내 정보 조회 API (닉네임 등). 로그인 필요.
+ * @returns userId, email, name, userName(닉네임) 등
+ */
+export const getMyInfoApi = async (): Promise<MyInfoResponse> => {
+  const response = await api.get<MyInfoResponse>("/users/auth/me");
+  return response.data;
+};
+
+
+
