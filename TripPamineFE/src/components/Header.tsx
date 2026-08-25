@@ -17,39 +17,11 @@ interface HeaderProps {
 
 export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
 
   const handleLogout = async () => {
-    const token = localStorage.getItem("accessToken");
-
-    try {
-      const response = await fetch("http://localhost:8080/users/auth/logout", {
-        // 백엔드 Full URL 확인
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log("HTTP 응답 상태 코드:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("백엔드 에러 응답 내용:", errorText);
-      } else {
-        console.log("로그아웃 성공!");
-        // 로그아웃 시 스토리지 전체 초기화
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = "/login";
-      }
-    } catch (error) {
-      console.error("실제 발생한 에러:", error);
-      // } finally {
-      //   // 에러 발생 여부와 무관하게 무조건 클라이언트 토큰 삭제 및 페이지 이동
-      //   localStorage.removeItem("accessToken");
-      //   window.location.href = "/login";
-    }
+    await logout();
+    navigate("/login");
   };
 
   return (
