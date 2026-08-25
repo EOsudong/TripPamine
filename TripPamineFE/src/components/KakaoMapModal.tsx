@@ -22,17 +22,50 @@ interface KakaoMapModalProps {
 
 const KAKAO_JS_KEY = "b33fca24ae4855453ab831d8b0208dc9";
 
+// 주요 지역 중심 좌표 및 키워드 맵
+const REGION_MAP: { [key: string]: { lat: number; lng: number } } = {
+  "서울": { lat: 37.5665, lng: 126.9780 },
+  "제주": { lat: 33.3617, lng: 126.5292 },
+  "부산": { lat: 35.1796, lng: 129.0756 },
+  "인천": { lat: 37.4563, lng: 126.7052 },
+  "대구": { lat: 35.8714, lng: 128.6014 },
+  "대전": { lat: 36.3504, lng: 127.3845 },
+  "광주": { lat: 35.1595, lng: 126.8526 },
+  "울산": { lat: 35.5384, lng: 129.3114 },
+  "수원": { lat: 37.2636, lng: 127.0286 },
+  "경주": { lat: 35.8562, lng: 129.2247 },
+  "전주": { lat: 35.8242, lng: 127.1480 },
+  "여수": { lat: 34.7604, lng: 127.6622 },
+  "강릉": { lat: 37.7519, lng: 128.8761 },
+  "속초": { lat: 38.2070, lng: 128.5918 },
+  "가평": { lat: 37.8315, lng: 127.5095 },
+  "춘천": { lat: 37.8813, lng: 127.7298 },
+};
+
+// 여행 장소 목록을 기반으로 대표 지역 자동 감지
+const detectTripRegion = (places: PlaceItem[]) => {
+  for (const place of places) {
+    for (const region of Object.keys(REGION_MAP)) {
+      if (place.name.includes(region) || (place.address && place.address.includes(region))) {
+        return { name: region, center: REGION_MAP[region] };
+      }
+    }
+  }
+  // 기본값: 서울
+  return { name: "서울", center: REGION_MAP["서울"] };
+};
+
 // 카카오 장소 검색용 정밀 키워드 정제 함수
 const sanitizePlaceName = (rawName: string): string => {
   if (!rawName) return "";
   return rawName
-    .replace(/^(아침|점심|저녁|숙소|기타|일정|코스)\s*:\s*/g, "") // '저녁:' 형태 접두사 제거
-    .split("->")[0]                                             // '->' 앞쪽 주요 장소만 추출
-    .split("또는")[0]                                           // '또는' 앞쪽 장소만 추출
-    .replace(/\(.*?\)/g, "")                                    // 괄호 내용 전체 제거
+    .split("->")[0]                                             // '->' 앞쪽 주요 장소 추출
+    .split("또는")[0]                                           // '또는' 앞쪽 장소 추출
+    .replace(/\(.*?\)/g, "")                                    // 괄호 내용 제거
     .split("&")[0]                                              // '&' 기준 앞쪽만 추출
     .split("/")[0]                                              // '/' 기준 앞쪽만 추출
-    .replace(/(산책|체크인|해결|선택|이동|방문|구경|식사|복귀|카페거리|재방문|가능|식당|근처|추천|1인)/g, "") // 서술어 제거
+    .replace(/(아침|점심|저녁|숙소|기타|일정|코스|한식|일식|중식|양식|식사|가벼운|한\s*끼|전통주|혼밥)/g, "") // 식사/시간 키워드 제거
+    .replace(/(산책|체크인|해결|선택|이동|방문|구경|복귀|카페거리|재방문|가능|식당|근처|추천|1인|일몰|일출|야경|관람|체험|투어|드라이브)/g, "") // 서술어 및 풍경 단어 제거
     .trim();
 };
 
@@ -44,15 +77,15 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [selectedPlaceIdx, setSelectedPlaceIdx] = useState<number | null>(null);
-  const [unmappedIndices, setUnmappedIndices] = useState<{ [key: number]: boolean }>({});
+  const [estimatedIndices, setEstimatedIndices] = useState<{ [key: number]: boolean }>({});
 
-  // 1. SDK 동적 로드
+  // SDK 동적 로드
   useEffect(() => {
     if (!isOpen) return;
 
     setMapError(null);
     setSelectedPlaceIdx(null);
-    setUnmappedIndices({});
+    setEstimatedIndices({});
     placeCoordsRef.current = {};
 
     if (window.kakao && window.kakao.maps) {
@@ -85,14 +118,17 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     };
   }, [isOpen]);
 
-  // 2. 지도 생성 및 3단계 다중 위치 검색
+  // 지도 생성 및 동적 지역 감지 기반 다중 검색
   useEffect(() => {
     if (!isOpen || !isSdkLoaded || !window.kakao || !window.kakao.maps) return;
 
     window.kakao.maps.load(() => {
       if (!mapContainerRef.current) return;
 
-      const defaultCenter = new window.kakao.maps.LatLng(33.3617, 126.5292);
+      // 동적 대표 지역 감지 (예: 서울, 제주 등)
+      const { name: detectedRegion, center: detectedCenter } = detectTripRegion(places);
+      const defaultCenter = new window.kakao.maps.LatLng(detectedCenter.lat, detectedCenter.lng);
+
       const map = new window.kakao.maps.Map(mapContainerRef.current, {
         center: defaultCenter,
         level: 9,
@@ -112,17 +148,20 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       if (!places || places.length === 0) return;
 
       let processedCount = 0;
+      let lastValidCoords: any = defaultCenter;
 
-      const renderMarker = (coords: any, originalName: string, index: number, day?: number) => {
+      const renderMarker = (coords: any, originalName: string, index: number, day?: number, isEstimated = false) => {
         placeCoordsRef.current[index] = coords;
+        if (!isEstimated) lastValidCoords = coords;
 
         const marker = new window.kakao.maps.Marker({
           map: map,
           position: coords,
         });
 
+        const labelText = isEstimated ? `${originalName} (추정 위치)` : originalName;
         const infowindow = new window.kakao.maps.InfoWindow({
-          content: `<div style="padding:6px 10px;font-size:12px;font-weight:bold;color:#1e293b;white-space:nowrap;">${day ? `Day ${day} : ` : ''}${originalName}</div>`,
+          content: `<div style="padding:6px 10px;font-size:12px;font-weight:bold;color:${isEstimated ? '#d97706' : '#1e293b'};white-space:nowrap;">${day ? `Day ${day} : ` : ''}${labelText}</div>`,
         });
         infowindow.open(map, marker);
 
@@ -134,12 +173,17 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         }
       };
 
-      const handleSearchFailed = (index: number) => {
-        setUnmappedIndices((prev) => ({ ...prev, [index]: true }));
-        processedCount++;
-        if (processedCount === places.length && !bounds.isEmpty()) {
-          map.setBounds(bounds);
-        }
+      const createFallbackMarker = (originalName: string, index: number, day?: number) => {
+        setEstimatedIndices((prev) => ({ ...prev, [index]: true }));
+
+        const offsetLat = (Math.random() - 0.5) * 0.008;
+        const offsetLng = (Math.random() - 0.5) * 0.008;
+        const fallbackCoords = new window.kakao.maps.LatLng(
+          lastValidCoords.getLat() + offsetLat,
+          lastValidCoords.getLng() + offsetLng
+        );
+
+        renderMarker(fallbackCoords, originalName, index, day, true);
       };
 
       places.forEach((place, index) => {
@@ -148,28 +192,37 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
           renderMarker(coords, place.name, index, place.day);
         } else {
           const query = sanitizePlaceName(place.name);
+          const firstWord = query.split(" ")[0];
 
           if (!query) {
-            handleSearchFailed(index);
+            createFallbackMarker(place.name, index, place.day);
             return;
           }
 
-          // [1차 검색] 정제된 키워드 검색
-          ps.keywordSearch(query, (data: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK && data.length > 0) {
-              renderMarker(new window.kakao.maps.LatLng(data[0].y, data[0].x), place.name, index, place.day);
+          // [1차] 동적 지역 키워드 조합 검색 (예: "서울 종로")
+          ps.keywordSearch(`${detectedRegion} ${query}`, (regionData: any, regionStatus: any) => {
+            if (regionStatus === window.kakao.maps.services.Status.OK && regionData.length > 0) {
+              renderMarker(new window.kakao.maps.LatLng(regionData[0].y, regionData[0].x), place.name, index, place.day);
             } else {
-              // [2차 검색] "제주 " 지역명 접두사를 붙여 2차 검색 (서울 등 타지역 핀 튐 방지)
-              ps.keywordSearch(`제주 ${query}`, (regionData: any, regionStatus: any) => {
-                if (regionStatus === window.kakao.maps.services.Status.OK && regionData.length > 0) {
-                  renderMarker(new window.kakao.maps.LatLng(regionData[0].y, regionData[0].x), place.name, index, place.day);
+              // [2차] 순수 키워드 검색
+              ps.keywordSearch(query, (data: any, status: any) => {
+                if (status === window.kakao.maps.services.Status.OK && data.length > 0) {
+                  renderMarker(new window.kakao.maps.LatLng(data[0].y, data[0].x), place.name, index, place.day);
                 } else {
-                  // [3차 검색] 주소검색 API 시도
-                  geocoder.addressSearch(place.address || query, (result: any, addrStatus: any) => {
-                    if (addrStatus === window.kakao.maps.services.Status.OK) {
-                      renderMarker(new window.kakao.maps.LatLng(result[0].y, result[0].x), place.name, index, place.day);
+                  // [3차] 동적 지역명 + 첫 단어 검색 (예: "서울 종로")
+                  ps.keywordSearch(`${detectedRegion} ${firstWord}`, (tokenData: any, tokenStatus: any) => {
+                    if (tokenStatus === window.kakao.maps.services.Status.OK && tokenData.length > 0) {
+                      renderMarker(new window.kakao.maps.LatLng(tokenData[0].y, tokenData[0].x), place.name, index, place.day);
                     } else {
-                      handleSearchFailed(index);
+                      // [4차] 주소 검색 시도
+                      geocoder.addressSearch(place.address || query, (result: any, addrStatus: any) => {
+                        if (addrStatus === window.kakao.maps.services.Status.OK) {
+                          renderMarker(new window.kakao.maps.LatLng(result[0].y, result[0].x), place.name, index, place.day);
+                        } else {
+                          // [최종 실패] 주변 임의 위치에 추정 핀 꽂기
+                          createFallbackMarker(place.name, index, place.day);
+                        }
+                      });
                     }
                   });
                 }
@@ -181,7 +234,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     });
   }, [isOpen, isSdkLoaded, places]);
 
-  // 3. 목록 장소 클릭 시 카메라 이동
+  // 목록 장소 클릭 시 카메라 이동 & 확대
   const handlePlaceClick = (index: number) => {
     const coords = placeCoordsRef.current[index];
     const map = mapInstanceRef.current;
@@ -239,25 +292,29 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {places.map((place, idx) => {
                 const isSelected = selectedPlaceIdx === idx;
-                const isUnmapped = unmappedIndices[idx];
+                const isEstimated = estimatedIndices[idx];
 
                 return (
                   <div
                     key={`${place.day}-${place.name}-${idx}`}
-                    onClick={() => !isUnmapped && handlePlaceClick(idx)}
-                    className={`p-3.5 rounded-xl border transition-all select-none ${
-                      isUnmapped
-                        ? "bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed"
-                        : isSelected
-                        ? "bg-sky-50 border-sky-500 shadow-md ring-2 ring-sky-200 cursor-pointer"
-                        : "bg-white border-slate-100 shadow-sm hover:border-sky-300 hover:shadow cursor-pointer"
+                    onClick={() => handlePlaceClick(idx)}
+                    className={`p-3.5 rounded-xl border transition-all select-none cursor-pointer ${
+                      isSelected
+                        ? "bg-sky-50 border-sky-500 shadow-md ring-2 ring-sky-200"
+                        : isEstimated
+                        ? "bg-amber-50/60 border-amber-200 hover:border-amber-400"
+                        : "bg-white border-slate-100 shadow-sm hover:border-sky-300 hover:shadow"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0">
                         {place.day && (
                           <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md shrink-0 ${
-                            isSelected ? "bg-sky-600 text-white" : "bg-sky-500 text-white"
+                            isSelected
+                              ? "bg-sky-600 text-white"
+                              : isEstimated
+                              ? "bg-amber-500 text-white"
+                              : "bg-sky-500 text-white"
                           }`}>
                             Day {place.day}
                           </span>
@@ -269,9 +326,9 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
                         </h4>
                       </div>
 
-                      {isUnmapped && (
-                        <span className="text-[10px] font-semibold text-slate-400 shrink-0 bg-slate-200 px-1.5 py-0.5 rounded">
-                          위치 미검색
+                      {isEstimated && (
+                        <span className="text-[10px] font-bold text-amber-600 shrink-0 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                          🍊 추정 위치
                         </span>
                       )}
                     </div>
