@@ -96,3 +96,8 @@ tour:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+# [Mock 은행 연동 추가] 계좌연동(실명확인) 시 호출하는 Mock 오픈뱅킹 서버 설정.
+mock-bank:
+  # Mock 서버가 이 애플리케이션 안에 함께 떠 있으므로 기본값은 자기 자신(localhost)
+  base-url: http://localhost:${server.port}

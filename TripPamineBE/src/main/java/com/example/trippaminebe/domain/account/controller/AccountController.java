@@ -23,6 +23,9 @@ import java.util.List;
  * 기존에는 @RequestHeader("X-USER-ID")로 사용자를 임시로 받고 있었는데
  * User/Admin/TravelPlan 컨트롤러와 동일하게
  * @AuthenticationPrincipal CustomUserDetails 방식으로 통일함.
+ *
+ * [Mock 은행 연동 추가] 계좌 연동(POST /accounts)이 이제 Mock 은행 서버의 계좌
+ * 실명확인을 거쳐 최초 잔액을 발급받는다.
  */
 @RestController
 @RequestMapping("/accounts")
@@ -31,9 +34,9 @@ public class AccountController {
 
   private final AccountService accountService;
 
-  // 계좌 등록 (사용자가 직접 입력한 계좌정보를 그대로 저장)
+  // 계좌 연동 (Mock 은행 실명확인 + 핀테크이용번호/최초 잔액 발급 후 등록)
   @PostMapping
-  @Operation(summary = "계좌 등록")
+  @Operation(summary = "계좌 연동 (Mock 오픈뱅킹 실명확인 포함)")
   public ResponseEntity<AccountResponse> linkAccount(
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid @RequestBody AccountLinkRequest request
@@ -43,7 +46,7 @@ public class AccountController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // 내 계좌 목록 조회
+  // 내 계좌 목록 조회 (응답에 balance 포함)
   @GetMapping
   @Operation(summary = "내 계좌 목록 조회")
   public ResponseEntity<List<AccountResponse>> getMyAccounts(
@@ -77,7 +80,7 @@ public class AccountController {
     return ResponseEntity.noContent().build();
   }
 
-  // 계좌 거래내역 조회 (페이징)
+  // 계좌 거래내역 조회 (페이징) - 가계부에서 이 계좌로 지정해 입력한 내역이 쌓이는 곳
   @GetMapping("/{accountId}/history")
   @Operation(summary = "계좌 거래내역 조회")
   public ResponseEntity<Page<AccountHistoryResponse>> getHistory(

@@ -5,14 +5,9 @@ import com.example.trippaminebe.domain.account.entity.LinkStatus;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 주의: Account.accountNumber는 EncryptedStringConverter로 매핑되어 있음.
- * 해당 컨버터의 encrypt/decrypt가 아직 미구현(placeholder) 상태라
- * 지금 이 클래스의 from()을 실행하면 조회 시점에 예외가 발생함.
- * 컨버터 구현 완료 후 정상 동작함.
- */
 @Getter
 @Builder
 public class AccountResponse {
@@ -24,6 +19,7 @@ public class AccountResponse {
   private String accountAlias;         // 계좌별칭
   private LinkStatus linkStatus;       // 연동상태 (ACTIVE/INACTIVE)
   private LocalDateTime linkDate;      // 최초연동일시
+  private BigDecimal balance;          // [Mock 은행 연동 추가] 현재 잔액 (연동 시 발급값 + 가계부 입력 반영 누계)
 
   // Entity -> Response 변환. 계좌번호는 mask()를 거쳐서만 담기 때문에 원본 번호가 응답에 노출될 일이 없음
   public static AccountResponse from(Account account) {
@@ -35,6 +31,7 @@ public class AccountResponse {
         .accountAlias(account.getAccountAlias())
         .linkStatus(account.getLinkStatus())
         .linkDate(account.getLinkDate())
+        .balance(account.getBalance())
         .build();
   }
 

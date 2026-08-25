@@ -13,10 +13,11 @@ import java.time.LocalDateTime;
  * ACCOUNT_HISTORY 테이블 매핑
  * 사용자 계좌 입출금 상세 내역
  *
- * 주의: DDL의 COMMENT에는 TRANSACTION_NUM(더미 API 거래 고유 승인번호) 컬럼 설명이
- * 있지만, 실제 CREATE TABLE 구문에는 해당 컬럼이 존재하지 않음 (스키마 불일치).
- * DB 담당자/팀 확인 후 컬럼이 추가되면 아래에 필드를 함께 추가할 것.
- * ex) @Column(name = "TRANSACTION_NUM", length = 50) private String transactionNum;
+ * [Mock 은행 연동 추가] ledgerTxnId 컬럼을 새로 추가했다. 가계부(TRANSACTIONS)에서
+ * "이 계좌로" 지정해서 수입/지출을 입력하면, 그 내용이 이 테이블에도 한 줄 그대로
+ * 기록되고 ledgerTxnId에 그 가계부 항목(TRANSACTIONS.ID)을 저장해둔다. 나중에 그
+ * 가계부 항목을 수정/삭제할 때 이 값으로 대응되는 계좌내역을 찾아서 잔액 반영을
+ * 되돌리거나 다시 계산한다
  */
 @Entity
 @Table(name = "ACCOUNT_HISTORY")
@@ -54,16 +55,22 @@ public class AccountHistory {
   @Column(name = "BALANCE_AFTER", precision = 20, nullable = false)
   private BigDecimal balanceAfter; // 거래 후 잔액
 
-  // TODO: 스키마에 TRANSACTION_NUM 컬럼 추가되면 여기에 필드 매핑
+  // 이 내역을 발생시킨 가계부 항목의 ID (TRANSACTIONS.ID). 가계부와 연동되지 않은 채
+  // 과거 방식으로 등록된 내역이 있다면 null일 수 있어 nullable로 둔다.
+  @Column(name = "LEDGER_TXN_ID")
+  private Long ledgerTxnId;
 
   @Builder
   private AccountHistory(Account account, TransactionType transactionType,
-                         BigDecimal amount, String description, BigDecimal balanceAfter) {
+                         BigDecimal amount, String description, BigDecimal balanceAfter,
+                         Long ledgerTxnId, LocalDateTime transactionDate) {
     this.account = account;
     this.transactionType = transactionType;
     this.amount = amount;
     this.description = description;
     this.balanceAfter = balanceAfter;
+    this.ledgerTxnId = ledgerTxnId;
+    this.transactionDate = transactionDate;
   }
 
   // 저장 직전 자동 실행: 거래일시를 안 넣고 만들어도 현재 시각으로 채워줌
