@@ -82,7 +82,6 @@ export type TourMainCategoryKey =
   | "festivals"
   | "destinations"
   | "industry"
-  | "quest";
 
 // 마이페이지 "저장된 축제 및 행사 / 저장된 관광 여행지 / 저장된 관광 산업" 탭에서 쓰는 북마크 구조.
 // 백엔드 /bookmarks가 내려주며, 북마크 시점의 카드 정보를 스냅샷으로 그대로 들고 있음.

@@ -37,7 +37,7 @@ const navItems: NavGroup[] = [
     items: [
       { icon: "🏠", label: "홈", to: "/" },
       { icon: "🤖", label: "AI 여행 추천", to: "/#ai-planner" },
-      { icon: "🎯", label: "나의 퀘스트", to: "/mypage?tab=quest" },
+      { icon: "🎯", label: "여행 퀘스트", to: "/quests" },
     ],
   },
   {
@@ -144,7 +144,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   const active =
                     item.to === "/"
                       ? currentPath === "/"
-                      : item.to && currentPath === item.to;
+                      : item.to === "/quests"
+                        ? currentPath.startsWith("/quests")
+                        : item.to && currentPath === item.to;
                   return (
                     <li key={item.label}>
                       <button
