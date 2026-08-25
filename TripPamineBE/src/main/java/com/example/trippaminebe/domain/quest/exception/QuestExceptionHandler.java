@@ -20,4 +20,14 @@ public class QuestExceptionHandler {
                 "message", e.getMessage()
             ));
     }
+
+    @ExceptionHandler(QuestDeleteConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleQuestDeleteConflict(QuestDeleteConflictException e) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(Map.of(
+                "status", 409,
+                "message", e.getMessage()
+            ));
+    }
 }
