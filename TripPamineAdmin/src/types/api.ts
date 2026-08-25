@@ -58,3 +58,23 @@ export interface Page<T> {
 export interface UserSuspendRequest {
   reason: string
 }
+
+// ===================== 퀘스트 관리 =====================
+// QuestResponse (도메인 quest/dto/response/QuestResponse.java)
+export interface AdminQuest {
+  questId: number
+  questName: string
+  targetLat: number
+  targetLng: number
+  rewardPoint: number
+  clearRadius: number
+}
+
+// QuestRequest (도메인 quest/dto/request/QuestRequest.java) - 등록/수정 공용
+export interface QuestUpsertRequest {
+  questName: string
+  targetLat: number
+  targetLng: number
+  rewardPoint?: number
+  clearRadius?: number // 비우면 서버가 기본값 100m로 채움
+}

@@ -3,8 +3,8 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { adminLogin } from "../api/admin"
 import { ApiError, setAdminToken } from "../api/client"
+import { adminLogin } from "../api/admin"
 
 export default function AdminLogin() {
   const navigate = useNavigate()

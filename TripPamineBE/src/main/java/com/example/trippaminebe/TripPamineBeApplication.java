@@ -16,18 +16,25 @@ public class TripPamineBeApplication {
 		Dotenv dotenv;
 		File defaultEnv = new File(userDir, ".env");
 
+		File projectRoot;
 		if (defaultEnv.exists()) {
 			dotenv = Dotenv.configure().load();
+			projectRoot = new File(userDir);
 		} else {
 			// 프로젝트 실제 경로를 지정하여 로드
 			dotenv = Dotenv.configure()
 					.directory(userDir+"\\TripPamineBE")
 					.ignoreIfMissing()
 					.load();
+			projectRoot = new File(userDir, "TripPamineBE");
 		}
 		dotenv.entries().forEach(entry -> {
 			System.setProperty(entry.getKey(), entry.getValue());
 		});
+
+		// Oracle Wallet 경로를 절대 경로로 설정 (실행 위치에 무관하게 동작)
+		File walletDir = new File(projectRoot, "src/main/resources/wallets");
+		System.setProperty("oracle.net.tns_admin", walletDir.getAbsolutePath());
 
 		SpringApplication.run(TripPamineBeApplication.class, args);
 	}

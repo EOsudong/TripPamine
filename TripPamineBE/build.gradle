@@ -71,6 +71,10 @@ dependencies {
     implementation 'com.openai:openai-java:4.46.0'
 }
 
+configurations.all {
+    exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }

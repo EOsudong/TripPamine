@@ -36,6 +36,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         || uri.startsWith("/oauth2")
         || uri.startsWith("/login/oauth2")
         || uri.startsWith("/swagger-ui")
+        || uri.startsWith("/admin")
         || uri.startsWith("/v3/api-docs");
   }
 

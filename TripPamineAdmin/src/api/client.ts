@@ -24,7 +24,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE"
+  method?: "GET" | "POST" | "PATCH" | "DELETE" | "PUT"
   body?: unknown
   auth?: boolean // true면 Authorization 헤더 자동 첨부 (기본값 true)
 }
