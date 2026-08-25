@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { TravelPlan } from "../types";
 import { getTravelPlansApi } from "../api/travel";
 import {
@@ -10,6 +11,8 @@ import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal } from '../components/KakaoMapModal';
 
 export default function AiRecommendPage() {
+    const navigate = useNavigate();
+
     const [plans, setPlans] = useState<TravelPlan[]>([]);
     const [selectedPlan, setSelectedPlan] = useState<TravelPlan | null>(null);
     const [loading, setLoading] = useState(true);
@@ -19,7 +22,6 @@ export default function AiRecommendPage() {
         useState<ParsedRecommendation | null>(null);
 
     const [recommendLoading, setRecommendLoading] = useState(false);
-
     const [recommendError, setRecommendError] = useState("");
 
     // 지도 모달 열림/닫힘 상태
@@ -126,7 +128,7 @@ export default function AiRecommendPage() {
     const mapPlaces = parsedRecommendation?.days.flatMap((d) =>
         d.places.map((p) => ({
             name: p.name,
-            address: p.name, // 장소명 자체로 카카오 지오코딩/검색 수행
+            address: p.name,
             day: d.day,
         }))
     ) || [];
@@ -140,19 +142,39 @@ export default function AiRecommendPage() {
         >
             <div className="min-h-screen bg-white/75 backdrop-blur-[1px] p-8">
                 <div className="max-w-7xl mx-auto">
-                    <div className="mb-8">
-                        <p className="text-sky-500 text-xs font-bold tracking-widest uppercase">
-                            AI Travel Planner
-                        </p>
+                    {/* 페이지 헤더 영역 */}
+                    <div className="mb-8 flex items-center justify-between">
+                        <div>
+                            <p className="text-sky-500 text-xs font-bold tracking-widest uppercase">
+                                AI Travel Planner
+                            </p>
 
-                        <h1 className="mt-2 text-3xl font-bold text-slate-800">
-                            ✨ AI 여행 추천
-                        </h1>
+                            <h1 className="mt-2 text-3xl font-bold text-slate-800">
+                                ✨ AI 여행 추천
+                            </h1>
 
-                        <p className="mt-2 text-sm text-slate-500">
-                            등록된 여행을 선택하면 AI가 조건에 맞는 여행 일정을
-                            추천해드립니다.
-                        </p>
+                            <p className="mt-2 text-sm text-slate-500">
+                                등록된 여행을 선택하면 AI가 조건에 맞는 여행 일정을
+                                추천해드립니다.
+                            </p>
+                        </div>
+
+                        {/* 메인페이지(Hero.tsx) 이동 버튼 */}
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className="
+                                px-4 py-2.5
+                                bg-white hover:bg-slate-50
+                                border border-slate-200 hover:border-sky-300
+                                text-slate-700 hover:text-sky-600 text-xs font-bold
+                                rounded-2xl shadow-sm hover:shadow
+                                transition-all duration-200
+                                flex items-center gap-2
+                            "
+                        >
+                            🏠 메인으로 돌아가기
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
@@ -162,8 +184,8 @@ export default function AiRecommendPage() {
                                 <h2 className="font-bold text-slate-800">등록된 여행</h2>
 
                                 <span className="px-2.5 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                  {plans.length}개
-                </span>
+                                  {plans.length}개
+                                </span>
                             </div>
 
                             {loading ? (
@@ -188,14 +210,14 @@ export default function AiRecommendPage() {
                                             }`}
                                         >
                                             <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold text-sky-600">
-                          ✈ TRAVEL
-                        </span>
+                                                <span className="text-[10px] font-bold text-sky-600">
+                                                  ✈ TRAVEL
+                                                </span>
 
                                                 {plan.blindYn === "Y" && (
                                                     <span className="text-[10px] font-bold text-purple-600">
-                            🎁 MYSTERY
-                          </span>
+                                                    🎁 MYSTERY
+                                                  </span>
                                                 )}
                                             </div>
 
@@ -239,9 +261,9 @@ export default function AiRecommendPage() {
                                 </div>
                             ) : (
                                 <div>
-                  <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                    선택된 여행
-                  </span>
+                                  <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
+                                    선택된 여행
+                                  </span>
 
                                     <h2 className="mt-3 text-2xl font-bold text-slate-800">
                                         {selectedPlan.planName}
@@ -278,9 +300,9 @@ export default function AiRecommendPage() {
                                                     <div className="space-y-6">
                                                         <div className="flex items-start justify-between gap-4">
                                                             <div>
-                                <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                                  ✨ AI 추천 완료
-                                </span>
+                                                                <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
+                                                                  ✨ AI 추천 완료
+                                                                </span>
 
                                                                 <h2 className="mt-3 text-2xl font-bold text-slate-800">
                                                                     {parsedRecommendation.title}
@@ -350,9 +372,9 @@ export default function AiRecommendPage() {
                                                                     className="bg-white border border-slate-200 rounded-2xl p-5"
                                                                 >
                                                                     <div className="flex items-center gap-2 mb-4">
-                                    <span className="w-8 h-8 flex items-center justify-center rounded-xl bg-sky-500 text-white text-sm font-bold">
-                                      {day.day}
-                                    </span>
+                                                                        <span className="w-8 h-8 flex items-center justify-center rounded-xl bg-sky-500 text-white text-sm font-bold">
+                                                                          {day.day}
+                                                                        </span>
 
                                                                         <h3 className="font-bold text-slate-800">
                                                                             {day.day}일차 일정
@@ -377,11 +399,11 @@ export default function AiRecommendPage() {
                                                                                     </div>
 
                                                                                     <span className="shrink-0 text-xs font-bold text-sky-600">
-                                            {Number(
-                                                place.estimatedCost || 0,
-                                            ).toLocaleString()}
+                                                                                        {Number(
+                                                                                            place.estimatedCost || 0,
+                                                                                        ).toLocaleString()}
                                                                                         원
-                                          </span>
+                                                                                    </span>
                                                                                 </div>
                                                                             </div>
                                                                         ))}
