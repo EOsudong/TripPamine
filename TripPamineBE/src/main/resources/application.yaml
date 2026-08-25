@@ -70,6 +70,9 @@ spring:
       max-file-size: 10MB       # 파일 하나당 최대 용량
       max-request-size: 10MB    # 한 요청당 전체 최대 용량
 
+encrypt:
+  secret-key: ${ENCRYPT_SECRET_KEY}
+
 jwt:
   secret: ${JWT_SECRET_KEY}
   expiration: ${jwt.expiration}

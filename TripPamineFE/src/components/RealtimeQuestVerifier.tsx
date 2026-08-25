@@ -39,7 +39,7 @@ export const RealtimeQuestVerifier: React.FC<RealtimeQuestVerifierProps> = ({
     // 위치 오차 감도가 POOR(25m 초과)인 상태일 경우 억울한 오인증이나 부정 수급 방지를 위한 경고 발령
     if (gpsSignalStrength === "POOR") {
       setCustomError(
-        "GPS 수신 신호가 너무 약해 검증이 불가합니다. 개활지(실외)로 이동해 주세요.",
+        "GPS 수신 신호가 너무 약해 검증이 불가합니다. 실외로 이동해 주세요.",
       );
       return;
     }
