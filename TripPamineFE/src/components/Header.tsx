@@ -88,7 +88,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
         className="text-lg font-bold tracking-tight shrink-0"
       >
         <span className="text-xs text-gray-500 border-l border-gray-300 pl-3">
-          "계획은 AI가 짜릿함은 당신이"
+          "계획은 AI가, 짜릿함은 당신이"
         </span>
       </a>
 

@@ -18,10 +18,10 @@ public class LoginRequestDto {
 
   @NotBlank(message = "이메일을 입력해주세요.")
   @Email
-  @Schema(description = "사용자 이메일", example = "user@trippamine.com")
+  @Schema(description = "사용자 이메일", example = "test1@trippamine.com")
   private String email;
 
   @NotBlank(message = "비밀번호를 입력해주세요.")
-  @Schema(description = "비밀번호", example = "Password123!")
+  @Schema(description = "비밀번호", example = "12345678")
   private String password;
 }
