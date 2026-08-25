@@ -84,8 +84,11 @@ export default function QuestWorldMap({
       .sort((left, right) => left.distance - right.distance)[0];
   }, [latitude, longitude, quests]);
 
+  const hasCurrentLocation = latitude != null && longitude != null;
+  const canInitializeMap = hasCurrentLocation || error != null;
+
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || !canInitializeMap) return;
 
     if (!window.kakao?.maps) {
       setMapError(
@@ -97,16 +100,20 @@ export default function QuestWorldMap({
     const kakao = window.kakao;
     const initialQuest = quests[0];
     const center = new kakao.maps.LatLng(
-      initialQuest?.targetLat ?? SEOUL_CENTER.latitude,
-      initialQuest?.targetLng ?? SEOUL_CENTER.longitude,
+      hasCurrentLocation
+        ? latitude
+        : (initialQuest?.targetLat ?? SEOUL_CENTER.latitude),
+      hasCurrentLocation
+        ? longitude
+        : (initialQuest?.targetLng ?? SEOUL_CENTER.longitude),
     );
     const map = new kakao.maps.Map(mapContainerRef.current, {
       center,
-      level: 7,
+      level: hasCurrentLocation ? 5 : 7,
     });
-    const bounds = new kakao.maps.LatLngBounds();
 
     mapRef.current = map;
+    centeredOnUserRef.current = hasCurrentLocation;
     questOverlaysRef.current = quests.map((quest) => {
       const status: QuestMapStatus =
         logByQuestId.get(quest.questId)?.status ?? "NOT_STARTED";
@@ -141,13 +148,8 @@ export default function QuestWorldMap({
         yAnchor: 1,
       });
       overlay.setMap(map);
-      bounds.extend(position);
       return overlay;
     });
-
-    if (quests.length > 1) {
-      map.setBounds(bounds, 60, 60, 60, 60);
-    }
 
     setMapReady(true);
     setMapError(null);
@@ -163,7 +165,13 @@ export default function QuestWorldMap({
       centeredOnUserRef.current = false;
       setMapReady(false);
     };
-  }, [quests, logByQuestId, onQuestSelect]);
+  }, [
+    canInitializeMap,
+    hasCurrentLocation,
+    quests,
+    logByQuestId,
+    onQuestSelect,
+  ]);
 
   useEffect(() => {
     if (!mapReady || latitude == null || longitude == null) return;
@@ -242,6 +250,17 @@ export default function QuestWorldMap({
       <div className="grid lg:grid-cols-[1fr_280px]">
         <div className="relative h-[440px] bg-slate-800">
           <div ref={mapContainerRef} className="h-full w-full" />
+          {!mapReady && !mapError && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900 text-center">
+              <span className="h-7 w-7 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+              <p className="mt-3 text-sm font-bold text-slate-300">
+                현재 위치를 확인하고 있습니다.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                위치 권한을 허용하면 내 주변부터 지도가 열립니다.
+              </p>
+            </div>
+          )}
           {mapError && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/90 p-6 text-center text-sm text-rose-300">
               {mapError}
