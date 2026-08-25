@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { usePreciseGeolocation } from "../custom/usePreciseGeolocation";
 import {
   extractQuestErrorMessage,
@@ -10,8 +10,7 @@ import {
 
 interface RealtimeQuestVerifierProps {
   quest: QuestResponse;
-  initialStatus?: QuestStatus | null;
-  autoStart?: boolean;
+  initialStatus: QuestStatus;
   // 클리어 시도 결과(성공/실패 포함)가 바뀔 때마다 부모(MyPage)에게 최신 로그를 올려준다.
   // 포인트 누적, 목록 상태 갱신을 부모가 서버가 내려준 값 그대로 반영하도록 하기 위함
   // (프론트에서 임의로 rewardPoint를 더하지 않음 - 서버가 실제로 지급한 값만 신뢰).
@@ -20,13 +19,11 @@ interface RealtimeQuestVerifierProps {
 
 export const RealtimeQuestVerifier: React.FC<RealtimeQuestVerifierProps> = ({
   quest,
-  initialStatus = null,
-  autoStart = true,
+  initialStatus,
   onLogUpdate,
 }) => {
-  const [isStarting, setIsStarting] = useState(autoStart);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [status, setStatus] = useState<QuestStatus | null>(initialStatus);
+  const [status, setStatus] = useState<QuestStatus>(initialStatus);
   const [customError, setCustomError] = useState<string | null>(null);
 
   const questCleared = status === "SUCCESS";
@@ -39,42 +36,6 @@ export const RealtimeQuestVerifier: React.FC<RealtimeQuestVerifierProps> = ({
     gpsSignalStrength,
     error: gpsError,
   } = usePreciseGeolocation(!questCleared);
-
-  // 화면 진입 시 퀘스트 시작 처리. 백엔드가 idempotent(이미 시작/완료된 경우 기존 로그 반환)이므로
-  // 매번 호출해도 안전하고, 이 호출 하나로 "시작 → 클리어" 순서를 자동으로 보장한다.
-  useEffect(() => {
-    if (!autoStart) {
-      setStatus(initialStatus);
-      setIsStarting(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsStarting(true);
-    setCustomError(null);
-
-    questApi
-      .startQuest(quest.questId)
-      .then((log) => {
-        if (cancelled) return;
-        setStatus(log.status);
-        onLogUpdate(log);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setCustomError(
-          extractQuestErrorMessage(err, "퀘스트 시작 중 오류가 발생했습니다."),
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setIsStarting(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quest.questId, autoStart, initialStatus]);
 
   const handleVerifyLocation = async () => {
     if (latitude == null || longitude == null) {
@@ -183,23 +144,21 @@ export const RealtimeQuestVerifier: React.FC<RealtimeQuestVerifierProps> = ({
         ) : (
           <button
             onClick={handleVerifyLocation}
-            disabled={isStarting || isVerifying || !latitude}
+            disabled={isVerifying || latitude == null}
             className={`w-full py-4 rounded-2xl text-center text-sm font-black transition-all ${
-              isStarting || isVerifying
+              isVerifying
                 ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                : !latitude
+                : latitude == null
                   ? "bg-slate-800 text-slate-400 cursor-wait"
                   : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:opacity-90 shadow-lg shadow-cyan-500/20 active:scale-95"
             }`}
           >
-            {isStarting ? (
-              "퀘스트 시작 중..."
-            ) : isVerifying ? (
+            {isVerifying ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 지구 타원체 기준 위성 매핑 중...
               </span>
-            ) : !latitude ? (
+            ) : latitude == null ? (
               "📡 GPS 신호 탐색 대기 중..."
             ) : status === "FAILED" ? (
               "다시 위치 인증하기"

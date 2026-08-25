@@ -200,7 +200,6 @@ export default function QuestDetailPage() {
                     <RealtimeQuestVerifier
                       quest={quest}
                       initialStatus={questLog.status}
-                      autoStart={false}
                       onLogUpdate={handleLogUpdate}
                     />
                   </div>

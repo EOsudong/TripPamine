@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getMyInfoApi, type MyInfoResponse } from "../api/auth";
 import {
   extractQuestErrorMessage,
@@ -10,6 +10,7 @@ import {
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import QuestWorldMap from "../components/QuestWorldMap";
 
 type QuestViewStatus = "NOT_STARTED" | UserQuestLogResponse["status"];
 
@@ -40,6 +41,7 @@ const STATUS_CONFIG: Record<
 };
 
 export default function QuestPage() {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profile, setProfile] = useState<MyInfoResponse | null>(null);
   const [quests, setQuests] = useState<QuestResponse[]>([]);
@@ -90,6 +92,11 @@ export default function QuestPage() {
     (log) => log.status === "SUCCESS",
   ).length;
 
+  const handleQuestSelect = useCallback(
+    (questId: number) => navigate(`/quests/${questId}`),
+    [navigate],
+  );
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -110,8 +117,9 @@ export default function QuestPage() {
             </p>
             <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
               <div>
-                <h1 className="text-3xl font-black md:text-3xl">
-                  {profile?.userName || "여행자"}님, 안녕하세요 👋
+                <h1 className="text-3xl font-black md:text-4xl flex items-center gap-2">
+                  <span className="text-2xl md:text-3xl select-none">🎖️</span>
+                  <span>{profile?.userName ?? "여행자"} 님</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-400">
                   오늘도 짜릿한 도파민 어드벤처를 떠날 준비가 되셨나요?
@@ -127,6 +135,14 @@ export default function QuestPage() {
               </div>
             </div>
           </section>
+
+          {!loading && !error && (
+            <QuestWorldMap
+              quests={quests}
+              logs={myLogs}
+              onQuestSelect={handleQuestSelect}
+            />
+          )}
 
           <section className="mt-8">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -223,7 +239,7 @@ export default function QuestPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-24 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
-      <span className="block text-[10px] font-bold uppercase text-slate-400">
+      <span className="block text-[10px] font-bold uppercase text-slate-500">
         {label}
       </span>
       <span className="mt-1 block text-sm font-black text-cyan-300">
