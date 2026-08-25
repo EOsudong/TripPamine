@@ -43,6 +43,11 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * [Mock 은행 연동 추가]
+ * 거래 내역 추가/수정 시 계좌(accountId)가 함께 들어오면 AccountBookService가
+ * AccountBalanceService를 통해 계좌 잔액에 즉시 반영한다.
+ */
 @RestController
 @RequestMapping("/accountbook")
 @RequiredArgsConstructor
@@ -59,6 +64,11 @@ public class AccountBookController {
       return "ANONYMOUS_GUEST_USER"; // 로그인 정보가 없을 시 임시 사용할 계정 ID/이메일
    }
 
+   // [Mock 은행 연동 추가] 계좌 잔액 반영에 필요한 userId 추출 (비로그인 시 null)
+   private Long getUserIdSafely(CustomUserDetails userDetails) {
+      return userDetails != null ? userDetails.getUser().getId() : null;
+   }
+
    // 1. 거래 내역 조회 (서비스: getTransactions(String username))
    @GetMapping
    public ResponseEntity<List<TransactionEntity>> getTransactions(
@@ -67,22 +77,25 @@ public class AccountBookController {
       return ResponseEntity.ok(accountBookService.getTransactions(username));
    }
 
-   // 2. 거래 내역 추가 (서비스: saveTransaction(TransactionEntity transaction))
+   // 2. 거래 내역 추가 (서비스: saveTransaction(Long userId, TransactionEntity transaction))
    @PostMapping("/add")
    public ResponseEntity<TransactionEntity> addTransaction(
        @AuthenticationPrincipal CustomUserDetails userDetails,
        @RequestBody TransactionEntity transaction) {
       String username = getUsernameSafely(userDetails);
       transaction.setUsername(username); // Entity에 계정 정보 세팅
-      return ResponseEntity.ok(accountBookService.saveTransaction(transaction));
+      Long userId = getUserIdSafely(userDetails);
+      return ResponseEntity.ok(accountBookService.saveTransaction(userId, transaction));
    }
 
-   // 3. 거래 내역 수정 (서비스: updateTransaction(Long id, TransactionEntity updatedData))
+   // 3. 거래 내역 수정 (서비스: updateTransaction(Long userId, Long id, TransactionEntity updatedData))
    @PutMapping("/update/{id}")
    public ResponseEntity<TransactionEntity> updateTransaction(
+       @AuthenticationPrincipal CustomUserDetails userDetails,
        @PathVariable Long id,
        @RequestBody TransactionEntity updatedData) {
-      return ResponseEntity.ok(accountBookService.updateTransaction(id, updatedData));
+      Long userId = getUserIdSafely(userDetails);
+      return ResponseEntity.ok(accountBookService.updateTransaction(userId, id, updatedData));
    }
 
    // 4. 거래 내역 삭제 (서비스: deleteTransaction(Long id))

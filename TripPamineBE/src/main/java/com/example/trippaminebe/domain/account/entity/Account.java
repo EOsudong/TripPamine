@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,11 @@ import java.util.List;
 /**
  * USER_ACCOUNTS 테이블 매핑
  * 사용자별 금융 계좌 및 간편결제 연동 정보
+ *
+ * [Mock 은행 연동 추가] balance 컬럼이 새로 추가됨
+ * 계좌 연동 시점에 Mock 은행 서버(MockBankService)가 발급한 최초 잔액으로 채워지고,
+ * 이후로는 가계부(TRANSACTIONS)에 이 계좌를 지정해서 수입/지출을 입력할 때마다
+ * AccountBalanceService가 그 금액만큼 이 필드를 더하거나 뺀다
  */
 @Entity
 @Table(name = "USER_ACCOUNTS")
@@ -49,7 +55,7 @@ public class Account {
   // 암호화 저장 대상 (핀테크 이용번호)
   @Convert(converter = EncryptedStringConverter.class)
   @Column(name = "FINTECH_USE_NUM", length = 32)
-  private String fintechUseNum; // 오픈뱅킹 핀테크 이용번호 - 실제 이체/조회 API 호출 시 필요한 식별값 (원본 SQL엔 없던 추가 컬럼)
+  private String fintechUseNum; // 오픈뱅킹 핀테크 이용번호 - Mock 은행 서버(MockBankService)가 계좌 실명확인 시 발급한 값
 
   @Column(name = "ACCOUNT_ALIAS", length = 50)
   private String accountAlias; // 계좌별칭 - 사용자가 직접 지정하는 이름(예: "여행용 비상금")
@@ -61,18 +67,25 @@ public class Account {
   @Column(name = "LINK_DATE")
   private LocalDateTime linkDate; // 최초연동일시 - 계좌를 최초로 연동한 날짜
 
+  // [Mock 은행 연동 추가] 이 계좌의 현재 잔액. 연동 시점엔 Mock 은행이 발급한 값으로
+  // 시작하고, 이후로는 가계부에서 이 계좌로 지정한 수입/지출만큼 계속 가감된다.
+  @Column(name = "BALANCE", precision = 20, nullable = false)
+  private BigDecimal balance;
+
   @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<AccountHistory> histories = new ArrayList<>(); // 이 계좌에 딸린 입출금 내역 목록 (1:N)
 
   @Builder
   private Account(User user, String bankCode, String bankName,
-                  String accountNumber, String fintechUseNum, String accountAlias) {
+                  String accountNumber, String fintechUseNum, String accountAlias,
+                  BigDecimal balance) {
     this.user = user;
     this.bankCode = bankCode;
     this.bankName = bankName;
     this.accountNumber = accountNumber;
     this.fintechUseNum = fintechUseNum;
     this.accountAlias = accountAlias;
+    this.balance = balance != null ? balance : BigDecimal.ZERO;
     this.linkStatus = LinkStatus.ACTIVE; // DEFAULT 'Y'
   }
 
@@ -84,6 +97,9 @@ public class Account {
     }
     if (this.linkStatus == null) {
       this.linkStatus = LinkStatus.ACTIVE;
+    }
+    if (this.balance == null) {
+      this.balance = BigDecimal.ZERO;
     }
   }
 
@@ -102,5 +118,11 @@ public class Account {
   // 현재 연동이 살아있는 계좌인지 확인
   public boolean isActive() {
     return this.linkStatus == LinkStatus.ACTIVE;
+  }
+
+  // [Mock 은행 연동 추가] 가계부에서 이 계좌로 수입/지출을 입력하거나 취소할 때 호출.
+  // delta가 양수면 잔액 증가(입금), 음수면 잔액 감소(출금) - AccountBalanceService 전용
+  public void adjustBalance(BigDecimal delta) {
+    this.balance = this.balance.add(delta);
   }
 }

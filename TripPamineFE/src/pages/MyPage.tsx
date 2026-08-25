@@ -54,6 +54,12 @@ export default function MyPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [tab, setTab] = useState<Tab>("festivals");
 
+    // [Mock 은행 연동 추가] ManualAccountSection(계좌 목록/잔액)과 AccountBook(가계부) 사이의
+    // 새로고침 신호를 여기서 중계한다 - 둘 중 하나가 계좌 잔액에 영향을 줄 수 있는 동작을 하면
+    // (계좌 연동/삭제, 계좌 지정 가계부 입력/수정/삭제) 반대쪽 값을 증가시켜 재조회를 유도한다.
+    const [accountsVersion, setAccountsVersion] = useState(0);
+    const [ledgerVersion, setLedgerVersion] = useState(0);
+
     // 사용자 프로필 정보 관리 상태 - 전부 /users/auth/me 응답을 그대로 신뢰
     const [userName, setUserName] = useState<string | null>(null);
     const [userGrade, setUserGrade] = useState<string>("Bronze");
@@ -476,14 +482,21 @@ export default function MyPage() {
                                     <h3 className="text-base font-bold text-slate-800 mb-4">
                                         💳 내 계좌 정보
                                     </h3>
-                                    <ManualAccountSection/>
+                                    <ManualAccountSection
+                                        refreshSignal={ledgerVersion}
+                                        onAccountsChanged={() => setAccountsVersion((v) => v + 1)}
+                                    />
                                 </div>
 
                                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
                                     <h3 className="text-base font-bold text-slate-800 mb-6">
                                         🧾 가계부 내역
                                     </h3>
-                                    <AccountBook username={userName || "여행자"}/>
+                                    <AccountBook
+                                        username={userName || "여행자"}
+                                        accountsRefreshSignal={accountsVersion}
+                                        onLedgerChanged={() => setLedgerVersion((v) => v + 1)}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -632,3 +645,4 @@ function EmptyState({label}: { label: string }) {
         </div>
     );
 }
+
