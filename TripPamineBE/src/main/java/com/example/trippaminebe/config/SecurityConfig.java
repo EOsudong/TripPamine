@@ -121,7 +121,9 @@ public class SecurityConfig {
 								// MockOpenBankingClient가 서버 대 서버로 호출하는 이 경로는 인증 없이 열어둔다.
 								"/mock-bank/**",
 								// [금융상품 정보 추가] 금융감독원 오픈API(금융상품 한눈에) 연동 데이터.
-								"/finance/**"
+								"/finance/**",
+								// 개발용 GPS 테스트 API만 인증 없이 허용
+								"/quests/*/test-location"
 						).permitAll()
 						.requestMatchers("/users/**")
 						.authenticated()

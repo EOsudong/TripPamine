@@ -1,7 +1,6 @@
 // React Router 설정 파일.
 // URL 주소(경로)와 어떤 페이지 컴포넌트를 보여줄지 여기서 한 번에 관리합니다.
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import GpsTest from "../pages/test/GpsTest.tsx";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Join from "../pages/Join";
