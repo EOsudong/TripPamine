@@ -119,7 +119,10 @@ public class SecurityConfig {
 								// [Mock 은행 연동 추가] Mock 오픈뱅킹 서버 엔드포인트.
 								// 실제 은행 API도 우리 서비스의 사용자 JWT를 알지 못하는 것과 동일하게,
 								// MockOpenBankingClient가 서버 대 서버로 호출하는 이 경로는 인증 없이 열어둔다.
-								"/mock-bank/**"
+								"/mock-bank/**",
+
+								// 개발용 GPS 테스트 API만 인증 없이 허용
+								"/quests/*/test-location"
 						).permitAll()
 						.requestMatchers("/users/**")
 						.authenticated()
