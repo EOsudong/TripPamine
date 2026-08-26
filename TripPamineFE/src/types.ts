@@ -114,3 +114,59 @@ export interface TourDetail {
   eventEndDate: string | null; // yyyyMMdd, 축제만 값이 있음
   status: "ongoing" | "upcoming" | null; // 축제만 값이 있음
 }
+
+// [금융상품 정보 추가]
+// 금융감독원 오픈API(금융상품 한눈에, FINLIFE) 연동 데이터 구조.
+
+// 상품 하나가 갖는 "기간(개월)별 금리" 옵션 한 줄
+export interface FinancialProductOption {
+  saveTrm: string | null; // 저축 기간(개월), 예: "12"
+  intrRateTypeNm: string | null; // 이자율 종류, 예: "단리" | "복리"
+  intrRate: number | null; // 기본금리(%)
+  intrRate2: number | null; // 최고우대금리(%)
+  rsrvTypeNm: string | null; // 적립유형, 예: "정액적립식" | "자유적립식" (적금만 값이 있음)
+}
+
+// 정기예금/적금 상품 하나의 데이터 구조
+export interface FinancialProduct {
+  finCoNo: string | null;
+  korCoNm: string; // 금융회사명 (예: "국민은행")
+  finPrdtCd: string | null;
+  finPrdtNm: string; // 상품명
+  productType: "deposit" | "saving";
+  joinWay: string | null; // 가입방법
+  joinMember: string | null; // 가입대상
+  joinDenyLabel: "제한없음" | "서민전용" | "일부제한" | null; // 가입제한
+  spclCnd: string | null; // 우대조건
+  mtrtInt: string | null; // 만기 후 이자율 설명
+  etcNote: string | null; // 기타 유의사항
+  dclsMonth: string | null; // 공시 제출월 (yyyyMM)
+  maxRate: number | null; // 옵션 중 최고우대금리 최댓값 (목록 정렬/카드 대표 금리 표시용)
+  options: FinancialProductOption[];
+}
+
+// 조회 대상 업권. "bank"=시중은행(기본값), "savings"=저축은행
+export type FinancialBankType = "bank" | "savings";
+
+// [금융상품 추천 추가]
+export interface FinancialRecommendation {
+  matchedTerm: string | null; // 추천 근거로 사용한 기간(개월)
+  matchedIntrRate: number | null; // 위 기간의 기본금리
+  matchedIntrRate2: number | null; // 위 기간의 최고우대금리
+  estimatedInterest: number | null; // 입력한 예치금액 기준 세전 예상이자(단리, 참고용). 금액을 안 넣으면 null
+  reason: string; // 추천 이유 한 줄 설명
+  product: FinancialProduct; // 상품 상세(옵션 전체 포함) — 카드 렌더링에 그대로 재사용
+}
+
+// [금융상품 북마크 추가]
+export interface FinancialProductBookmark {
+  bookmarkId: string; // `${finCoNo}_${finPrdtCd}` 형태의 고유 키
+  finCoNo: string | null;
+  finPrdtCd: string | null;
+  korCoNm: string;
+  finPrdtNm: string;
+  productType: "deposit" | "saving";
+  maxRate: number | null;
+  joinWay: string | null;
+  createdAt: string;
+}

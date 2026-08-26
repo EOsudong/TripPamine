@@ -101,3 +101,8 @@ openai:
 mock-bank:
   # Mock 서버가 이 애플리케이션 안에 함께 떠 있으므로 기본값은 자기 자신(localhost)
   base-url: http://localhost:${server.port}
+
+finlife:
+  api:
+    base-url: https://finlife.fss.or.kr/finlifeapi
+    auth-key: ${FINLIFE_API_KEY}

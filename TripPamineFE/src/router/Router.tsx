@@ -13,9 +13,10 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
-import QuestPage from "../pages/QuestPage";
-import QuestDetailPage from "../pages/QuestDetailPage";
-import ProtectedRoute from "../components/ProtectedRoute";
+import QuestPage from "../pages/QuestPage"
+import QuestDetailPage from "../pages/QuestDetailPage"
+import FinancialProductsPage from "../pages/FinancialProductsPage"
+import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
   return (
@@ -28,47 +29,48 @@ export default function Router() {
         <Route path="/find-pw" element={<FindPw />} /> {/* 비밀번호 찾기 */}
         {/* 마이페이지 (북마크/저장된 코스/가계부) — 로그인한 사용자만 접근 가능.
             로그인 안 한 상태로 들어오면 ProtectedRoute가 /login으로 보내고, 로그인 성공 후 다시 여기로 돌아옴 */}
-        <Route
-          path="/mypage"
-          element={
-            <ProtectedRoute>
-              <MyPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/gps-test" element={<GpsTest />} />
-        {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
+                <Route
+                    path="/mypage"
+                    element={
+                        <ProtectedRoute>
+                            <MyPage />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
           여기로 리다이렉트함.*/}
-        <Route path="/oauth/callback" element={<OAuthCallback />} />
-        {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
+                {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
             type(destination|festival)과 id 값을 URL에서 그대로 받아서 Detail.jsx에서 분기 처리 */}
-        <Route path="/detail/:type/:id" element={<Detail />} />
-        {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
+                <Route path="/detail/:type/:id" element={<Detail />} />
+                {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
             categoryKey는 data/tourCategories.ts의 key("festivals"|"destinations"|"industry")와 매칭됨 */}
-        <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
-        {/* 위 목록 페이지에서 카드를 클릭하면 이동하는 상세 페이지 (TourItemCard.tsx -> TourDetailPage.tsx) */}
-        <Route
-          path="/tour/:categoryKey/:contentId"
-          element={<TourDetailPage />}
-        />
-        <Route path="/ai-recommend" element={<AiRecommendPage />} />
-        <Route
-          path="/quests"
-          element={
-            <ProtectedRoute>
-              <QuestPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/quests/:questId"
-          element={
-            <ProtectedRoute>
-              <QuestDetailPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
-  );
+                <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
+                {/* 위 목록 페이지에서 카드를 클릭하면 이동하는 상세 페이지 (TourItemCard.tsx -> TourDetailPage.tsx) */}
+                <Route path="/tour/:categoryKey/:contentId" element={<TourDetailPage />} />
+                <Route path="/ai-recommend" element={<AiRecommendPage />} />
+                <Route
+                    path="/quests"
+                    element={
+                        <ProtectedRoute>
+                            <QuestPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/quests/:questId"
+                    element={
+                        <ProtectedRoute>
+                            <QuestDetailPage />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* 사이드바 "정보" 그룹의 "금융상품" 메뉴. 금융감독원 오픈API(금융상품 한눈에)로 받아오는
+            정기예금/적금 정보를 보여주는 공개 페이지 — tour 페이지들과 마찬가지로 로그인 없이도
+            접근 가능하도록 ProtectedRoute로 감싸지 않습니다. */}
+                <Route path="/finance" element={<FinancialProductsPage />} />
+            </Routes>
+        </BrowserRouter>
+
+    )
 }
