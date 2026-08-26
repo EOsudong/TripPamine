@@ -1,7 +1,6 @@
 // React Router 설정 파일.
 // URL 주소(경로)와 어떤 페이지 컴포넌트를 보여줄지 여기서 한 번에 관리합니다.
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import GpsTest from "../pages/test/GpsTest.tsx";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Join from "../pages/Join";
@@ -16,6 +15,7 @@ import AiRecommendPage from "../pages/AiRecommendPage";
 import QuestPage from "../pages/QuestPage";
 import QuestDetailPage from "../pages/QuestDetailPage";
 import ProtectedRoute from "../components/ProtectedRoute";
+import QuestLocationServerTest from "../pages/test/QuestLocationServerTest.tsx";
 
 export default function Router() {
   return (
@@ -36,7 +36,10 @@ export default function Router() {
             </ProtectedRoute>
           }
         />
-        <Route path="/gps-test" element={<GpsTest />} />
+          <Route
+              path="/quest-location-test"
+              element={<QuestLocationServerTest />}
+          />
         {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
           여기로 리다이렉트함.*/}
         <Route path="/oauth/callback" element={<OAuthCallback />} />

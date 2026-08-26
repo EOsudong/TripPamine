@@ -1,7 +1,11 @@
 import axios from "axios";
 
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080"
+).replace(/\/$/, "");
+
 export const api = axios.create({
-  baseURL: "http://localhost:8080", // 백엔드 서버 Base URL
+  baseURL: API_BASE_URL, // 백엔드 서버
   headers: {
     "Content-Type": "application/json",
   },
