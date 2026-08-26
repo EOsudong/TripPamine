@@ -182,7 +182,11 @@ export default function QuestDetailPage() {
               ) : (
                 <section className="grid gap-6 lg:grid-cols-3">
                   <div className="h-[480px] overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-xl lg:col-span-2">
-                    <QuestMapView quest={quest} />
+                    <QuestMapView
+                        quest={quest}
+                        active={questLog.status !== "SUCCESS"}
+                    />
+
                   </div>
                   <div className="flex flex-col gap-4">
                     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-xs text-slate-400">
