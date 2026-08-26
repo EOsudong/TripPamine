@@ -113,6 +113,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						//인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
 						.requestMatchers(
+								"/ws/**",
 								"/admin/auth/login",
 								"/users/auth/login",
 								"/users/auth/signup",

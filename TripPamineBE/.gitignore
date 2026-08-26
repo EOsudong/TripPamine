@@ -43,3 +43,4 @@ src/main/resources/API/google-credentials.json
 
 ### .env 등록 ###
 .env
+/src/main/resources/wallets/

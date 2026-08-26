@@ -1,9 +1,11 @@
 package com.example.trippaminebe.domain.nego.controller;
 
 import com.example.trippaminebe.domain.nego.dto.response.AiNegoLogResponse;
+import com.example.trippaminebe.domain.nego.dto.resquest.NegoAcceptRequest;
 import com.example.trippaminebe.domain.nego.service.AiNegoService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,15 +30,17 @@ public class AiNegoController {
     public ResponseEntity<List<AiNegoLogResponse>> findActiveOffers(
         @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        return ResponseEntity.ok(aiNegoService.findActiveOffers(getUserId(userDetails)));
+        return ResponseEntity.ok(aiNegoService
+            .findActiveOffers(getUserId(userDetails)));
     }
 
     @PostMapping("/{negoId}/accept")
     @Operation(summary = "카운트다운 만료 전 핫딜 수락(결제 전환)")
     public ResponseEntity<AiNegoLogResponse> accept(
         @AuthenticationPrincipal CustomUserDetails userDetails,
-        @PathVariable Long negoId
+        @PathVariable Long negoId,
+        @Valid @RequestBody NegoAcceptRequest request
     ) {
-        return ResponseEntity.ok(aiNegoService.accept(getUserId(userDetails), negoId));
+        return ResponseEntity.ok(aiNegoService.accept(getUserId(userDetails), negoId, request.getAccountId()));
     }
 }

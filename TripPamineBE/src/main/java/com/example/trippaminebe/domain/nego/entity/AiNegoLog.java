@@ -17,39 +17,54 @@ import java.time.LocalDateTime;
 @Builder
 public class AiNegoLog {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "SEQ_AI_NEGO_LOGS_GEN")
-    @SequenceGenerator(name = "SEQ_AI_NEGO_LOGS_GEN", sequenceName = "SEQ_AI_NEGO_LOGS", allocationSize = 1)
-    @Column(name = "NEGO_ID")
-    private Long negoId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "SEQ_AI_NEGO_LOGS_GEN")
+	@SequenceGenerator(name = "SEQ_AI_NEGO_LOGS_GEN", sequenceName = "SEQ_AI_NEGO_LOGS", allocationSize = 1)
+	@Column(name = "NEGO_ID")
+	private Long negoId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "USER_ID", nullable = false)
-    private User user;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "USER_ID", nullable = false)
+	private User user;
 
-    @Column(name = "ITEM_NAME", nullable = false, length = 100)
-    private String itemName;
+	@Column(name = "ITEM_NAME", nullable = false, length = 100)
+	private String itemName;
 
-    @Column(name = "OFFERED_PRICE", nullable = false)
-    private BigDecimal offeredPrice;
+	@Column(name = "OFFERED_PRICE", nullable = false)
+	private BigDecimal offeredPrice;
 
-    @Column(name = "EXPIRED_AT", nullable = false)
-    private LocalDateTime expiredAt;
+	@Column(name = "EXPIRED_AT", nullable = false)
+	private LocalDateTime expiredAt;
 
-    @Column(name = "CONVERSION_YN", nullable = false, columnDefinition = "CHAR(1)")
-    @Builder.Default
-    private String conversionYn = "N";
+	@Column(name = "CONVERSION_YN", nullable = false, columnDefinition = "CHAR(1)")
+	@Builder.Default
+	private String conversionYn = "N";
 
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(this.expiredAt);
-    }
+	@Column(name = "DISCOUNT_RATE", precision = 5, scale = 4)
+	private BigDecimal discountRate;
 
-    public boolean isConverted() {
-        return "Y".equals(this.conversionYn);
-    }
+	@Column(name = "TRIGGER_REASON", length = 30)
+	private String triggerReason;
 
-    // 카운트다운 만료 전 결제 완료 처리
-    public void convert() {
-        this.conversionYn = "Y";
-    }
+	// Account 엔티티와 직접 연관관계를 맺지 않고 ID만 보관
+	// (account 도메인과 nego 도메인을 느슨하게 결합 유지 — travel 도메인이
+	//  TravelLedger에서 ROUTE_ITEM_ID를 그냥 Long으로만 갖는 것과 동일한 패턴)
+	@Column(name = "PAYMENT_ACCOUNT_ID")
+	private Long paymentAccountId;
+
+	@Column(name = "PAID_AT")
+	private LocalDateTime paidAt;
+
+	public boolean isExpired() {
+		return LocalDateTime.now().isAfter(this.expiredAt);
+	}
+
+	public boolean isConverted() {
+		return "Y".equals(this.conversionYn);
+	}
+
+	// 카운트다운 만료 전 결제 완료 처리
+	public void convert() {
+		this.conversionYn = "Y";
+	}
 }
