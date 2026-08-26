@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @Component
 public class VincentyDistanceCalculator {
 
-	// WGS-84 타원체 상수 정의
+	// 타원체 상수 정의
 	private static final double SEMI_MAJOR_AXIS_A = 6378137.0; // 지구 적도 반지름 (a)
 	private static final double SEMI_MINOR_AXIS_B = 6356752.314245; // 지구 극 반지름 (b)
 	private static final double FLATTENING_F = 1 / 298.257223563; // 편평률 (f)

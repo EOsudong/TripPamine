@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,11 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
   private final JWTUtils jwtUtils;
+
+  // 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소.
+  // application.yaml의 app.oauth2.redirect-uri (기본값 http://localhost:5173/oauth/callback)
+  @Value("${app.oauth2.redirect-uri}")
+  private String redirectUri;
 
   @Override
   public void onAuthenticationSuccess(
@@ -48,9 +54,16 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     log.info("소셜 로그인 성공 - 사용자 이메일: {}, 발급된 JWT 생성 완료", user.getEmail());
 
-    // 프론트엔드로 리다이렉트 (SecurityConfig cors 설정에 맞춘 http://localhost:5173)
+    // 프론트엔드 콜백으로 리다이렉트.
+    //
+    // [수정] 전에는 "http://localhost:5173/oauth/callback"이 여기에 그대로 박혀 있었다.
+    // 그래서 프론트를 localhost가 아닌 주소로 띄우면(휴대폰 GPS 테스트를 하려면 브라우저
+    // Geolocation이 HTTPS를 요구하기 때문에 터널 주소를 쓸 수밖에 없다) 소셜 로그인은
+    // 성공해도 폰이 localhost:5173으로 리다이렉트돼서 항상 실패했다.
+    // 이제 app.oauth2.redirect-uri 설정값을 쓰고, 배포 환경에서는 환경변수
+    // OAUTH2_REDIRECT_URI로 덮어쓸 수 있다.
     String redirectUrl = UriComponentsBuilder
-        .fromUriString("http://localhost:5173/oauth/callback")
+        .fromUriString(redirectUri)
         .queryParam("accessToken", accessToken)
         .build()
         .toUriString();

@@ -66,6 +66,25 @@ public class JWTUtils {
     }
   }
 
+  // 토큰의 만료 시각(exp 클레임)을 꺼낸다. TokenBlacklistService가 "이 토큰을 언제까지
+  // 블랙리스트에 들고 있어야 하는지" 판단하는 데 사용 - 토큰 자체가 만료되면 어차피
+  // validateToken()에서 걸러지므로 블랙리스트에 영원히 남아있을 필요가 없다.
+
+  // 이미 만료된 토큰이 로그아웃 요청과 함께 들어오는 경우에도(드물지만) exp 값 자체는
+  // 여전히 필요하므로, ExpiredJwtException이 던져지면 예외 안에 담긴 Claims에서
+  // 만료 시각을 꺼내 재사용한다 (jjwt는 만료 예외에도 파싱된 claims를 담아준다).
+  // 서명이 잘못됐거나 형식이 깨진 토큰처럼 애초에 파싱 자체가 불가능한 경우엔 null을 반환하고,
+  // 호출부(TokenBlacklistService)가 기본 보관 기간을 적용한다.
+  public Date getExpirationFromToken(String token) {
+    try {
+      return getClaims(token).getExpiration();
+    } catch (ExpiredJwtException e) {
+      return e.getClaims().getExpiration();
+    } catch (JwtException | IllegalArgumentException e) {
+      return null;
+    }
+  }
+
   // Access Token 생성 (관리자용 오버로드).
   public String createAccessToken(Admin admin, String status) {
     Date now = new Date();
@@ -85,10 +104,5 @@ public class JWTUtils {
   // 헷갈리지 않도록 이름을 따로 둠 (AdminJWTAuthenticationFilter에서 호출)
   public String getLoginIdFromToken(String token) {
     return getClaims(token).getSubject();
-  }
-
-  //로그아웃된 토큰인지 확인
-  public String tokenBlacklistService(String token){
-    return token;
   }
 }

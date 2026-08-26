@@ -75,7 +75,23 @@ encrypt:
 
 jwt:
   secret: ${JWT_SECRET_KEY}
-  expiration: ${jwt.expiration}
+  # [수정] 예전 값은 `${jwt.expiration}` - 자기 자신을 가리키는 자기참조 플레이스홀더였다.
+  # 환경변수 JWT_EXPIRATION이 우연히 설정돼 있으면 우선순위 덕에 동작했지만,
+  # 없으면 circular placeholder reference로 애플리케이션 부팅 자체가 실패한다.
+  # 이제 환경변수를 우선 쓰되 없으면 기본 1시간(ms)으로 안전하게 떨어진다.
+  expiration: ${JWT_EXPIRATION:3600000}
+
+# 배포 환경마다 달라지는 프론트엔드 관련 설정.
+# 로컬 개발은 기본값 그대로 쓰면 되고, 폰 테스트용 터널이나 실제 배포 시에는
+# 환경변수(OAUTH2_REDIRECT_URI / CORS_ALLOWED_ORIGINS)로 덮어쓴다.
+app:
+  oauth2:
+    # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소.
+    redirect-uri: http://localhost:5173/oauth/callback
+  cors:
+    # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
+    # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
+    allowed-origins: http://localhost:5173,http://localhost:5174,https://site-daisy-beaches-session.trycloudflare.com
 
 server:
   port: 8080
@@ -96,3 +112,13 @@ tour:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+# [Mock 은행 연동 추가] 계좌연동(실명확인) 시 호출하는 Mock 오픈뱅킹 서버 설정.
+mock-bank:
+  # Mock 서버가 이 애플리케이션 안에 함께 떠 있으므로 기본값은 자기 자신(localhost)
+  base-url: http://localhost:${server.port}
+
+finlife:
+  api:
+    base-url: https://finlife.fss.or.kr/finlifeapi
+    auth-key: ${FINLIFE_API_KEY}

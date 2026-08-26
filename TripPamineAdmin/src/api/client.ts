@@ -1,7 +1,31 @@
-// 백엔드와 통신하는 모든 요청이 거쳐가는 공통 함수.
-// - 로그인 후 저장해둔 토큰을 자동으로 Authorization 헤더에 실어줌
-// - 에러 응답을 일관된 형태로 던져줌 (각 페이지에서 매번 처리 안 해도 되게)
-const TOKEN_KEY = "adminToken" // localStorage 키. 일반 사용자용 "userToken"과 절대 겹치지 않게 이름을 분리함
+// 관리자 API 공통 클라이언트.
+// - JWT 자동 첨부
+// - JWT exp 만료 선제 감지
+// - 인증 API의 401 응답 시 세션 정리 후 로그인 화면 이동
+const TOKEN_KEY = "adminToken"
+const MAX_TIMER_DELAY = 2_147_483_647
+let redirectInProgress = false
+
+interface JwtPayload {
+  exp?: number
+}
+
+function decodeJwtPayload(token: string): JwtPayload | null {
+  try {
+    const payloadPart = token.split(".")[1]
+    if (!payloadPart) return null
+
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")
+    const binary = window.atob(padded)
+    const bytes = Uint8Array.from(binary, (character) =>
+        character.charCodeAt(0),
+    )
+    return JSON.parse(new TextDecoder().decode(bytes)) as JwtPayload
+  } catch {
+    return null
+  }
+}
 
 export function getAdminToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -9,14 +33,49 @@ export function getAdminToken(): string | null {
 
 export function setAdminToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token)
+  sessionStorage.removeItem("adminSessionExpired")
+  redirectInProgress = false
 }
 
 export function clearAdminToken(): void {
   localStorage.removeItem(TOKEN_KEY)
 }
 
+export function getAdminTokenExpirationMillis(token: string): number | null {
+  const payload = decodeJwtPayload(token)
+  return typeof payload?.exp === "number" ? payload.exp * 1000 : null
+}
+
+export function isAdminTokenExpired(
+    token: string,
+    currentTime: number = Date.now(),
+): boolean {
+  const expiration = getAdminTokenExpirationMillis(token)
+  return expiration == null || expiration <= currentTime
+}
+
+export function expireAdminSession(): void {
+  clearAdminToken()
+  sessionStorage.setItem("adminSessionExpired", "true")
+
+  if (redirectInProgress || window.location.pathname === "/login") {
+    return
+  }
+
+  redirectInProgress = true
+  window.location.replace("/login?reason=session-expired")
+}
+
+export function getSafeTimerDelay(expirationMillis: number): number {
+  return Math.min(
+      Math.max(0, expirationMillis - Date.now()),
+      MAX_TIMER_DELAY,
+  )
+}
+
 export class ApiError extends Error {
   status: number
+
   constructor(message: string, status: number) {
     super(message)
     this.status = status
@@ -26,35 +85,50 @@ export class ApiError extends Error {
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE" | "PUT"
   body?: unknown
-  auth?: boolean // true면 Authorization 헤더 자동 첨부 (기본값 true)
+  auth?: boolean
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(
+    path: string,
+    options: RequestOptions = {},
+): Promise<T> {
   const { method = "GET", body, auth = true } = options
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (auth) {
-    const token = getAdminToken()
-    if (token) headers["Authorization"] = `Bearer ${token}`
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
   }
 
-  const res = await fetch(path, {
+  if (auth) {
+    const token = getAdminToken()
+    if (token && isAdminTokenExpired(token)) {
+      expireAdminSession()
+      throw new ApiError("관리자 로그인이 만료되었습니다.", 401)
+    }
+    if (token) headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  // 204 No Content처럼 본문이 없는 응답 처리 (예: 회원 정지 API)
-  if (res.status === 204) {
+  if (response.status === 204) {
     return undefined as T
   }
 
-  const data = await res.json().catch(() => null)
+  const data = await response.json().catch(() => null)
 
-  if (!res.ok) {
-    // 백엔드 IllegalArgumentException 메시지가 있으면 그걸 그대로 보여줌
-    const message = data?.message ?? "요청 처리 중 오류가 발생했습니다."
-    throw new ApiError(message, res.status)
+  if (!response.ok) {
+    if (auth && response.status === 401) {
+      expireAdminSession()
+    }
+
+    const message =
+        data?.message ??
+        (response.status === 401
+            ? "관리자 로그인이 만료되었습니다."
+            : "요청 처리 중 오류가 발생했습니다.")
+    throw new ApiError(message, response.status)
   }
 
   return data as T
