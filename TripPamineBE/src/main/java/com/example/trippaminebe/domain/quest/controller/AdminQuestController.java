@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// TripPamineAdmin README의 "아직 없는 기능 - 퀘스트 관리"에 해당하는 관리자 전용 CRUD API
 @RestController
 @RequestMapping("/admin/quests")
 @RequiredArgsConstructor
