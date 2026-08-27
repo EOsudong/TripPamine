@@ -15,6 +15,7 @@ import AiRecommendPage from "../pages/AiRecommendPage";
 import QuestPage from "../pages/QuestPage"
 import QuestDetailPage from "../pages/QuestDetailPage"
 import FinancialProductsPage from "../pages/FinancialProductsPage"
+import MysteryTourPlay from "../pages/MysteryTourPlay"   // ← 추가
 import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
@@ -68,6 +69,16 @@ export default function Router() {
             정기예금/적금 정보를 보여주는 공개 페이지 — tour 페이지들과 마찬가지로 로그인 없이도
             접근 가능하도록 ProtectedRoute로 감싸지 않습니다. */}
                 <Route path="/finance" element={<FinancialProductsPage />} />
+          <Route path="/finance" element={<FinancialProductsPage />} />
+          {/* 미스터리 투어 생성 후 이동하는 진행 화면 */}
+          <Route
+              path="/mystery-tour/:mysteryTourId"
+              element={
+                  <ProtectedRoute>
+                      <MysteryTourPlay />
+                  </ProtectedRoute>
+              }
+          />
             </Routes>
         </BrowserRouter>
 
