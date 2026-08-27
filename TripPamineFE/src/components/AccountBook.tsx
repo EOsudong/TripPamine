@@ -33,6 +33,7 @@ const CATEGORY_MAP: Record<string, string> = {
   CULTURE: '문화/여가',
   HOUSING: '주거/통신',
   SALARY: '급여/수입',
+  TRAVEL: '여행/숙박', // AI 타임 네고 결제 등 여행 관련 지출
   ETC: '기타/용돈',
 };
 
@@ -109,6 +110,17 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountsRefreshSignal]);
+
+  // AI 타임 네고 결제 등 이 컴포넌트 밖에서 가계부 항목이 생겼을 때 목록을 즉시 갱신한다.
+  useEffect(() => {
+    const refresh = () => {
+      fetchTransactions();
+      fetchAccounts();
+    };
+    window.addEventListener('trippamine:ledger-changed', refresh);
+    return () => window.removeEventListener('trippamine:ledger-changed', refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (type === 'income') {
@@ -339,7 +351,6 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
           <div className="bg-gradient-to-br from-sky-500 to-sky-600 rounded-2xl p-5 text-white shadow-md shadow-sky-200/50 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold text-sky-100 uppercase tracking-wider">총 수입</span>
-              <span className="text-lg">🎯</span>
             </div>
             <span className="text-xl font-extrabold tracking-tight">+{totalIncome.toLocaleString()}원</span>
           </div>
@@ -348,7 +359,6 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
           <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-md shadow-amber-200/50 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold text-amber-100 uppercase tracking-wider">총 지출</span>
-              <span className="text-lg">⚡</span>
             </div>
             <span className="text-xl font-extrabold tracking-tight">-{totalExpense.toLocaleString()}원</span>
           </div>
@@ -357,7 +367,6 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white shadow-md shadow-slate-300/50 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">현재 잔액</span>
-              <span className="text-lg">❤️</span>
             </div>
             <span className="text-xl font-extrabold tracking-tight">{netBalance.toLocaleString()}원</span>
           </div>
@@ -535,7 +544,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                     <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                       <span>{formatDateTime(t.transactionDate)}</span>
                       <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 font-bold text-[10px]">
-                  #{CATEGORY_MAP[t.category || 'ETC']?.split(' ')[1] || '기타'}
+                  #{CATEGORY_MAP[t.category || 'ETC'] || '기타'}
                 </span>
                       {linkedAccountName && (
                           <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-bold text-[10px]" title="이 내역은 연동 계좌 잔액에 반영됨">

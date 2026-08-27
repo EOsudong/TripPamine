@@ -43,8 +43,19 @@ export interface MysteryQuestResponse {
   verifyType: string;
   targetLat: number | null;
   targetLng: number | null;
+  // verifyType이 "GPS"일 때만 값이 있다. 그 외 타입은 null.
+  clearRadiusMeters: number | null;
   rewardPoint: number;
   status: string;
+}
+
+// completeMysteryQuest 요청 바디 - verifyType이 "GPS"인 퀘스트만 채워서 보내면 된다.
+// PHOTO/SIMPLE 타입은 지금처럼 location 없이 호출해도 그대로 동작한다(백엔드가 GPS일 때만 검증).
+export interface MysteryQuestCompleteRequest {
+  currentLat: number;
+  currentLng: number;
+  // GPS Horizontal Accuracy(오차 반경, m) - 선택값. 없으면 서버는 정확도 검증을 건너뛰고 거리만 검증한다.
+  accuracyMeters?: number;
 }
 
 // [TODO] 백엔드 MysteryTourController가 아직 userId를 쿼리 파라미터로 받고 있어서
@@ -110,14 +121,17 @@ export const getCurrentMysteryQuest = async (
   return response.status === 204 ? null : response.data;
 };
 
-/** 퀘스트 완료 처리. 다음 퀘스트가 없으면(204) null */
+/** 퀘스트 완료 처리. GPS 타입 퀘스트는 location을 함께 보내야 서버가 위치를 검증한다.
+ *  PHOTO/SIMPLE 타입은 location 없이 호출해도 된다(기존과 동일).
+ *  다음 퀘스트가 없으면(204) null */
 export const completeMysteryQuest = async (
     mysteryTourId: number,
     mysteryQuestId: number,
+    location?: MysteryQuestCompleteRequest,
 ): Promise<MysteryQuestResponse | null> => {
   const response = await api.post<MysteryQuestResponse>(
       `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/complete`,
-      {},
+      location ?? {},
       { validateStatus: allowNoContent },
   );
 

@@ -18,6 +18,8 @@ public class MysteryQuestResponse {
 
     private BigDecimal targetLat;
     private BigDecimal targetLng;
+    // verifyType이 GPS일 때만 값이 채워진다(그 외 타입은 null). 지도에 인증 반경 원을 그리는 용도.
+    private Integer clearRadiusMeters;
 
     private Integer rewardPoint;
     private String status;

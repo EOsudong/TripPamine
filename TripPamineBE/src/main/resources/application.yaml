@@ -86,8 +86,8 @@ jwt:
 # 환경변수(OAUTH2_REDIRECT_URI / CORS_ALLOWED_ORIGINS)로 덮어쓴다.
 app:
   oauth2:
-    # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소. http://localhost:5173/oauth/callback
-    redirect-uri: https://renewable-webster-refresh-dentists.trycloudflare.com/oauth/callback
+    # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소. http://localhost:5173/oauth/callback or http://.../trycloudflare.com
+    redirect-uri: http://localhost:5173/oauth/callback
   cors:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
@@ -113,6 +113,13 @@ tour:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+# Kakao Local(키워드 장소 검색) API 설정. 미스터리 투어 퀘스트 좌표 확정에 사용한다.
+# rest-api-key는 Kakao Developers의 REST API 키이며, 카카오 OAuth client-id와 동일한 값이다.
+kakao:
+  local:
+    base-url: https://dapi.kakao.com
+    rest-api-key: ${KAKAO_REST_API_KEY:${KAKAO_CLIENT_ID}}
 
 # [Mock 은행 연동 추가] 계좌연동(실명확인) 시 호출하는 Mock 오픈뱅킹 서버 설정.
 mock-bank:

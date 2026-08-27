@@ -4,7 +4,6 @@ import com.example.trippaminebe.domain.account.entity.Account;
 import com.example.trippaminebe.domain.account.repository.AccountRepository;
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.entity.TravelLedger;
-import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
 import com.example.trippaminebe.domain.accountbook.repository.TravelLedgerRepository;
 import com.example.trippaminebe.domain.accountbook.service.AccountBookService;
 import com.example.trippaminebe.domain.nego.dto.response.AiNegoLogResponse;
@@ -33,8 +32,8 @@ public class AiNegoService {
 
 	private static final Logger log = LoggerFactory.getLogger(AiNegoService.class);
 
-	// DDL 주석 기준: 발송 시점 + 60초 후 카운트다운 만료
-	private static final long OFFER_TTL_SECONDS = 60;
+	// DDL 주석 기준: 발송 시점 + 90초 후 카운트다운 만료
+	private static final long OFFER_TTL_SECONDS = 90;
 
 	// 출발 임박 블라인드/일반 여행에 대한 임시 할인율 (실 서비스에서는 상품/재고 API 연동으로 대체)
 	private static final BigDecimal DISCOUNT_RATE = new BigDecimal("0.30");
@@ -138,7 +137,15 @@ public class AiNegoService {
 		log.info("AI 타임 네고 발송: userId={}, item={}, offeredPrice={}, rate={}, reason={}",
 				user.getId(), itemName, offeredPrice, decision.rate(), decision.reason());
 
-		// [WebSocket 추가 시] 여기서 messagingTemplate.convertAndSendToUser(...) 호출
+		// WebSocket으로 해당 유저에게 실시간 푸시.
+		// NegoStompAuthInterceptor가 CONNECT 시 Principal.name을 이메일(CustomUserDetails.getUsername())로
+		// 세팅하므로, convertAndSendToUser의 첫 인자도 이메일이어야 클라이언트의 /user/queue/nego 구독과 매칭된다.
+		// 폴링(/nego/active)은 소켓이 끊긴 사이의 누락을 메우는 백업 경로로 유지한다.
+		messagingTemplate.convertAndSendToUser(
+				user.getEmail(),
+				"/queue/nego",
+				AiNegoLogResponse.from(offer)
+		);
 	}
 
 	// 여행 지출 패턴을 분석해 할인율과 트리거 사유를 결정한다.

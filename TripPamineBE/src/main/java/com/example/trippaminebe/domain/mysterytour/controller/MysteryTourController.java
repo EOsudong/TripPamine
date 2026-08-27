@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.mysterytour.controller;
 
+import com.example.trippaminebe.domain.mysterytour.dto.MysteryQuestCompleteRequest;
 import com.example.trippaminebe.domain.mysterytour.dto.MysteryTourCreateRequest;
 import com.example.trippaminebe.domain.mysterytour.dto.MysteryTourCreateResponse;
 import com.example.trippaminebe.domain.mysterytour.service.MysteryTourService;
@@ -77,13 +78,15 @@ public class MysteryTourController {
     @PostMapping("/{mysteryTourId}/quests/{mysteryQuestId}/complete")
     public ResponseEntity<MysteryQuestResponse> completeQuest(
             @PathVariable Long mysteryTourId,
-            @PathVariable Long mysteryQuestId
+            @PathVariable Long mysteryQuestId,
+            @RequestBody MysteryQuestCompleteRequest request
     ) {
 
         MysteryQuestResponse response =
                 mysteryTourService.completeQuest(
                         mysteryTourId,
-                        mysteryQuestId
+                        mysteryQuestId,
+                        request
                 );
 
         if (response == null) {

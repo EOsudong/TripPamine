@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.mysterytour.entity;
 
+import com.example.trippaminebe.domain.mysterytour.exception.MysteryTourStateConflictException;
 import com.example.trippaminebe.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -64,7 +65,8 @@ public class MysteryTour {
     private String aiPlanJson;
 
     @Column(name = "STATUS", nullable = false, length = 20)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private MysteryProgressStatus status;
 
     @Column(name = "CREATED_AT", nullable = false)
     private LocalDateTime createdAt;
@@ -74,6 +76,9 @@ public class MysteryTour {
 
     @Column(name = "COMPLETED_AT")
     private LocalDateTime completedAt;
+
+    @Column(name = "ABANDONED_AT")
+    private LocalDateTime abandonedAt;
 
     @OneToMany(
             mappedBy = "mysteryTour",
@@ -86,11 +91,46 @@ public class MysteryTour {
     @PrePersist
     protected void onCreate() {
         if (status == null) {
-            status = "READY";
+            status = MysteryProgressStatus.READY;
         }
 
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+    }
+
+    public void start() {
+        if (status != MysteryProgressStatus.READY) {
+            throw new MysteryTourStateConflictException("준비 상태의 미스터리 투어만 시작할 수 있습니다.");
+        }
+
+        status = MysteryProgressStatus.PROGRESS;
+        startedAt = LocalDateTime.now();
+    }
+
+    public void complete() {
+        if (status != MysteryProgressStatus.PROGRESS) {
+            throw new MysteryTourStateConflictException("진행 중인 미스터리 투어만 완료할 수 있습니다.");
+        }
+
+        status = MysteryProgressStatus.SUCCESS;
+        completedAt = LocalDateTime.now();
+    }
+
+    public void cancel() {
+        if (status != MysteryProgressStatus.READY) {
+            throw new MysteryTourStateConflictException("이미 시작된 미스터리 투어는 취소할 수 없습니다.");
+        }
+
+        status = MysteryProgressStatus.CANCELLED;
+    }
+
+    public void abandon() {
+        if (status != MysteryProgressStatus.PROGRESS) {
+            throw new MysteryTourStateConflictException("진행 중인 미스터리 투어만 포기할 수 있습니다.");
+        }
+
+        status = MysteryProgressStatus.ABANDONED;
+        abandonedAt = LocalDateTime.now();
     }
 }

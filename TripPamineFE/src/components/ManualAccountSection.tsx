@@ -89,6 +89,14 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
 
+  // AI 타임 네고 결제 등으로 계좌 잔액이 바뀌었을 때 조용히 재조회
+  useEffect(() => {
+    const refresh = () => loadAccounts({ silent: true });
+    window.addEventListener("trippamine:ledger-changed", refresh);
+    return () => window.removeEventListener("trippamine:ledger-changed", refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);

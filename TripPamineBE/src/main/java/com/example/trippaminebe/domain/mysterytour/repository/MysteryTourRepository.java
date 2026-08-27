@@ -1,6 +1,7 @@
 package com.example.trippaminebe.domain.mysterytour.repository;
 
 import com.example.trippaminebe.domain.mysterytour.entity.MysteryTour;
+import com.example.trippaminebe.domain.mysterytour.entity.MysteryProgressStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -14,11 +15,11 @@ public interface MysteryTourRepository
 
     Optional<MysteryTour> findFirstByUser_IdAndStatusOrderByCreatedAtDesc(
             Long userId,
-            String status
+            MysteryProgressStatus status
     );
 
     Optional<MysteryTour> findFirstByUser_IdAndStatusInOrderByCreatedAtDesc(
             Long userId,
-            List<String> statuses
+            List<MysteryProgressStatus> statuses
     );
 }

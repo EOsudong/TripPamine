@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    // sockjs-client(@stomp/stompjs 소켓 팩토리)가 브라우저에 없는 `global`을 참조하므로 매핑해준다.
+    define: {
+      global: "globalThis",
+    },
     server: {
       host: true,
       hmr: tunnelHost

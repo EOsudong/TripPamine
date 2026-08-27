@@ -1,6 +1,7 @@
 package com.example.trippaminebe.domain.mysterytour.repository;
 
 import com.example.trippaminebe.domain.mysterytour.entity.MysteryQuest;
+import com.example.trippaminebe.domain.mysterytour.entity.MysteryProgressStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -22,7 +23,7 @@ public interface MysteryQuestRepository
     Optional<MysteryQuest>
     findFirstByMysteryTour_MysteryTourIdAndStatusOrderByQuestOrderAsc(
             Long mysteryTourId,
-            String status
+            MysteryProgressStatus status
     );
 
     Optional<MysteryQuest>

@@ -52,12 +52,16 @@ public class MysteryTourAiService {
                 4. 퀘스트는 여행 기간에 적절하게 분배하여 총 4개 생성합니다.
                 5. 퀘스트는 반드시 4개 생성합니다.
                 6. 퀘스트는 실제 여행에서 순서대로 수행할 수 있어야 합니다.
-                7. 첫 번째 퀘스트는 목적지로 이동하는 미션으로 구성합니다.
+                7. 첫 번째 퀘스트는 목적지의 실제 도착 지점으로 이동하는 GPS 미션으로 구성합니다.
+                   도시 전체가 아니라 역, 터미널, 관광안내소, 공원 입구처럼 Kakao 지도에서 검색 가능한 장소를 사용합니다.
                 8. 이후 퀘스트는 음식, 관광, 사진, 체험 등을 적절히 구성합니다.
                 9. rewardPoint는 퀘스트당 100~300 사이로 설정합니다.
                 10. verifyType은 GPS, PHOTO, SIMPLE 중 하나만 사용합니다.
-                11. 위도/경도는 확실하지 않으면 null로 출력합니다.
-                12. 반드시 JSON만 출력하고 마크다운은 출력하지 마세요.
+                11. GPS 퀘스트의 placeKeyword는 반드시 실제 존재하며 Kakao 지도에서 검색 가능한
+                    '시/도 + 시/군/구 + 공식 장소명' 형식으로 작성합니다.
+                12. GPS 퀘스트가 아니면 placeKeyword는 null로 출력합니다.
+                13. 위도와 경도는 생성하지 마세요. 좌표는 서버가 Kakao Local API로 확정합니다.
+                14. 반드시 JSON만 출력하고 마크다운은 출력하지 마세요.
 
                 JSON 형식:
 
@@ -69,10 +73,9 @@ public class MysteryTourAiService {
                     {
                       "order": 1,
                       "name": "가평으로 이동하라",
-                      "description": "3시간 안에 가평에 도착하세요.",
+                      "description": "3시간 안에 가평역에 도착하세요.",
                       "verifyType": "GPS",
-                      "targetLat": null,
-                      "targetLng": null,
+                      "placeKeyword": "경기도 가평군 가평역",
                       "timeLimitMin": 180,
                       "rewardPoint": 200
                     }

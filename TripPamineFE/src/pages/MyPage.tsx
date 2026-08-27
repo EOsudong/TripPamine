@@ -53,7 +53,8 @@ export default function MyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("festivals");
+  // 마이페이지 초기 화면 여행 가계부로 설정
+  const [tab, setTab] = useState<Tab>("accountBook");
 
   // 사용자 프로필 정보 관리 상태 - 전부 /users/auth/me 응답을 그대로 신뢰
   const [userName, setUserName] = useState<string | null>(null);

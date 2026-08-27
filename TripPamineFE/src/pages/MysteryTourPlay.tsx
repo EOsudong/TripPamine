@@ -3,8 +3,53 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getCurrentMysteryQuest,
   completeMysteryQuest,
+  type MysteryQuestCompleteRequest,
   type MysteryQuestResponse,
 } from "../api/mysteryTour";
+// quest.ts에 있지만 axios 에러에서 백엔드 메시지를 꺼내는 범용 헬퍼라 이 파일에서도 그대로 재사용한다.
+import { extractQuestErrorMessage } from "../api/quest";
+import { MysteryQuestMapView } from "../components/MysteryQuestMapView";
+
+// verifyType이 GPS인 퀘스트를 완료하기 직전에 한 번만 현재 좌표를 읽어온다.
+// QuestLocationServerTest.tsx의 GPS 수집 방식(getCurrentPosition 1회, enableHighAccuracy)과 동일한 패턴.
+function getCurrentLocationOrThrow(): Promise<MysteryQuestCompleteRequest> {
+  return new Promise((resolve, reject) => {
+    if (!window.isSecureContext) {
+      reject(new Error("GPS는 HTTPS 주소 또는 localhost에서만 사용할 수 있습니다."));
+      return;
+    }
+    if (!navigator.geolocation) {
+      reject(new Error("현재 브라우저는 GPS를 지원하지 않습니다."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        resolve({
+          currentLat: coords.latitude,
+          currentLng: coords.longitude,
+          accuracyMeters: coords.accuracy,
+        });
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            reject(new Error("위치 권한이 거부되었습니다. 설정에서 권한을 허용해 주세요."));
+            break;
+          case error.POSITION_UNAVAILABLE:
+            reject(new Error("현재 위치를 확인할 수 없습니다."));
+            break;
+          case error.TIMEOUT:
+            reject(new Error("위치 확인 시간이 초과되었습니다."));
+            break;
+          default:
+            reject(new Error("GPS 정보를 가져오는 중 오류가 발생했습니다."));
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  });
+}
 
 export default function MysteryTourPlay() {
   const navigate = useNavigate();
@@ -13,6 +58,7 @@ export default function MysteryTourPlay() {
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [tourCompleted, setTourCompleted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadQuest = async () => {
@@ -35,10 +81,16 @@ export default function MysteryTourPlay() {
 
     try {
       setCompleting(true);
+      setErrorMessage(null);
+
+      // GPS 타입일 때만 위치를 읽어서 함께 보낸다. PHOTO/SIMPLE은 지금처럼 location 없이 호출.
+      const location =
+        quest.verifyType === "GPS" ? await getCurrentLocationOrThrow() : undefined;
 
       const nextQuest = await completeMysteryQuest(
         Number(mysteryTourId),
         quest.mysteryQuestId,
+        location,
       );
 
       if (nextQuest) {
@@ -49,7 +101,12 @@ export default function MysteryTourPlay() {
       }
     } catch (error) {
       console.error("퀘스트 완료 실패:", error);
-      alert("퀘스트 완료 중 오류가 발생했습니다.");
+      // getCurrentLocationOrThrow가 던진 순수 Error는 response가 없어 extractQuestErrorMessage가
+      // fallback을 그대로 반환하므로, 여기서는 fallback 자리에 error.message를 넣어 GPS 에러 메시지도
+      // 백엔드 검증 실패 메시지("목표 지점에서 너무 멀리 있습니다" 등)와 동일한 방식으로 보여준다.
+      const fallbackMessage =
+        error instanceof Error ? error.message : "퀘스트 완료 중 오류가 발생했습니다.";
+      setErrorMessage(extractQuestErrorMessage(error, fallbackMessage));
     } finally {
       setCompleting(false);
     }
@@ -128,6 +185,20 @@ export default function MysteryTourPlay() {
                 </p>
               </div>
 
+              {quest.verifyType === "GPS" &&
+                quest.targetLat != null &&
+                quest.targetLng != null && (
+                  <div className="mt-6">
+                    <MysteryQuestMapView
+                      questName={quest.questName}
+                      targetLat={quest.targetLat}
+                      targetLng={quest.targetLng}
+                      rewardPoint={quest.rewardPoint}
+                      clearRadiusMeters={quest.clearRadiusMeters}
+                    />
+                  </div>
+                )}
+
               <div className="mt-8 rounded-2xl bg-black/20 border border-white/10 p-5">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-slate-500">인증 방법</span>
@@ -141,6 +212,12 @@ export default function MysteryTourPlay() {
                   </span>
                 </div>
               </div>
+
+              {errorMessage && (
+                <div className="mt-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 p-4 text-xs text-rose-300 leading-relaxed">
+                  {errorMessage}
+                </div>
+              )}
 
               <button
                 type="button"

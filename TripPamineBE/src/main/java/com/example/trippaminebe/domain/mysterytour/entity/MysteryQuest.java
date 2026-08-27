@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.mysterytour.entity;
 
+import com.example.trippaminebe.domain.mysterytour.exception.MysteryTourStateConflictException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -57,10 +58,14 @@ public class MysteryQuest {
     private Integer rewardPoint;
 
     @Column(name = "STATUS", nullable = false, length = 20)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private MysteryProgressStatus status;
 
     @Column(name = "COMPLETED_AT")
     private LocalDateTime completedAt;
+
+    @Column(name = "SKIPPED_AT")
+    private LocalDateTime skippedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -69,7 +74,42 @@ public class MysteryQuest {
         }
 
         if (status == null) {
-            status = "LOCKED";
+            status = MysteryProgressStatus.LOCKED;
+        }
+    }
+
+    public void start() {
+        if (status != MysteryProgressStatus.LOCKED) {
+            throw new MysteryTourStateConflictException("잠금 상태의 퀘스트만 시작할 수 있습니다.");
+        }
+
+        status = MysteryProgressStatus.PROGRESS;
+    }
+
+    public void complete() {
+        requireInProgress();
+        status = MysteryProgressStatus.SUCCESS;
+        completedAt = LocalDateTime.now();
+    }
+
+    public void skip() {
+        requireInProgress();
+        status = MysteryProgressStatus.SKIPPED;
+        skippedAt = LocalDateTime.now();
+    }
+
+    public void abandon() {
+        if (
+                status == MysteryProgressStatus.LOCKED ||
+                        status == MysteryProgressStatus.PROGRESS
+        ) {
+            status = MysteryProgressStatus.ABANDONED;
+        }
+    }
+
+    private void requireInProgress() {
+        if (status != MysteryProgressStatus.PROGRESS) {
+            throw new MysteryTourStateConflictException("현재 진행 중인 퀘스트만 처리할 수 있습니다.");
         }
     }
 }

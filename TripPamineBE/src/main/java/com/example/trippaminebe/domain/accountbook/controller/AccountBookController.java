@@ -138,15 +138,17 @@ public class AccountBookController {
          HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
          RestTemplate restTemplate = new RestTemplate();
-         ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+         ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
          // 5. 응답 결과에서 텍스트 추출
-         List<Map<String, Object>> responses = (List<Map<String, Object>>) response.getBody().get("responses");
+         ObjectMapper objectMapper = new ObjectMapper();
+         JsonNode root = objectMapper.readTree(response.getBody());
+         JsonNode responses = root.path("responses");
          String extractedText = "";
 
-         if (responses != null && !responses.isEmpty() && responses.get(0).containsKey("fullTextAnnotation")) {
-            Map<String, Object> fullTextAnnotation = (Map<String, Object>) responses.get(0).get("fullTextAnnotation");
-            extractedText = (String) fullTextAnnotation.get("text");
+         if (responses.isArray() && !responses.isEmpty()) {
+            JsonNode fullTextAnnotation = responses.get(0).path("fullTextAnnotation");
+            extractedText = fullTextAnnotation.path("text").asText("");
          }
 
          // 6. 추출된 텍스트 파싱 후 결과 반환
@@ -160,6 +162,7 @@ public class AccountBookController {
       }
    }
 
+   @SuppressWarnings("unchecked")
    private String parseExtractedText(Map responseBody) {
       try {
          List<Map> responses = (List<Map>) responseBody.get("responses");

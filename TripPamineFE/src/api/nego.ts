@@ -19,9 +19,16 @@ export const negoApi = {
     return response.data;
   },
 
-  /** 카운트다운 만료 전 핫딜 수락 */
-  accept: async (negoId: number): Promise<AiNegoLogResponse> => {
-    const response = await api.post<AiNegoLogResponse>(`/nego/${negoId}/accept`);
+  /** 카운트다운 만료 전 핫딜 수락 (결제에 사용할 계좌를 지정한다) */
+  accept: async (
+    negoId: number,
+    accountId: number,
+  ): Promise<AiNegoLogResponse> => {
+    // 백엔드 NegoAcceptRequest는 accountId(@NotNull)를 요구한다.
+    const response = await api.post<AiNegoLogResponse>(
+      `/nego/${negoId}/accept`,
+      { accountId },
+    );
     return response.data;
   },
 };
