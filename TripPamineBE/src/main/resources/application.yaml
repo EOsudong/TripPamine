@@ -16,7 +16,7 @@ spring:
     hibernate:
       ddl-auto: validate
       # SQL 출력 및 포맷팅 설정
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true             # 콘솔에 출력되는 SQL을 보기 좋게 줄바꿈
