@@ -33,9 +33,15 @@ const CATEGORY_MAP: Record<string, string> = {
   CULTURE: '문화/여가',
   HOUSING: '주거/통신',
   SALARY: '급여/수입',
-  TRAVEL: '여행/숙박', // AI 타임 네고 결제 등 여행 관련 지출
+  TRAVEL: '여행/숙박',
+  NEGO: 'AI 타임네고', // AI 타임 네고 결제로 서버가 자동 생성하는 항목 (수동 입력 불가)
   ETC: '기타/용돈',
 };
+
+// 사용자가 직접 고를 수 있는 카테고리 (NEGO는 서버 전용이라 제외)
+const SELECTABLE_CATEGORIES = Object.entries(CATEGORY_MAP).filter(
+  ([key]) => key !== 'NEGO',
+);
 
 export default function AccountBook({ username = '여행자', accountsRefreshSignal, onLedgerChanged }: AccountBookProps) {
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -391,7 +397,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-sky-100 bg-sky-50/50 focus:border-sky-500 outline-none text-xs font-bold text-sky-700 transition-colors cursor-pointer"
             >
-              {Object.entries(CATEGORY_MAP).map(([key, value]) => (
+              {SELECTABLE_CATEGORIES.map(([key, value]) => (
                   <option key={key} value={key}>{value}</option>
               ))}
             </select>
@@ -606,7 +612,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                         onChange={(e) => setEditCategory(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white cursor-pointer"
                     >
-                      {Object.entries(CATEGORY_MAP).map(([key, value]) => (
+                      {SELECTABLE_CATEGORIES.map(([key, value]) => (
                           <option key={key} value={key}>{value}</option>
                       ))}
                     </select>

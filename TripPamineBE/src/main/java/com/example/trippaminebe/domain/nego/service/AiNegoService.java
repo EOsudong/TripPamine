@@ -87,7 +87,8 @@ public class AiNegoService {
 		TransactionEntity transaction = new TransactionEntity();
 		transaction.setUsername(offer.getUser().getEmail());
 		transaction.setTransactionDate(LocalDateTime.now());
-		transaction.setCategory("TRAVEL");
+		// AI 타임 네고 결제로 생긴 가계부 항목임을 카테고리로 명시한다(프론트 CATEGORY_MAP의 NEGO와 대응).
+		transaction.setCategory("NEGO");
 		transaction.setDescription(offer.getItemName());
 		transaction.setAmount(offer.getOfferedPrice().longValue());
 		transaction.setType("expense");
