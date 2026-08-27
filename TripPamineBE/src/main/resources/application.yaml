@@ -86,15 +86,16 @@ jwt:
 # 환경변수(OAUTH2_REDIRECT_URI / CORS_ALLOWED_ORIGINS)로 덮어쓴다.
 app:
   oauth2:
-    # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소.
-    redirect-uri: http://localhost:5173/oauth/callback
+    # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소. http://localhost:5173/oauth/callback
+    redirect-uri: https://renewable-webster-refresh-dentists.trycloudflare.com/oauth/callback
   cors:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
-    allowed-origins: http://localhost:5173,http://localhost:5174,https://site-daisy-beaches-session.trycloudflare.com
+    allowed-origins: http://localhost:5173,http://localhost:5174,https://renewable-webster-refresh-dentists.trycloudflare.com
 
 server:
   port: 8080
+  forward-headers-strategy: framework
 
 # 구글 OCR API 사용을 위한 서비스 계정 키 파일 경로 설정
 google:
