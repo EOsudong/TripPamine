@@ -51,7 +51,13 @@ const createMarkerImage = (fillColor: string, strokeColor: string) => {
     <circle cx="14.5" cy="14.5" r="5.5" fill="#FFFFFF"/>
   </svg>`;
   const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  if (window.kakao && window.kakao.maps) {
+  
+  if (
+    window.kakao &&
+    window.kakao.maps &&
+    typeof window.kakao.maps.Size === 'function' &&
+    typeof window.kakao.maps.Point === 'function'
+  ) {
     const size = new window.kakao.maps.Size(29, 42);
     const option = { offset: new window.kakao.maps.Point(14.5, 42) };
     return new window.kakao.maps.MarkerImage(src, size, option);
@@ -146,7 +152,6 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     setSelectedDays([]);
     setCollapsedDays({});
     placeCoordsRef.current = {};
-    mapElementsRef.current = { markers: [], polylines: [] };
 
     if (window.kakao && window.kakao.maps) {
       setIsSdkLoaded(true);
@@ -218,7 +223,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       Day ${dayNum} : ${name}
     </div>`;
 
-  // 활성화된 필터 조건(체크박스 미선택: 전체, 체크박스 선택: 해당 Day)에 맞춰 카메라 위치 재설정하는 공통 함수
+  // 활성화된 필터 조건에 맞춰 카메라 위치 재설정하는 공통 함수
   const fitMapToActiveDays = () => {
     const map = mapInstanceRef.current;
     if (!map || mapElementsRef.current.markers.length === 0) return;
@@ -291,12 +296,24 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     }
   };
 
-  // 지도 생성 및 마커/경로 렌더링
+  // 지도 생성 및 마커/경로 렌더링 (비동기 취소 플래그 및 cleanup 처리)
   useEffect(() => {
     if (!isOpen || !isSdkLoaded || !window.kakao || !window.kakao.maps) return;
 
+    let isCancelled = false;
+
     window.kakao.maps.load(async () => {
-      if (!mapContainerRef.current) return;
+      if (isCancelled || !mapContainerRef.current) return;
+
+      // 기존 남아있을 수 있는 마커/오버레이 안전하게 정리
+      mapElementsRef.current.markers.forEach(({ marker, customOverlay }) => {
+        if (marker) marker.setMap(null);
+        if (customOverlay) customOverlay.setMap(null);
+      });
+      mapElementsRef.current.polylines.forEach(({ polyline }) => {
+        if (polyline) polyline.setMap(null);
+      });
+      mapElementsRef.current = { markers: [], polylines: [] };
 
       const { name: detectedRegion, center: detectedCenter } = detectTripRegion(places);
       const defaultCenter = new window.kakao.maps.LatLng(detectedCenter.lat, detectedCenter.lng);
@@ -313,8 +330,10 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       const bounds = new window.kakao.maps.LatLngBounds();
 
       setTimeout(() => {
-        map.relayout();
-        map.setCenter(defaultCenter);
+        if (!isCancelled && mapInstanceRef.current) {
+          map.relayout();
+          map.setCenter(defaultCenter);
+        }
       }, 150);
 
       if (!places || places.length === 0) return;
@@ -322,19 +341,25 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       let lastValidCoords: any = defaultCenter;
       const pathInfoList: { coords: any; day: number }[] = [];
 
-      const blueMarkerImg = createMarkerImage('#2b82f6', '#1d4ed8');
-
       const renderMarker = (coords: any, originalName: string, index: number, day = 1) => {
+        if (isCancelled) return;
+
         placeCoordsRef.current[index] = coords;
         pathInfoList.push({ coords, day });
 
         lastValidCoords = coords;
 
-        const marker = new window.kakao.maps.Marker({
+        const blueMarkerImg = createMarkerImage('#2b82f6', '#1d4ed8');
+
+        const markerOptions: any = {
           map: map,
           position: coords,
-          image: blueMarkerImg,
-        });
+        };
+        if (blueMarkerImg) {
+          markerOptions.image = blueMarkerImg;
+        }
+
+        const marker = new window.kakao.maps.Marker(markerOptions);
 
         const customOverlay = new window.kakao.maps.CustomOverlay({
           map: map,
@@ -343,12 +368,10 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
           zIndex: 1,
         });
 
-        // 핀 마커 클릭 시 토글
         window.kakao.maps.event.addListener(marker, 'click', () => {
           handlePlaceClick(index);
         });
 
-        // 마우스 호버 이벤트
         window.kakao.maps.event.addListener(marker, 'mouseover', () => {
           customOverlay.setContent(getFullHtml(day, originalName, false));
           customOverlay.setZIndex(100);
@@ -364,8 +387,8 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         bounds.extend(coords);
       };
 
-      // [추정] 장소: 지도상 핀 마커 미생성
       const createFallbackMarker = (originalName: string, index: number) => {
+        if (isCancelled) return;
         setEstimatedIndices((prev) => ({ ...prev, [index]: true }));
       };
 
@@ -408,6 +431,8 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       };
 
       for (let index = 0; index < places.length; index++) {
+        if (isCancelled) break;
+
         const place = places[index];
         const day = place.day || 1;
 
@@ -426,15 +451,19 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         }
 
         let searchResults: any[] = await searchKeywordAsync(`${detectedRegion} ${query}`);
+        if (isCancelled) break;
 
         if (searchResults.length === 0) {
           searchResults = await searchKeywordAsync(query);
+          if (isCancelled) break;
         }
         if (searchResults.length === 0 && firstWord) {
           searchResults = await searchKeywordAsync(`${detectedRegion} ${firstWord}`);
+          if (isCancelled) break;
         }
         if (searchResults.length === 0) {
           searchResults = await searchAddressAsync(place.address || query);
+          if (isCancelled) break;
         }
 
         if (searchResults.length > 0) {
@@ -446,7 +475,9 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         }
       }
 
-      // 📍 이동 경로 화살표 (#FF6B35 오렌지)
+      if (isCancelled) return;
+
+      // 📍 이동 경로 화살표
       if (pathInfoList.length > 1) {
         for (let i = 0; i < pathInfoList.length - 1; i++) {
           const fromItem = pathInfoList[i];
@@ -474,28 +505,50 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         map.setBounds(bounds);
       }
     });
+
+    return () => {
+      // 언마운트되거나 modal이 닫힐 때 비동기 로직 및 지도 객체 메모리 해제
+      isCancelled = true;
+      mapInstanceRef.current = null;
+
+      mapElementsRef.current.markers.forEach(({ marker, customOverlay }) => {
+        if (marker) marker.setMap(null);
+        if (customOverlay) customOverlay.setMap(null);
+      });
+      mapElementsRef.current.polylines.forEach(({ polyline }) => {
+        if (polyline) polyline.setMap(null);
+      });
+      mapElementsRef.current = { markers: [], polylines: [] };
+    };
   }, [isOpen, isSdkLoaded, places]);
 
-  // 클릭 선택 시 마커 색상 변경 (블루 / 회색)
+  // 클릭 선택 시 마커 색상 변경
   useEffect(() => {
-    if (!window.kakao || !window.kakao.maps) return;
+    if (
+      !window.kakao ||
+      !window.kakao.maps ||
+      typeof window.kakao.maps.Size !== 'function' ||
+      !mapInstanceRef.current
+    ) {
+      return;
+    }
 
     const blueMarkerImg = createMarkerImage('#2b82f6', '#1d4ed8');
     const grayMarkerImg = createMarkerImage('#94a3b8', '#64748b');
 
     mapElementsRef.current.markers.forEach(({ index, day, marker, customOverlay, name }) => {
       if (selectedPlaceIdx === null) {
-        marker.setImage(blueMarkerImg);
+        if (blueMarkerImg) marker.setImage(blueMarkerImg);
         marker.setZIndex(10);
         customOverlay.setContent(getShortHtml(day, false));
         customOverlay.setZIndex(10);
       } else if (selectedPlaceIdx === index) {
-        marker.setImage(blueMarkerImg);
+        if (blueMarkerImg) marker.setImage(blueMarkerImg);
         marker.setZIndex(100);
         customOverlay.setContent(getFullHtml(day, name, false));
         customOverlay.setZIndex(100);
       } else {
-        marker.setImage(grayMarkerImg);
+        if (grayMarkerImg) marker.setImage(grayMarkerImg);
         marker.setZIndex(1);
         customOverlay.setContent(getShortHtml(day, true));
         customOverlay.setZIndex(1);
@@ -524,29 +577,26 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     if (!map) return;
 
     if (selectedPlaceIdx === index) {
-      // 1. 선택 해제 시: 활성화된 체크박스 상태에 맞게 카메라 시점 재배치
-      // (체크박스가 비어있으면 전체보기 영역, 체크박스가 있으면 선택된 Day 영역으로 자동 조절)
       setSelectedPlaceIdx(null);
       fitMapToActiveDays();
     } else {
-      // 2. 다른 장소 선택 시
       const isFirstSelection = selectedPlaceIdx === null;
       setSelectedPlaceIdx(index);
 
       const coords = placeCoordsRef.current[index];
 
       if (coords) {
-        // 항상 부드럽게 클릭된 장소로 중심 위치 이동
         map.panTo(coords);
 
-        // '전체보기' 상태에서 처음 클릭할 때만 1단계 줌인
         if (isFirstSelection) {
           const currentLevel = map.getLevel();
           const targetLevel = Math.max(1, currentLevel - 1);
 
           if (currentLevel > targetLevel) {
             setTimeout(() => {
-              map.setLevel(targetLevel, { animate: { duration: 500 } });
+              if (mapInstanceRef.current) {
+                map.setLevel(targetLevel, { animate: { duration: 500 } });
+              }
             }, 150);
           }
         }
