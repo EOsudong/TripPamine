@@ -201,7 +201,7 @@ export default function MysteryTour() {
                       여행 시작일까지 목적지와 퀘스트는 공개되지 않습니다.
                     </p>
 
-                    {createdTour.status === "STARTED" ? (
+                    {createdTour.status === "PROGRESS" ? (
                         <button
                             type="button"
                             onClick={() =>
@@ -209,7 +209,7 @@ export default function MysteryTour() {
                             }
                             className="mt-4 w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-black text-sm hover:scale-[1.01] transition-all"
                         >
-                          🚀 미스터리 투어 시작하기 !
+                          🚀 진행 중인 미스터리 투어 계속하기
                         </button>
                     ) : (
                         <button
@@ -254,8 +254,8 @@ export default function MysteryTour() {
               </div>
           ) : isApplying ? (
               /* =========================
-               미스터리 투어 신청 화면
-            ========================== */
+                   미스터리 투어 신청 화면
+                ========================== */
               <div className="relative overflow-hidden rounded-[32px] bg-slate-950 px-8 py-10 md:px-14 md:py-12 shadow-2xl border border-violet-500/20">
                 {/* 게임 느낌 배경 */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">

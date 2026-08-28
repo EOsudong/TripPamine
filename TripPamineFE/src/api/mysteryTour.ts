@@ -24,6 +24,21 @@ export interface MysteryTourRequest {
   travelStyle: string;
 }
 
+export type MysteryTourStatus =
+    | "READY"
+    | "PROGRESS"
+    | "SUCCESS"
+    | "CANCELLED"
+    | "ABANDONED";
+
+export type MysteryQuestStatus =
+    | "LOCKED"
+    | "PROGRESS"
+    | "SUCCESS"
+    | "FAILED"
+    | "SKIPPED"
+    | "ABANDONED";
+
 export interface MysteryTourResponse {
   mysteryTourId: number;
   travelDate: string;
@@ -31,11 +46,12 @@ export interface MysteryTourResponse {
   peopleCount: number;
   budget: number;
   questCount: number;
-  status: string;
+  status: MysteryTourStatus;
   destinationLocked: boolean;
 }
 
 export interface MysteryQuestResponse {
+  clearRadiusMeters: number | null;
   mysteryQuestId: number;
   questOrder: number;
   questName: string;
@@ -43,10 +59,8 @@ export interface MysteryQuestResponse {
   verifyType: string;
   targetLat: number | null;
   targetLng: number | null;
-  // verifyType이 "GPS"일 때만 값이 있다. 그 외 타입은 null.
-  clearRadiusMeters: number | null;
   rewardPoint: number;
-  status: string;
+  status: MysteryQuestStatus;
 }
 
 // completeMysteryQuest 요청 바디 - verifyType이 "GPS"인 퀘스트만 채워서 보내면 된다.
@@ -96,7 +110,7 @@ export const getActiveMysteryTour =
 
       const response = await api.get<MysteryTourResponse>(
           `/mystery-tours/active?userId=${userId}`,
-          { validateStatus: allowNoContent },
+          {validateStatus: allowNoContent},
       );
 
       return response.status === 204 ? null : response.data;
@@ -115,7 +129,7 @@ export const getCurrentMysteryQuest = async (
 ): Promise<MysteryQuestResponse | null> => {
   const response = await api.get<MysteryQuestResponse>(
       `/mystery-tours/${mysteryTourId}/quests/current`,
-      { validateStatus: allowNoContent },
+      {validateStatus: allowNoContent},
   );
 
   return response.status === 204 ? null : response.data;
@@ -132,10 +146,32 @@ export const completeMysteryQuest = async (
   const response = await api.post<MysteryQuestResponse>(
       `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/complete`,
       location ?? {},
-      { validateStatus: allowNoContent },
+      {validateStatus: allowNoContent},
   );
 
   return response.status === 204 ? null : response.data;
+};
+
+/** 현재 퀘스트를 보상 없이 스킵하고 다음 퀘스트를 연다.
+ *  마지막 퀘스트를 스킵한 경우(204) null */
+export const skipMysteryQuest = async (
+    mysteryTourId: number,
+    mysteryQuestId: number,
+): Promise<MysteryQuestResponse | null> => {
+  const response = await api.post<MysteryQuestResponse>(
+      `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/skip`,
+      {},
+      {validateStatus: allowNoContent},
+  );
+
+  return response.status === 204 ? null : response.data;
+};
+
+/** 시작된 미스터리 투어 전체 포기. 포기한 투어는 다시 진행할 수 없다. */
+export const abandonMysteryTour = async (
+    mysteryTourId: number,
+): Promise<void> => {
+  await api.post(`/mystery-tours/${mysteryTourId}/abandon`, {});
 };
 
 /** 투어 취소 */

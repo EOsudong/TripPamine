@@ -87,11 +87,11 @@ jwt:
 app:
   oauth2:
     # 소셜 로그인 성공 후 사용자를 돌려보낼 프론트엔드 콜백 주소. http://localhost:5173/oauth/callback or http://.../trycloudflare.com
-    redirect-uri: http://localhost:5173/oauth/callback
+    redirect-uri: https://housewares-frames-readily-semiconductor.trycloudflare.com/oauth/callback
   cors:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
-    allowed-origins: http://localhost:5173,http://localhost:5174,https://renewable-webster-refresh-dentists.trycloudflare.com
+    allowed-origins: http://localhost:5173,http://localhost:5174,https://housewares-frames-readily-semiconductor.trycloudflare.com
 
 server:
   port: 8080
