@@ -1,0 +1,35 @@
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Test cache
+.pytest_cache/
+
+# IDE
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local datasets
+data/
+
+# AI model artifacts
+models/
+artifacts/
+checkpoints/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
