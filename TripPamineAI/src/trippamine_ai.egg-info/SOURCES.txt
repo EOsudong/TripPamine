@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+src/trippamine_ai/__init__.py
+src/trippamine_ai.egg-info/PKG-INFO
+src/trippamine_ai.egg-info/SOURCES.txt
+src/trippamine_ai.egg-info/dependency_links.txt
+src/trippamine_ai.egg-info/requires.txt
+src/trippamine_ai.egg-info/top_level.txt
+src/trippamine_ai/datasets/__init__.py
+src/trippamine_ai/datasets/emotion/__init__.py
+tests/test_environment.py

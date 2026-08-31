@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trippamine-ai"
+version = "0.1.0"
+description = "TripPamine AI service and machine learning pipeline"
+requires-python = ">=3.12,<3.14"
+
+dependencies = [
+    "orjson==3.12.0",
+    "pydantic==2.13.4",
+    "tqdm==4.70.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pandas==3.0.5",
+    "jupyter==1.1.1",
+    "ipykernel==7.3.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
