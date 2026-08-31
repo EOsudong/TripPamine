@@ -1,6 +1,7 @@
 orjson==3.12.0
 pydantic==2.13.4
 tqdm==4.70.0
+scikit-learn==1.9.0
 
 [dev]
 pytest==9.1.1

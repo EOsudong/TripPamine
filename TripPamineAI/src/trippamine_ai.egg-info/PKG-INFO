@@ -6,6 +6,7 @@ Requires-Python: <3.14,>=3.12
 Requires-Dist: orjson==3.12.0
 Requires-Dist: pydantic==2.13.4
 Requires-Dist: tqdm==4.70.0
+Requires-Dist: scikit-learn==1.9.0
 Provides-Extra: dev
 Requires-Dist: pytest==9.1.1; extra == "dev"
 Requires-Dist: pandas==3.0.5; extra == "dev"
