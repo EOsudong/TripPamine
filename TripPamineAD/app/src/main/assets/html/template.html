@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!--
+    assets/html/template.html
+    ============================================================================
+    "경비 차트 데모" 버튼을 눌렀을 때 사용되는 동적(Dynamic) HTML 템플릿.
+
+    - 이 파일 자체는 정적인 뼈대(껍데기)일 뿐이고, 실제 차트에 들어갈 데이터
+      ( ['숙박비',35],['식비',20], ... 형태의 문자열 )는 MainActivity.java 의
+      loadExpenseChart() 메소드가 자바 Map으로 만든 뒤, 아래 "placeholder" 라는
+      글자를 찾아서 통째로 치환(replace)한 다음 webview.loadDataWithBaseURL() 로
+      화면에 뿌려준다.
+    - 우리 프론트(TripPamineFE)의 가계부(AccountBook) 기능에서 쓸 법한
+      "여행 경비 카테고리별 지출 비율"을 예시 데이터로 사용했다.
+    - 차트 라이브러리는 구글 차트(Google Charts)를 그대로 사용한다 (인터넷 필요).
+    ============================================================================
+-->
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>여행 경비 차트</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        :root {
+            --sky-500: #0EA5E9;
+            --slate-800: #1E293B;
+            --slate-500: #64748B;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+            "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
+            color: var(--slate-800);
+            background: #ffffff;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 0 0 4px;
+        }
+
+        .desc {
+            font-size: 12px;
+            color: var(--slate-500);
+            margin: 0 0 12px;
+        }
+
+        #chart_div {
+            width: 100%;
+            height: 320px;
+        }
+    </style>
+</head>
+<body>
+<h2><span style="color:var(--sky-500)">Trip</span>Pamine 여행 경비 비율</h2>
+<p class="desc">안드로이드(MainActivity.java)에서 만든 데이터를 웹뷰에 실시간으로 주입한 예시입니다.</p>
+<div id="chart_div"></div>
+
+<script type="text/javascript">
+    google.charts.load("current", {"packages": ["corechart"]});
+    google.charts.setOnLoadCallback(drawChart);
+
+    function drawChart() {
+        // MainActivity.java 의 loadExpenseChart() 가 "placeholder" 자리에
+        // ['숙박비',35],['식비',20],['교통비',15],['액티비티',25],['기타',5],
+        // 같은 문자열을 실제로 채워넣는다.
+        var data = google.visualization.arrayToDataTable([
+            ["카테고리", "금액(만원)"],
+            placeholder
+        ]);
+
+        var options = {
+            title: "카테고리별 지출 비율",
+            titleTextStyle: {fontSize: 13, color: "#1E293B"},
+            pieHole: 0.45, // 도넛(Donut) 형태로 표시
+            colors: ["#0EA5E9", "#38BDF8", "#7DD3FC", "#0284C7", "#BAE6FD"],
+            legend: {position: "bottom", textStyle: {fontSize: 11}},
+            chartArea: {width: "90%", height: "75%"}
+        };
+
+        var chart = new google.visualization.PieChart(document.getElementById("chart_div"));
+        chart.draw(data, options);
+    }
+</script>
+</body>
+</html>

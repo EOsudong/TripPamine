@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 전경 : "여행"을 상징하는 단순한 종이비행기 실루엣을 흰색으로 그렸다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M85,54 L26,32 L40,54 L26,76 Z" />
+    <path
+        android:fillColor="#CFF0FE"
+        android:pathData="M85,54 L40,54 L48,64 Z" />
+</vector>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===================================================================
+         TripPamine 프론트엔드(React + Tailwind CSS)에서 실제로 쓰고 있는
+         색상 팔레트를 그대로 가져왔다. (Header.tsx 등에서 사용한 sky-500,
+         slate-800, slate-100 등의 Tailwind 기본 색상 값과 동일하다.)
+         안드로이드 UI도 이 색으로 통일해서 "우리 서비스"의 느낌을 유지한다.
+         =================================================================== -->
+
+    <!-- 기본(포인트) 색상 - Tailwind sky-500 : 로그인 버튼, 로고 "Trip" 글자, 알림 점 등에 사용 -->
+    <color name="brand_primary">#0EA5E9</color>
+    <!-- 버튼 눌렀을 때(hover/pressed) - Tailwind sky-600 -->
+    <color name="brand_primary_dark">#0284C7</color>
+    <!-- 연한 포인트 배경 - Tailwind sky-100 (뱃지, 하이라이트 배경 등) -->
+    <color name="brand_primary_light">#E0F2FE</color>
+
+    <!-- 진한 텍스트 색 - Tailwind slate-800 : 로고 "Pamin" 글자, 본문 제목 -->
+    <color name="text_dark">#1E293B</color>
+    <!-- 보조 텍스트 색 - Tailwind slate-500 -->
+    <color name="text_muted">#64748B</color>
+    <!-- placeholder, 비활성 아이콘 색 - Tailwind slate-400 -->
+    <color name="text_placeholder">#94A3B8</color>
+
+    <!-- 옅은 회색 배경 - Tailwind slate-100 : 검색창, 인풋창, 카드 배경 -->
+    <color name="surface_muted">#F1F5F9</color>
+    <!-- 아주 옅은 경계선 색 - Tailwind slate-100/slate-200 -->
+    <color name="border_light">#E2E8F0</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- 에러/경고용 (참고용, 프론트의 red-500 계열) -->
+    <color name="danger">#EF4444</color>
+</resources>

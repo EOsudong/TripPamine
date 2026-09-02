@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">TripPamine</string>
+
+    <!-- 앱 실행시 웹뷰에 기본으로 로드할 주소.
+         - 안드로이드 에뮬레이터에서는 10.0.2.2 가 "내 PC(호스트)의 localhost"를 가리킨다.
+         - Vite 개발 서버(TripPamineFE)는 기본적으로 5173 포트로 뜬다. (package.json dev 스크립트 참고)
+         - 실제 기기(폰)로 테스트할 때는 상단 주소창에 PC의 사설 IP(예: http://192.168.0.5:5173)를
+           직접 입력해서 "이동" 버튼을 누르면 된다. -->
+    <string name="default_dev_url">http://10.0.2.2:5173</string>
+</resources>

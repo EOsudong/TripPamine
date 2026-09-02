@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 배경 : 프론트 포인트 컬러인 sky-500 한 가지 색으로 채운다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>

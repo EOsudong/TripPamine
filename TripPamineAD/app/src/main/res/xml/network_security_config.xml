@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    네트워크 보안 설정(Network Security Config)
+
+    - 우리 팀은 개발 중 TripPamine 프론트(React/Vite)를 로컬 PC나 같은 와이파이의
+      다른 PC에서 http://10.0.2.2:5173 (에뮬레이터에서 PC의 localhost를 가리키는 주소)
+      또는 http://192.168.x.x:5173 같은 http(암호화 안 된) 주소로 접속해서 테스트한다.
+    - 안드로이드 9(Pie) 이상부터는 기본적으로 http(cleartext) 통신을 차단하므로,
+      아래처럼 base-config 에서 cleartextTrafficPermitted="true" 로 열어줘야
+      ERR_CLEARTEXT_NOT_PERMITTED 오류 없이 http 주소로도 로딩이 된다.
+    - 실제 배포(운영) 버전에서는 여기를 https 서버 도메인만 허용하도록 좁혀야 한다.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

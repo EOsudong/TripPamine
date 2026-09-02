@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    프론트 Header.tsx 의 슬로건 문구 스타일( "border-l border-gray-300 pl-3" )을
+    그대로 흉내낸 왼쪽 세로 구분선.
+    사각형 안에 왼쪽으로 살짝 치우친 얇은 세로 사각형을 겹쳐서 "왼쪽 테두리"처럼 보이게 한다.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="1dp"
+        android:height="16dp"
+        android:gravity="left|center_vertical">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/border_light" />
+        </shape>
+    </item>
+</layer-list>

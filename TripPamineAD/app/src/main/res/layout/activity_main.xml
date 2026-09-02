@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    activity_main.xml
+    ============================================================================
+    TripPamine 웹뷰 앱의 메인 화면.
+
+    구성(WebView12 예제의 구조를 그대로 따르되, 우리 프론트(React) 헤더 느낌으로
+    색과 모양만 다시 입혔다):
+      1) 브랜드 헤더 영역 : 로고("Trip"+"Pamin") - 프론트 Header.tsx 의 로고와 동일한 배색
+      2) 주소창 영역      : 주소 입력(EditText) + 이동(Go) 버튼 + 뒤로가기(Back) 버튼
+      3) 기능 테스트 버튼 3개 : 정적 HTML 로드 / 동적 HTML(차트) 로드 / 프론트와 통신 테스트
+      4) 로딩 진행바(ProgressBar) : 페이지 로딩 중일 때만 보임
+      5) SwipeRefreshLayout 으로 감싼 WebView : 아래로 당기면 새로고침(당겨서 새로고침)
+    ============================================================================
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    tools:context=".MainActivity">
+
+    <!-- ============ 1) 브랜드 헤더 : 프론트 Header.tsx 로고를 그대로 재현 ============ -->
+    <LinearLayout
+        android:id="@+id/headerBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 프론트 로고 "Trip"(sky-500) + "Pamin"(slate-800) 그대로 재현 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Trip"
+            android:textColor="@color/brand_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pamine"
+            android:textColor="@color/text_dark"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- 프론트의 슬로건 문구도 그대로 -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:paddingStart="10dp"
+            android:text="&quot;계획은 AI가, 짜릿함은 당신이&quot;"
+            android:textColor="@color/text_muted"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:background="@drawable/divider_start_border" />
+
+    </LinearLayout>
+
+    <!-- ============ 2) 주소창 영역 : URL 입력 + 이동 + 뒤로가기 ============ -->
+    <LinearLayout
+        android:id="@+id/urlBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:layout_marginTop="4dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 주소 입력창 : 기본값은 strings.xml 의 default_dev_url (에뮬레이터 기준 10.0.2.2:5173) -->
+        <EditText
+            android:id="@+id/editUrl"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_edit_url"
+            android:paddingHorizontal="14dp"
+            android:gravity="center_vertical"
+            android:singleLine="true"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:inputType="textUri"
+            android:textColor="@color/text_dark"
+            android:textColorHint="@color/text_placeholder"
+            android:textSize="13sp"
+            android:text="@string/default_dev_url" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonGo"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/bg_button_primary"
+            android:text="이동"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonBack"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/bg_button_outline"
+            android:text="뒤로"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- ============ 3) 기능 테스트 버튼 3개 ============ -->
+    <LinearLayout
+        android:id="@+id/featureBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/urlBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 정적 HTML 로드 : assets/html/index.html (인터넷 연결이 없을 때 보여줄 소개/오프라인 화면) -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnStatic"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_button_outline"
+            android:text="오프라인 화면"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            android:textSize="11sp" />
+
+        <!-- 동적 HTML 로드 : 여행 경비(가계부) 카테고리 비율을 파이차트로 그려서 웹뷰에 주입 -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnDynamic"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/bg_button_outline"
+            android:text="경비 차트 데모"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            android:textSize="11sp" />
+
+        <!-- 프론트와 통신 테스트 : 안드로이드 -> 웹(JS) 함수 호출 데모 -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnCallJs"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_button_outline"
+            android:text="통신 테스트"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- ============ 4) 로딩 진행바 : 페이지 로딩 중에만 표시(MainActivity에서 제어) ============ -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="10dp"
+        android:max="100"
+        android:progressTint="@color/brand_primary"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/featureBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible"
+        tools:progress="40" />
+
+    <!-- ============ 5) 웹뷰 (당겨서 새로고침 가능) ============ -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/featureBar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <WebView
+            android:id="@+id/webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

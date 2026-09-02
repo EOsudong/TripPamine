@@ -1,0 +1,14 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.TripPamine" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- 프론트엔드 포인트 컬러(sky-500)를 안드로이드 테마의 primary 색으로도 맞춰준다.
+             MaterialAlertDialogBuilder 등 머티리얼 컴포넌트들이 이 색을 기본으로 사용한다. -->
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryDark">@color/brand_primary_dark</item>
+        <item name="colorAccent">@color/brand_primary</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.TripPamine" parent="Base.Theme.TripPamine" />
+</resources>

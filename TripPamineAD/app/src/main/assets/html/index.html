@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--
+    assets/html/index.html
+    ============================================================================
+    "오프라인 화면" 버튼을 눌렀을 때 로드되는 정적(Static) HTML 페이지.
+    - 인터넷이 없거나 서버 점검 중일 때도 앱 안에 내장(embed)되어 있어서 항상 뜬다.
+    - 그래서 외부 CDN(예: Tailwind CDN)에 의존하지 않고, 순수 CSS만으로
+      TripPamine 프론트엔드(React + Tailwind)의 색/분위기(sky-500, slate 계열,
+      둥근 모서리 rounded-xl 카드)를 최대한 비슷하게 재현했다.
+    ============================================================================
+-->
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TripPamine</title>
+    <style>
+        /* 프론트 Tailwind 팔레트와 동일한 색상 값을 CSS 변수로 선언해서 재사용 */
+        :root {
+            --sky-500: #0EA5E9;
+            --sky-600: #0284C7;
+            --sky-100: #E0F2FE;
+            --slate-800: #1E293B;
+            --slate-500: #64748B;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #ffffff 0%, var(--slate-100) 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+            "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
+            color: var(--slate-800);
+            padding: 24px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 360px;
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: 20px; /* Tailwind rounded-2xl 느낌 */
+            padding: 32px 24px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.08);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--sky-100);
+            margin-bottom: 16px;
+            font-size: 26px;
+        }
+
+        .logo {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin: 0 0 6px;
+        }
+
+        .logo .trip {
+            color: var(--sky-500);
+        }
+
+        .logo .pamine {
+            color: var(--slate-800);
+        }
+
+        .slogan {
+            font-size: 13px;
+            color: var(--slate-500);
+            margin: 0 0 20px;
+        }
+
+        .message {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--slate-500);
+            margin: 0 0 24px;
+        }
+
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-radius: 14px; /* Tailwind rounded-xl */
+            background: var(--sky-500);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            background: var(--sky-600);
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="badge">✈️</div>
+    <p class="logo"><span class="trip">Trip</span><span class="pamine">Pamine</span></p>
+    <p class="slogan">"계획은 AI가, 짜릿함은 당신이"</p>
+    <p class="message">
+        지금은 인터넷 연결을 확인할 수 없어요.<br />
+        네트워크 상태를 확인한 뒤 다시 시도해주세요.
+    </p>
+    <!--
+        window.androidBridge 는 안드로이드 앱 안에서만 존재하는 객체이므로,
+        일반 브라우저에서 이 파일을 열어도 에러가 나지 않도록 존재 여부를 체크한다.
+        (MainActivity.java 의 WebInterface.sendMessageToAndroid 참고)
+    -->
+    <button class="btn" onclick="retry()">다시 시도</button>
+</div>
+<script>
+    // 프론트(React) 쪽에서 안드로이드로 응답을 보낼 때 쓰는 것과 동일한 패턴의 예시 함수.
+    // 안드로이드 MainActivity 의 "통신 테스트" 버튼이 이 함수를 호출한다.
+    window.receiveFromAndroid = function (message) {
+        alert("안드로이드로부터 받은 메시지: " + message);
+    };
+
+    function retry() {
+        if (window.androidBridge) {
+            // 안드로이드 네이티브 Toast로 알려주기 (웹 -> 안드로이드 방향 통신)
+            window.androidBridge.sendMessageToAndroid("다시 시도 버튼을 눌렀어요");
+        }
+        location.reload();
+    }
+</script>
+</body>
+</html>

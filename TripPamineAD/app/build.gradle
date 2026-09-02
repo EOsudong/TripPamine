@@ -1,0 +1,51 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    // 패키지(네임스페이스) : 우리 팀 TripPamine 프로젝트 컨벤션에 맞춰 지정
+    namespace 'com.ict.trippamine'
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
+    buildFeatures {
+        // findViewById() 대신 binding.xxx 로 뷰에 접근하기 위해 활성화 (WebView12 예제와 동일)
+        viewBinding true
+    }
+
+    defaultConfig {
+        applicationId "com.ict.trippamine"
+        minSdk 34
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            optimization {
+                enable false
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+dependencies {
+    implementation libs.activity.ktx
+    implementation libs.appcompat
+    implementation libs.constraintlayout
+    implementation libs.material
+    // 웹뷰 새로고침(당겨서 새로고침) UX를 위해 추가 - 우리 프론트(SPA) 느낌을 살리기 위한 요소
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    testImplementation libs.junit
+    androidTestImplementation libs.espresso.core
+    androidTestImplementation libs.ext.junit
+}

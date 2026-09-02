@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    프론트엔드의 "bg-sky-500 hover:bg-sky-600 rounded-xl" 버튼 스타일을
+    안드로이드 selector(state-list)로 옮겨온 것.
+    - 기본 상태 : brand_primary (sky-500)
+    - 눌렀을 때(pressed) : brand_primary_dark (sky-600) - 웹의 hover 효과와 같은 느낌
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/brand_primary_dark" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/brand_primary" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</selector>

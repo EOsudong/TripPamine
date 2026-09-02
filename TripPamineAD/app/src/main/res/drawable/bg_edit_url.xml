@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    주소 입력창 배경.
+    프론트 Header.tsx 의 검색창( "bg-slate-100 rounded-xl" )과 동일한 톤으로 맞췄다.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/surface_muted" />
+    <corners android:radius="14dp" />
+</shape>
