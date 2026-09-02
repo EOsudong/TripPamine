@@ -91,7 +91,7 @@ app:
   cors:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
-    allowed-origins: http://localhost:5173,http://localhost:5174,https://housewares-frames-readily-semiconductor.trycloudflare.com
+    allowed-origins: http://localhost:5173,http://localhost:5174,https://housewares-frames-readily-semiconductor.trycloudflare.com,http://10.0.2.2:5173
 
 server:
   port: 8080
