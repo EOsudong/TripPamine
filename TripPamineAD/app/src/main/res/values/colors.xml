@@ -14,7 +14,7 @@
     <!-- 연한 포인트 배경 - Tailwind sky-100 (뱃지, 하이라이트 배경 등) -->
     <color name="brand_primary_light">#E0F2FE</color>
 
-    <!-- 진한 텍스트 색 - Tailwind slate-800 : 로고 "Pamin" 글자, 본문 제목 -->
+    <!-- 진한 텍스트 색 - Tailwind slate-800 : 로고 "Pamine" 글자, 본문 제목 -->
     <color name="text_dark">#1E293B</color>
     <!-- 보조 텍스트 색 - Tailwind slate-500 -->
     <color name="text_muted">#64748B</color>

@@ -64,7 +64,7 @@ export default function Header({sidebarOpen, onToggleSidebar}: HeaderProps) {
             {/* 로고 → 클릭하면 홈으로 이동 */}
             <a href="/" className="text-lg font-bold tracking-tight shrink-0">
                 <span className="text-sky-500">Trip</span>
-                <span className="text-slate-800">Pamin</span>
+                <span className="text-slate-800">Pamine</span>
             </a>
 
             {/* 슬로건 문구 추가 */}

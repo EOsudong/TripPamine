@@ -1,6 +1,6 @@
-# trippamin-admin
+# trippamine-admin
 
-TripPamin 관리자 콘솔 — 사용자용 `trippamin` 프론트와 완전히 분리된 별도 React 프로젝트입니다.
+TripPamine 관리자 콘솔 — 사용자용 `trippamin` 프론트와 완전히 분리된 별도 React 프로젝트입니다.
 
 ## 실행 방법
 

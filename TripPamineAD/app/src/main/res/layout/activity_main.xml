@@ -6,7 +6,7 @@
 
     구성(WebView12 예제의 구조를 그대로 따르되, 우리 프론트(React) 헤더 느낌으로
     색과 모양만 다시 입혔다):
-      1) 브랜드 헤더 영역 : 로고("Trip"+"Pamin") - 프론트 Header.tsx 의 로고와 동일한 배색
+      1) 브랜드 헤더 영역 : 로고("Trip"+"Pamine") - 프론트 Header.tsx 의 로고와 동일한 배색
       2) 주소창 영역      : 주소 입력(EditText) + 이동(Go) 버튼 + 뒤로가기(Back) 버튼
       3) 기능 테스트 버튼 3개 : 정적 HTML 로드 / 동적 HTML(차트) 로드 / 프론트와 통신 테스트
       4) 로딩 진행바(ProgressBar) : 페이지 로딩 중일 때만 보임
@@ -37,7 +37,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- 프론트 로고 "Trip"(sky-500) + "Pamin"(slate-800) 그대로 재현 -->
+        <!-- 프론트 로고 "Trip"(sky-500) + "Pamine"(slate-800) 그대로 재현 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -131,7 +131,7 @@ export default function Join() {
           >
             <span className="text-white text-lg">✈️</span>
           </Link>
-          <h2 className="text-white font-bold text-xl">TripPamin</h2>
+          <h2 className="text-white font-bold text-xl">TripPamine</h2>
           <p className="text-sky-100 text-sm mt-0.5">
             AI와 함께 떠나는 국내 여행
           </p>

@@ -6,7 +6,7 @@ export default function WhyUs() {
     <section className="py-14 px-4 bg-white">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
-          <p className="text-sky-500 text-xs font-semibold tracking-widest uppercase mb-2">Why TripPamin</p>
+          <p className="text-sky-500 text-xs font-semibold tracking-widest uppercase mb-2">Why TripPamine</p>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900">트립파민을 선택하는 이유</h2>
         </div>
         {/* 카드 4개를 배열.map()으로 반복 렌더링 */}

@@ -7,7 +7,7 @@ export default function AdminDashboard() {
     return (
         <AdminLayout>
             <h1 className="text-xl font-bold text-slate-800 mb-1">대시보드</h1>
-            <p className="text-sm text-slate-500 mb-8">TripPamin 관리자 콘솔에 오신 걸 환영해요.</p>
+            <p className="text-sm text-slate-500 mb-8">TripPamine 관리자 콘솔에 오신 걸 환영해요.</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Link

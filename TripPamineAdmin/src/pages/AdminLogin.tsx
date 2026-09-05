@@ -33,7 +33,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            TripPamin <span className="text-indigo-400">Admin</span>
+            TripPamine <span className="text-indigo-400">Admin</span>
           </h1>
           <p className="text-slate-500 text-sm mt-1">관리자 전용 페이지입니다</p>
         </div>

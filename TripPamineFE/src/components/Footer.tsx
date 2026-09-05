@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="col-span-2 md:col-span-1">
           <div className="text-xl font-bold mb-3">
             <span className="text-sky-400">Trip</span>
-            <span className="text-white">Pamin</span>
+            <span className="text-white">Pamine</span>
           </div>
           <p className="text-sm leading-relaxed mb-4">대한민국 구석구석, AI와 함께 더 특별한 국내 여행을 경험하세요.</p>
           <div className="flex gap-2">
@@ -48,7 +48,7 @@ export default function Footer() {
         ))}
       </div>
       <div className="border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-        © 2026 TripPamin. All rights reserved.
+        © 2026 TripPamine. All rights reserved.
       </div>
     </footer>
   )

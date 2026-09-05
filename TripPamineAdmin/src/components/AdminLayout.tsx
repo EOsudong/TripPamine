@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className="w-60 shrink-0 bg-slate-900 text-slate-300 flex flex-col">
           <div className="h-16 flex items-center px-6 border-b border-slate-800">
           <span className="text-lg font-bold tracking-tight text-white">
-            TripPamin <span className="text-indigo-400">Admin</span>
+            TripPamine <span className="text-indigo-400">Admin</span>
           </span>
           </div>
 
