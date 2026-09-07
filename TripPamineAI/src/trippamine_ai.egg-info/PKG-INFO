@@ -12,3 +12,6 @@ Requires-Dist: pytest==9.1.1; extra == "dev"
 Requires-Dist: pandas==3.0.5; extra == "dev"
 Requires-Dist: jupyter==1.1.1; extra == "dev"
 Requires-Dist: ipykernel==7.3.0; extra == "dev"
+Provides-Extra: transformer
+Requires-Dist: transformers==5.16.1; extra == "transformer"
+Requires-Dist: accelerate==1.14.0; extra == "transformer"

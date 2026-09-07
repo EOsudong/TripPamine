@@ -23,6 +23,11 @@ dev = [
     "ipykernel==7.3.0"
 ]
 
+transformer = [
+    "transformers==5.16.1",
+    "accelerate==1.14.0"
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

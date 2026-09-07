@@ -24,4 +24,11 @@ src/trippamine_ai/datasets/emotion/split_integrity.py
 src/trippamine_ai/datasets/emotion/statistics.py
 src/trippamine_ai/datasets/emotion/three_way_integrity.py
 src/trippamine_ai/datasets/emotion/validator.py
+src/trippamine_ai/evaluation/__init__.py
+src/trippamine_ai/evaluation/emotion/__init__.py
+src/trippamine_ai/evaluation/emotion/classification_error_analysis.py
+src/trippamine_ai/evaluation/emotion/classification_metrics.py
+src/trippamine_ai/models/__init__.py
+src/trippamine_ai/models/emotion/__init__.py
+src/trippamine_ai/models/emotion/baseline_classifier.py
 tests/test_environment.py
