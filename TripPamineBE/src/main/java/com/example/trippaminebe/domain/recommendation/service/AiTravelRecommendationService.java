@@ -94,4 +94,46 @@ public class AiTravelRecommendationService {
 
     return AiTravelRecommendationResponse.from(saved);
   }
+
+  /**
+   * 사용자 커스텀 경로 저장 (새로운 플랜으로 복제하여 저장)
+   */
+  @Transactional
+  public AiTravelRecommendationResponse createCustomPlan(Long originalPlanId, String modifiedRecommendJson) {
+
+    // 1. 원본 여행 계획 조회
+    TravelPlan originalPlan = travelPlanRepository.findById(originalPlanId)
+        .orElseThrow(() -> new IllegalArgumentException("원본 여행 계획을 찾을 수 없습니다. planId=" + originalPlanId));
+
+    // 2. 새로운 여행 계획 이름 설정 (이미 '(수정)'이 있으면 중복 방지)
+    String newPlanName = originalPlan.getPlanName().startsWith("(수정)")
+        ? originalPlan.getPlanName()
+        : "(수정) " + originalPlan.getPlanName();
+
+    // 3. 기존 플랜 정보를 바탕으로 새로운 플랜 복제 (Setter 사용)
+    TravelPlan newPlan = new TravelPlan();
+    newPlan.setUser(originalPlan.getUser());                 // 작성자 동일하게 유지
+    newPlan.setPlanName(newPlanName);                        // 이름은 (수정)이 붙은 새 이름
+    newPlan.setTotalBudget(originalPlan.getTotalBudget());   // 예산 복사
+    newPlan.setCompanionType(originalPlan.getCompanionType());// 동행자 타입 복사
+    newPlan.setLocationCd(originalPlan.getLocationCd());     // 지역 코드 복사
+    newPlan.setBlindYn(originalPlan.getBlindYn());           // 미스터리 투어 여부 복사
+    newPlan.setStartDate(originalPlan.getStartDate());       // 시작일 복사
+    newPlan.setEndDate(originalPlan.getEndDate());           // 종료일 복사
+    newPlan.setDelYn(originalPlan.getDelYn());               // 삭제 여부(기본값 N) 복사
+
+    // DB에 새 플랜 저장
+    TravelPlan savedPlan = travelPlanRepository.save(newPlan);
+
+    // 4. 새로운 플랜에 프론트엔드에서 수정한 JSON을 매핑하여 추천(일정) 데이터 생성 및 저장
+    AiTravelRecommendation customRecommendation = AiTravelRecommendation.builder()
+        .travelPlan(savedPlan)
+        .recommendJson(modifiedRecommendJson)
+        .build();
+
+    AiTravelRecommendation savedRecommendation = recommendationRepository.save(customRecommendation);
+
+    // 5. 최종 결과 반환
+    return AiTravelRecommendationResponse.from(savedRecommendation);
+  }
 }

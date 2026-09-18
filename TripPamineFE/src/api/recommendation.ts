@@ -31,3 +31,20 @@ export const regenerateAiRecommendationApi = async (
 
     return response.data;
 };
+
+export const saveCustomRecommendationApi = async (
+    planId: number,
+    modifiedRecommendJson: string
+): Promise<AiRecommendationResponse> => {
+    try {
+        const response = await api.post(
+            `/recommendations/travel-plans/${planId}/custom`,
+            { modifiedRecommendJson }
+        );
+        
+        return response.data;
+    } catch (error) {
+        console.error("커스텀 여행 경로 저장 에러:", error);
+        throw new Error("커스텀 여행 경로 저장에 실패했습니다.");
+    }
+};

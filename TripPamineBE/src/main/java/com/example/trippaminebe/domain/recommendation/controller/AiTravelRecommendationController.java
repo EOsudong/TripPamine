@@ -5,6 +5,7 @@ import com.example.trippaminebe.domain.recommendation.service.AiTravelRecommenda
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/recommendations")
@@ -37,4 +38,16 @@ public class AiTravelRecommendationController {
         recommendationService.regenerate(planId)
     );
   }
+
+  @PostMapping("/travel-plans/{planId}/custom")
+  public ResponseEntity<AiTravelRecommendationResponse> saveCustomRecommendation(
+      @PathVariable Long planId,
+      @RequestBody Map<String, String> request
+  ) {
+    String modifiedRecommendJson = request.get("modifiedRecommendJson");
+    return ResponseEntity.ok(
+        recommendationService.createCustomPlan(planId, modifiedRecommendJson)
+    );
+  }
+
 }
