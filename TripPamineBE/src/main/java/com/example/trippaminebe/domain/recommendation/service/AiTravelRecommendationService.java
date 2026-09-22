@@ -94,4 +94,31 @@ public class AiTravelRecommendationService {
 
     return AiTravelRecommendationResponse.from(saved);
   }
+
+  /**
+   * 지도에서 편집한 일정을 저장한다.
+   * 이 방식의 트레이드오프: 저장 후에도 planId가 그대로라서 원본 추천 결과는 남지 않고 덮어써진다
+   */
+  @Transactional
+  public AiTravelRecommendationResponse saveCustomRecommendation(Long planId, String modifiedRecommendJson) {
+
+    TravelPlan travelPlan = travelPlanRepository.findById(planId)
+        .orElseThrow(() -> new IllegalArgumentException("여행 계획을 찾을 수 없습니다. planId=" + planId));
+
+    AiTravelRecommendation recommendation =
+        recommendationRepository
+            .findByTravelPlan_PlanId(planId)
+            .orElseGet(() ->
+                AiTravelRecommendation.builder()
+                    .travelPlan(travelPlan)
+                    .build()
+            );
+
+    recommendation.setRecommendJson(modifiedRecommendJson);
+
+    AiTravelRecommendation saved =
+        recommendationRepository.save(recommendation);
+
+    return AiTravelRecommendationResponse.from(saved);
+  }
 }

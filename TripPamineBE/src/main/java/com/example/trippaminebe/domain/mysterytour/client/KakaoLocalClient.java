@@ -32,9 +32,9 @@ public class KakaoLocalClient {
     private final String restApiKey;
 
     public KakaoLocalClient(
-            @Qualifier("kakaoLocalRestTemplate") RestTemplate restTemplate,
-            @Value("${kakao.local.base-url}") String baseUrl,
-            @Value("${kakao.local.rest-api-key}") String restApiKey
+        @Qualifier("kakaoLocalRestTemplate") RestTemplate restTemplate,
+        @Value("${kakao.local.base-url}") String baseUrl,
+        @Value("${kakao.local.rest-api-key}") String restApiKey
     ) {
         this.restTemplate = restTemplate;
         this.baseUrl = removeTrailingSlash(baseUrl);
@@ -43,43 +43,55 @@ public class KakaoLocalClient {
 
     /** 검색 결과가 있으면 Kakao 우선순위가 가장 높은 장소 한 건을 반환한다. */
     public Optional<KakaoPlace> searchFirstPlace(String keyword) {
+        List<KakaoPlace> places = searchPlaces(keyword, 1);
+        return places.isEmpty() ? Optional.empty() : Optional.of(places.get(0));
+    }
+
+    /**
+     *검색 결과를 최대 size건까지 그대로 반환한다.
+     * 기존 searchFirstPlace()는 미스터리투어가 "장소 하나만 확정하면 되는" 용도로 쓰던 메소드라
+     * 결과 1건만 돌려줬는데, AI 여행 추천 지도 편집 화면(안드로이드 네이티브)은 두 가지 용도로
+     * 여러 건이 필요하다:
+     * 1) AI가 추천한 장소 이름 하나하나를 지도 좌표로 바꿀 때 - 가장 가까운(관련도 높은) 결과를 고른다.
+     * 2) 사용자가 직접 "장소 추가" 검색창에 검색어를 입력했을 때 - 여러 후보 중 하나를 고르게 한다.
+     * searchFirstPlace()는 이제 이 메소드를 size=1로 호출하는 것으로 재구현했다
+     */
+    public List<KakaoPlace> searchPlaces(String keyword, int size) {
         if (keyword == null || keyword.isBlank()) {
             throw new IllegalArgumentException("장소 검색어가 필요합니다.");
         }
 
+        int boundedSize = Math.max(1, Math.min(size, 15));
+
         URI uri = UriComponentsBuilder
-                .fromUriString(baseUrl + "/v2/local/search/keyword.json")
-                .queryParam("query", keyword.strip())
-                .queryParam("size", SEARCH_RESULT_SIZE)
-                .build()
-                .encode()
-                .toUri();
+            .fromUriString(baseUrl + "/v2/local/search/keyword.json")
+            .queryParam("query", keyword.strip())
+            .queryParam("size", boundedSize)
+            .build()
+            .encode()
+            .toUri();
 
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, "KakaoAK " + restApiKey);
 
         try {
             ResponseEntity<KakaoKeywordSearchResponse> response = restTemplate.exchange(
-                    uri,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
-                    KakaoKeywordSearchResponse.class
+                uri,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                KakaoKeywordSearchResponse.class
             );
 
             KakaoKeywordSearchResponse body = response.getBody();
             List<KakaoKeywordSearchResponse.Document> documents =
-                    body == null || body.documents() == null ? List.of() : body.documents();
+                body == null || body.documents() == null ? List.of() : body.documents();
 
-            if (documents.isEmpty()) {
-                return Optional.empty();
-            }
-
-            return Optional.of(toPlace(documents.getFirst()));
+            return documents.stream().map(this::toPlace).toList();
         } catch (HttpStatusCodeException e) {
             log.error("Kakao Local API 호출 실패 (status={}, keyword={})", e.getStatusCode(), keyword);
             throw new KakaoLocalApiException(
-                    "Kakao 장소 검색에 실패했습니다. HTTP " + e.getStatusCode().value(),
-                    e
+                "Kakao 장소 검색에 실패했습니다. HTTP " + e.getStatusCode().value(),
+                e
             );
         } catch (KakaoLocalApiException e) {
             throw e;
@@ -93,12 +105,12 @@ public class KakaoLocalClient {
         try {
             // Kakao Local 응답은 x=경도, y=위도다.
             return new KakaoPlace(
-                    document.id(),
-                    document.placeName(),
-                    document.addressName(),
-                    document.roadAddressName(),
-                    new BigDecimal(document.y()),
-                    new BigDecimal(document.x())
+                document.id(),
+                document.placeName(),
+                document.addressName(),
+                document.roadAddressName(),
+                new BigDecimal(document.y()),
+                new BigDecimal(document.x())
             );
         } catch (RuntimeException e) {
             throw new KakaoLocalApiException("Kakao 장소 검색 응답의 좌표 형식이 올바르지 않습니다.", e);
