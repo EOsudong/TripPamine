@@ -59,23 +59,6 @@ public class AiTravelRecommendationController {
     );
   }
 
-
-  /**
-   * 지도에서 편집한 일정 저장.
-   * 원래 이 프로젝트에 없던 엔드포인트라 이번에 새로 추가했다. 새 계획으로 복제하지 않고
-   * 이 planId의 추천 결과를 그대로 덮어쓰는 방식
-   */
-  @PostMapping("/travel-plans/{planId}/custom")
-  public ResponseEntity<AiTravelRecommendationResponse> saveCustomRecommendation(
-      @PathVariable Long planId,
-      @RequestBody Map<String, String> request
-  ) {
-    String modifiedRecommendJson = request.get("modifiedRecommendJson");
-    return ResponseEntity.ok(
-        recommendationService.saveCustomRecommendation(planId, modifiedRecommendJson)
-    );
-  }
-
   /**
    * 장소 이름으로 좌표 후보를 검색한다.
    * 웹(KakaoMapModal.tsx)은 카카오 지도 JS SDK의 services.Places(키워드 검색)를 브라우저에서
