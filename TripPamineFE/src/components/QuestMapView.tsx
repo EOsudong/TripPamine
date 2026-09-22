@@ -52,71 +52,79 @@ export const QuestMapView: React.FC<QuestMapViewProps> = ({
 
   // 1. 지도 초기화 (목표 지점 마커 + 실제 클리어 반경 원)
   useEffect(() => {
-    if (!mapContainerRef.current || !window.kakao) return;
+    if (!mapContainerRef.current || !window.kakao || !window.kakao.maps) return;
 
     const kakao = window.kakao;
-    const centerPosition = new kakao.maps.LatLng(targetLat, targetLng);
 
-    const newMap = new kakao.maps.Map(mapContainerRef.current, {
-      center: centerPosition,
-      level: 3,
+    // 퀘스트 도중 새로고침했을 때 빈 화면으로 반환되는 오류 수정을 위한 콜백함수 추가
+    let circle : any = null;
+    let customOverlay: any = null;
+    kakao.maps.load(()=>{
+      if (!mapContainerRef.current) return;
+
+      const centerPosition = new kakao.maps.LatLng(targetLat, targetLng);
+
+      const newMap = new kakao.maps.Map(mapContainerRef.current, {
+        center: centerPosition,
+        level: 3,
+      });
+      mapRef.current = newMap;
+      setMapReady(true);
+
+      const targetMarkerImage = new kakao.maps.MarkerImage(
+        "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
+        new kakao.maps.Size(35, 39),
+      );
+
+      new kakao.maps.Marker({
+        position: centerPosition,
+        image: targetMarkerImage,
+        map: newMap,
+      });
+
+      // 퀘스트마다 다른 clearRadius를 그대로 원으로 그려서, 사용자가 실제 인정 범위를 눈으로 확인할 수 있게 함
+      circle = new kakao.maps.Circle({
+        center: centerPosition,
+        radius: clearRadius,
+        strokeWeight: 2,
+        strokeColor: "#00F0FF",
+        strokeOpacity: 0.8,
+        strokeStyle: "dashed",
+        fillColor: "#00F0FF",
+        fillOpacity: 0.15,
+      });
+      circle.setMap(newMap);
+      boundaryCircleRef.current = circle;
+
+      const overlayContent = `
+        <div style="padding: 5px 10px; background: #0f172a; border: 1px solid #00f0ff; border-radius: 8px; color: #fff; font-size: 11px; font-weight: bold; transform: translateY(-40px);">
+          ${questName} (${rewardPoint}P · 반경 ${clearRadius}m)
+        </div>
+      `;
+
+      customOverlay = new kakao.maps.CustomOverlay({
+        position: centerPosition,
+        content: overlayContent,
+      });
+
+      customOverlay.setMap(newMap);
     });
-    mapRef.current = newMap;
-    setMapReady(true);
 
-    const targetMarkerImage = new kakao.maps.MarkerImage(
-      "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
-      new kakao.maps.Size(35, 39),
-    );
-
-    new kakao.maps.Marker({
-      position: centerPosition,
-      image: targetMarkerImage,
-      map: newMap,
-    });
-
-    // 퀘스트마다 다른 clearRadius를 그대로 원으로 그려서, 사용자가 실제 인정 범위를 눈으로 확인할 수 있게 함
-    const circle = new kakao.maps.Circle({
-      center: centerPosition,
-      radius: clearRadius,
-      strokeWeight: 2,
-      strokeColor: "#00F0FF",
-      strokeOpacity: 0.8,
-      strokeStyle: "dashed",
-      fillColor: "#00F0FF",
-      fillOpacity: 0.15,
-    });
-    circle.setMap(newMap);
-    boundaryCircleRef.current = circle;
-
-    const overlayContent = `
-      <div style="padding: 5px 10px; background: #0f172a; border: 1px solid #00f0ff; border-radius: 8px; color: #fff; font-size: 11px; font-weight: bold; transform: translateY(-40px);">
-        ${questName} (${rewardPoint}P · 반경 ${clearRadius}m)
-      </div>
-    `;
-
-    const customOverlay = new kakao.maps.CustomOverlay({
-      position: centerPosition,
-      content: overlayContent,
-    });
-
-    customOverlay.setMap(newMap);
-
-    // 컴포넌트가 사라지거나(지도 닫고 목록으로 이동) 퀘스트가 바뀌어 이 effect가 재실행되기 직전에
-    // 이전 지도가 만든 마커/원/오버레이/지도 인스턴스를 확실히 정리한다.
-    // (예전 코드는 이 정리가 전혀 없어서, 퀘스트를 여러 번 열고 닫으면 지도 객체가 계속 쌓였다)
-    return () => {
-      customOverlay.setMap(null);
-      circle.setMap(null);
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setMap(null);
-        userMarkerRef.current = null;
-      }
-      boundaryCircleRef.current = null;
-      mapRef.current = null;
-      setMapReady(false);
-    };
-  }, [targetLat, targetLng, questName, rewardPoint, clearRadius]);
+      // 컴포넌트가 사라지거나(지도 닫고 목록으로 이동) 퀘스트가 바뀌어 이 effect가 재실행되기 직전에
+      // 이전 지도가 만든 마커/원/오버레이/지도 인스턴스를 확실히 정리한다.
+      // (예전 코드는 이 정리가 전혀 없어서, 퀘스트를 여러 번 열고 닫으면 지도 객체가 계속 쌓였다)
+      return () => {
+        if(customOverlay) customOverlay.setMap(null);
+        if(circle) circle.setMap(null);
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setMap(null);
+          userMarkerRef.current = null;
+        }
+        boundaryCircleRef.current = null;
+        mapRef.current = null;
+        setMapReady(false);
+      };
+    }, [targetLat, targetLng, questName, rewardPoint, clearRadius]);
 
   // clearRadius가 나중에 바뀌는 경우(재선택 등) 원 반지름도 함께 갱신
   useEffect(() => {

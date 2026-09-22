@@ -5,10 +5,11 @@ import { getTravelPlansApi } from "../api/travel";
 import {
     getAiRecommendationApi,
     regenerateAiRecommendationApi,
+    saveCustomRecommendationApi,
     type AiRecommendationResponse,
 } from "../api/recommendation";
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
-import { KakaoMapModal } from '../components/KakaoMapModal';
+import { KakaoMapModal, type PlaceItem } from '../components/KakaoMapModal';
 
 export default function AiRecommendPage() {
     const navigate = useNavigate();
@@ -24,7 +25,6 @@ export default function AiRecommendPage() {
     const [recommendLoading, setRecommendLoading] = useState(false);
     const [recommendError, setRecommendError] = useState("");
 
-    // 지도 모달 열림/닫힘 상태
     const [isMapOpen, setIsMapOpen] = useState(false);
 
     useEffect(() => {
@@ -124,7 +124,74 @@ export default function AiRecommendPage() {
         }[];
     }
 
-    // KakaoMapModal에 전달할 1차원 평탄화(Flat) 장소 리스트 변환
+    // 모달에서 수정 완료 시 실행할 경로 저장 핸들러
+    const handleSavePlaces = async (updatedPlaces: PlaceItem[]) => {
+        if (!parsedRecommendation || !selectedPlan) return;
+
+        // 1. 모달에서 넘어온 장소 데이터를 Day별로 재그룹화
+        const dayMap: { [key: number]: { name: string; description: string; estimatedCost: number }[] } = {};
+
+        updatedPlaces.forEach((p) => {
+            const day = p.day || 1;
+            if (!dayMap[day]) dayMap[day] = [];
+
+            const existingPlace = parsedRecommendation.days
+                .flatMap((d) => d.places)
+                .find((orig) => orig.name === p.name);
+
+            dayMap[day].push({
+                name: p.name,
+                description: existingPlace?.description || p.address || "사용자 추가 장소",
+                estimatedCost: existingPlace?.estimatedCost || 0,
+            });
+        });
+
+        const newDays = Object.keys(dayMap).map((dayStr) => ({
+            day: Number(dayStr),
+            places: dayMap[Number(dayStr)],
+        }));
+
+        const newTitle = parsedRecommendation.title.startsWith("(수정)")
+            ? parsedRecommendation.title
+            : `(수정) ${parsedRecommendation.title}`;
+
+        const updatedParsed: ParsedRecommendation = {
+            ...parsedRecommendation,
+            title: newTitle,
+            days: newDays,
+        };
+
+        try {
+            setRecommendLoading(true); // 로딩 스피너 활성화
+            setIsMapOpen(false); // 지도는 먼저 닫기
+
+            // 2. 백엔드 API 호출하여 DB에 실제 저장
+            const responseData = await saveCustomRecommendationApi(
+                selectedPlan.planId, 
+                JSON.stringify(updatedParsed)
+            );
+
+            // 3. 여행 계획 목록 전체 재조회 (새로고침 효과)
+            const updatedPlans = await getTravelPlansApi();
+            setPlans(updatedPlans);
+
+            // 4. 방금 생성된 새로운 '(수정)' 플랜을 자동으로 선택된 상태로 만들기
+            const newlyCreatedPlan = updatedPlans.find((p) => p.planId === responseData.planId);
+            if (newlyCreatedPlan) {
+                setSelectedPlan(newlyCreatedPlan);
+                setRecommendation(responseData);
+                setParsedRecommendation(JSON.parse(responseData.recommendJson));
+            }
+            
+            alert("성공적으로 여행 경로가 추가(수정) 되었습니다!");
+        } catch (error) {
+            console.error("경로 DB 저장 실패:", error);
+            alert("경로 저장 중 오류가 발생했습니다.");
+        } finally {
+            setRecommendLoading(false);
+        }
+    };
+
     const mapPlaces = parsedRecommendation?.days.flatMap((d) =>
         d.places.map((p) => ({
             name: p.name,
@@ -142,7 +209,6 @@ export default function AiRecommendPage() {
         >
             <div className="min-h-screen bg-white/75 backdrop-blur-[1px] p-8">
                 <div className="max-w-7xl mx-auto">
-                    {/* 페이지 헤더 영역 */}
                     <div className="mb-8 flex items-center justify-between">
                         <div>
                             <p className="text-sky-500 text-xs font-bold tracking-widest uppercase">
@@ -159,7 +225,6 @@ export default function AiRecommendPage() {
                             </p>
                         </div>
 
-                        {/* 메인페이지(Hero.tsx) 이동 버튼 */}
                         <button
                             type="button"
                             onClick={() => navigate("/")}
@@ -178,7 +243,6 @@ export default function AiRecommendPage() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-                        {/* 왼쪽 - 등록된 여행 목록 */}
                         <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="font-bold text-slate-800">등록된 여행</h2>
@@ -245,7 +309,6 @@ export default function AiRecommendPage() {
                             )}
                         </div>
 
-                        {/* 오른쪽 - AI 추천 영역 */}
                         <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
                             {!selectedPlan ? (
                                 <div className="min-h-[420px] flex flex-col items-center justify-center text-center">
@@ -314,7 +377,6 @@ export default function AiRecommendPage() {
                                                             </div>
 
                                                             <div className="flex flex-col sm:flex-row items-end gap-2 shrink-0">
-                                                                {/* 지도로 일정 보기 버튼 */}
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setIsMapOpen(true)}
@@ -330,7 +392,6 @@ export default function AiRecommendPage() {
                                                                     🗺️ 지도로 일정 보기
                                                                 </button>
 
-                                                                {/* 추천 다시 받기 버튼 */}
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleRegenerate}
@@ -429,11 +490,12 @@ export default function AiRecommendPage() {
                 </div>
             </div>
 
-            {/* 카카오 지도 모달 */}
+            {/* KakaoMapModal 호출 시 저장 핸들러(onSavePlaces) 전달 */}
             <KakaoMapModal
                 isOpen={isMapOpen}
                 onClose={() => setIsMapOpen(false)}
                 places={mapPlaces}
+                onSavePlaces={handleSavePlaces}
             />
         </div>
     );

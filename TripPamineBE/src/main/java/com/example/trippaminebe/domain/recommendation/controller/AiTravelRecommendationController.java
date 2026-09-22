@@ -48,6 +48,18 @@ public class AiTravelRecommendationController {
     );
   }
 
+  @PostMapping("/travel-plans/{planId}/custom")
+  public ResponseEntity<AiTravelRecommendationResponse> saveCustomRecommendation(
+      @PathVariable Long planId,
+      @RequestBody Map<String, String> request
+  ) {
+    String modifiedRecommendJson = request.get("modifiedRecommendJson");
+    return ResponseEntity.ok(
+        recommendationService.createCustomPlan(planId, modifiedRecommendJson)
+    );
+  }
+
+
   /**
    * 지도에서 편집한 일정 저장.
    * 원래 이 프로젝트에 없던 엔드포인트라 이번에 새로 추가했다. 새 계획으로 복제하지 않고
