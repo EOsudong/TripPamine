@@ -8,6 +8,11 @@ pytest==9.1.1
 pandas==3.0.5
 jupyter==1.1.1
 ipykernel==7.3.0
+httpx==0.28.1
+
+[service]
+fastapi==0.141.1
+uvicorn==0.52.0
 
 [transformer]
 transformers==5.16.1
