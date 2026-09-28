@@ -48,3 +48,15 @@ export const saveCustomRecommendationApi = async (
         throw new Error("커스텀 여행 경로 저장에 실패했습니다.");
     }
 };
+
+export const regenerateDayRecommendationApi = async (
+    planId: number,
+    dayNum: number,
+    places: string[]
+): Promise<{ day: number; places: { name: string; description: string; estimatedCost: number }[] }> => {
+    const response = await api.post(
+        `/recommendations/travel-plans/${planId}/days/${dayNum}/regenerate`,
+        { places }
+    );
+    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+};

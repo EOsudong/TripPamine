@@ -83,4 +83,56 @@ public class OpenAiRecommendationService {
         .map(outputText -> outputText.text())
         .collect(java.util.stream.Collectors.joining());
   }
+
+  public String generateDayRecommendation(TravelPlan plan, int day, java.util.List<String> currentPlaces) {
+    String placesStr = String.join(", ", currentPlaces);
+
+    String prompt = """
+        당신은 대한민국 국내 여행 전문 플래너입니다.
+        
+        여행 이름: %s
+        총 예산: %s원
+        동행자: %s
+        
+        사용자가 %d일차에 방문하고 싶어하는 장소 목록입니다: [%s]
+        
+        위 장소들의 지리적 위치와 이동 동선을 고려하여 최적의 순서로 재배치하고, 
+        각 장소별 추천 이유와 예상 비용을 다시 산정해주세요. (필요시 동선상 매우 자연스러운 장소 1곳 추가 가능)
+        
+        반드시 아래 JSON 형식으로만 응답하세요:
+        {
+          "day": %d,
+          "places": [
+            {
+              "name": "장소명",
+              "description": "최적 동선 추천 이유",
+              "estimatedCost": 0
+            }
+          ]
+        }
+        
+        위 JSON 이외의 설명이나 마크다운은 출력하지 마세요.
+        """.formatted(
+        plan.getPlanName(),
+        plan.getTotalBudget(),
+        plan.getCompanionType(),
+        day,
+        placesStr,
+        day
+    );
+
+    ResponseCreateParams params = ResponseCreateParams.builder()
+        .model(ChatModel.GPT_4O_MINI)
+        .input(prompt)
+        .build();
+
+    Response response = client.responses().create(params);
+
+    return response.output().stream()
+        .flatMap(item -> item.message().stream())
+        .flatMap(message -> message.content().stream())
+        .flatMap(content -> content.outputText().stream())
+        .map(outputText -> outputText.text())
+        .collect(java.util.stream.Collectors.joining());
+  }
 }

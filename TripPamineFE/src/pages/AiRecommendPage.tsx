@@ -5,6 +5,7 @@ import { getTravelPlansApi } from "../api/travel";
 import {
     getAiRecommendationApi,
     regenerateAiRecommendationApi,
+    regenerateDayRecommendationApi,
     saveCustomRecommendationApi,
     type AiRecommendationResponse,
 } from "../api/recommendation";
@@ -199,6 +200,20 @@ export default function AiRecommendPage() {
             day: d.day,
         }))
     ) || [];
+
+    const handleRegenerateDay = async (dayNum: number, currentPlaces: PlaceItem[]): Promise<PlaceItem[]> => {
+        if (!selectedPlan) return [];
+
+        const placeNames = currentPlaces.map((p) => p.name);
+        const result = await regenerateDayRecommendationApi(selectedPlan.planId, dayNum, placeNames);
+
+        // 백엔드 결과를 PlaceItem 배열로 전환
+        return result.places.map((p) => ({
+            name: p.name,
+            address: p.description,
+            day: dayNum,
+        }));
+    };
 
     return (
         <div
@@ -496,6 +511,7 @@ export default function AiRecommendPage() {
                 onClose={() => setIsMapOpen(false)}
                 places={mapPlaces}
                 onSavePlaces={handleSavePlaces}
+                onRegenerateDay={handleRegenerateDay}
             />
         </div>
     );

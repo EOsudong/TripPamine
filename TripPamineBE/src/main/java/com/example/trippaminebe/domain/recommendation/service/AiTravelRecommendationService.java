@@ -136,4 +136,12 @@ public class AiTravelRecommendationService {
     // 5. 최종 결과 반환
     return AiTravelRecommendationResponse.from(savedRecommendation);
   }
+
+  @Transactional
+  public String regenerateDay(Long planId, int day, java.util.List<String> currentPlaces) {
+    TravelPlan travelPlan = travelPlanRepository.findById(planId)
+        .orElseThrow(() -> new IllegalArgumentException("여행 계획을 찾을 수 없습니다. planId=" + planId));
+
+    return openAiRecommendationService.generateDayRecommendation(travelPlan, day, currentPlaces);
+  }
 }

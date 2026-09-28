@@ -19,10 +19,12 @@ interface KakaoMapModalProps {
   onClose: () => void;
   places: PlaceItem[];
   onSavePlaces?: (updatedPlaces: PlaceItem[]) => void;
+  onRegenerateDay?: (dayNum: number, currentPlaces: PlaceItem[]) => Promise<PlaceItem[]>;
 }
 
 const KAKAO_JS_KEY = "b33fca24ae4855453ab831d8b0208dc9";
 
+// 주요 지역 중심 좌표
 const REGION_MAP: { [key: string]: { lat: number; lng: number } } = {
   "서울": { lat: 37.5665, lng: 126.9780 },
   "제주": { lat: 33.3617, lng: 126.5292 },
@@ -44,6 +46,7 @@ const REGION_MAP: { [key: string]: { lat: number; lng: number } } = {
   "횡성": { lat: 37.4918, lng: 127.9846 },
 };
 
+// 마커 이미지 생성기
 const createMarkerImage = (fillColor: string, strokeColor: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="29" height="42" viewBox="0 0 29 42">
     <path fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5" d="M14.5 0C6.49 0 0 6.49 0 14.5C0 25.38 14.5 42 14.5 42C14.5 42 29 25.38 29 14.5C29 6.49 22.51 0 14.5 0Z"/>
@@ -64,6 +67,7 @@ const createMarkerImage = (fillColor: string, strokeColor: string) => {
   return null;
 };
 
+// 두 위/경도 간 거리 계산
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -78,6 +82,7 @@ const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 };
 
+// 대표 지역 감지
 const detectTripRegion = (places: PlaceItem[]) => {
   for (const place of places) {
     for (const region of Object.keys(REGION_MAP)) {
@@ -89,6 +94,7 @@ const detectTripRegion = (places: PlaceItem[]) => {
   return { name: "서울", center: REGION_MAP["서울"] };
 };
 
+// 장소명 정제
 const sanitizePlaceName = (rawName: string): string => {
   if (!rawName) return "";
   if (/(차량\s*이용|대중교통|도보\s*이동|자차\s*이용)/g.test(rawName)) return "";
@@ -104,7 +110,13 @@ const sanitizePlaceName = (rawName: string): string => {
     .trim();
 };
 
-export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, places, onSavePlaces }) => {
+export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({
+  isOpen,
+  onClose,
+  places,
+  onSavePlaces,
+  onRegenerateDay,
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const placeCoordsRef = useRef<{ [key: number]: any }>({});
@@ -124,12 +136,17 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
   const [collapsedDays, setCollapsedDays] = useState<{ [key: number]: boolean }>({});
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
+  // 장소 검색 관련 상태
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Drag & Drop 관련 상태
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ index: number; position: 'above' | 'swap' | 'below' } | null>(null);
+
+  // AI Day 동선 재구성 로딩 상태
+  const [loadingDay, setLoadingDay] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -150,6 +167,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     return groups;
   }, [localPlaces]);
 
+  // Kakao SDK 로드
   useEffect(() => {
     if (!isOpen) return;
 
@@ -266,6 +284,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     }
   };
 
+  // 지도 생성 및 마커/Polyline 렌더링
   useEffect(() => {
     if (!isOpen || !isSdkLoaded || !window.kakao || !window.kakao.maps) return;
 
@@ -434,7 +453,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
 
     return () => {
       isCancelled = true;
-      // 🔑 핵심 수정: 언마운트/닫힘 시 지도 인스턴스 초기화
+      // 🔑 지도 인스턴스 초기화 (모달 재오픈 시 비활성화 버그 수정)
       mapInstanceRef.current = null;
       mapElementsRef.current.markers.forEach(({ marker, customOverlay }) => {
         if (marker) marker.setMap(null);
@@ -447,6 +466,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     };
   }, [isOpen, isSdkLoaded, localPlaces]);
 
+  // 장소 검색
   const handleSearchPlaces = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchKeyword.trim() || !window.kakao || !window.kakao.maps) return;
@@ -463,6 +483,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     });
   };
 
+  // 장소 추가
   const handleAddPlaceToRoute = (searchItem: any, targetDay = 1) => {
     const newPlace: PlaceItem = {
       name: searchItem.place_name,
@@ -475,10 +496,12 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     setLocalPlaces((prev) => [...prev, newPlace]);
   };
 
+  // 장소 삭제
   const handleDeletePlace = (indexToDelete: number) => {
     setLocalPlaces((prev) => prev.filter((_, idx) => idx !== indexToDelete));
   };
 
+  // Drag & Drop
   const handleDragStart = (e: React.DragEvent, index: number) => {
     if (!isEditing) return;
     setDraggedIdx(index);
@@ -531,6 +554,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
     setDropTarget(null);
   };
 
+  // 경로 최종 저장 (confirm 적용)
   const handleSaveEdit = () => {
     const isConfirmed = window.confirm("변경사항을 저장하시겠습니까?");
     if (isConfirmed) {
@@ -540,7 +564,35 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
       setIsEditing(false);
     }
   };
-  
+
+  // AI Day 동선 재구성 버튼 핸들러
+  const handleRegenerateDayClick = async (dayNum: number) => {
+    if (!onRegenerateDay) return;
+
+    const dayPlaces = localPlaces.filter((p) => (p.day || 1) === dayNum);
+    if (dayPlaces.length === 0) {
+      alert("재구성할 장소가 없습니다.");
+      return;
+    }
+
+    try {
+      setLoadingDay(dayNum);
+      const newDayPlaces = await onRegenerateDay(dayNum, dayPlaces);
+
+      setLocalPlaces((prev) => {
+        const otherDayPlaces = prev.filter((p) => (p.day || 1) !== dayNum);
+        return [...otherDayPlaces, ...newDayPlaces];
+      });
+
+      alert(`Day ${dayNum} 경로가 AI 동선에 맞춰 재구성되었습니다!`);
+    } catch (error) {
+      console.error("Day 재구성 실패:", error);
+      alert("Day 경로 재구성에 실패했습니다.");
+    } finally {
+      setLoadingDay(null);
+    }
+  };
+
   const handlePlaceClick = (index: number) => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -562,6 +614,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-6xl h-[760px] rounded-3xl p-6 flex flex-col shadow-2xl relative">
+        {/* 상단 헤더 */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -617,7 +670,9 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         </div>
 
         <div className="flex-1 flex gap-4 min-h-0">
+          {/* 좌측 카카오 지도 */}
           <div className="w-2/3 h-full rounded-2xl bg-slate-100 overflow-hidden relative border border-slate-200 flex flex-col">
+            {/* 편집 모드 장소 검색 오버레이 */}
             {isEditing && (
               <div className="absolute top-3 left-3 right-3 z-20 bg-white/90 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-slate-200">
                 <form onSubmit={handleSearchPlaces} className="flex gap-2">
@@ -679,6 +734,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
             </div>
           </div>
 
+          {/* 우측 장소 목록 및 편집 영역 */}
           <div className="w-1/3 h-full bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="font-bold text-slate-800 text-sm">📍 추천 장소 목록</h3>
@@ -695,19 +751,34 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
 
                 return (
                   <div key={`day-group-${dayNum}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    {/* Day 헤더 */}
                     <div className="p-3 bg-slate-100/70 border-b border-slate-200/60 flex items-center justify-between select-none">
                       <div className="flex items-center gap-2.5 font-bold text-sm text-slate-800">
                         <span>Day {dayNum}</span>
                         <span className="text-xs font-medium text-slate-400">({dayItems.length}곳)</span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setCollapsedDays((prev) => ({ ...prev, [dayNum]: !prev[dayNum] }))}
-                        className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-500 transition-all text-xs font-bold"
-                      >
-                        {isCollapsed ? "▼" : "▲"}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {/* 편집 모드 시 Day별 AI 동선 재구성 버튼 */}
+                        {isEditing && (
+                          <button
+                            type="button"
+                            disabled={loadingDay === dayNum}
+                            onClick={() => handleRegenerateDayClick(dayNum)}
+                            className="px-2 py-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-300 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+                          >
+                            {loadingDay === dayNum ? "🔄 최적화 중..." : "✨ AI 동선 재구성"}
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setCollapsedDays((prev) => ({ ...prev, [dayNum]: !prev[dayNum] }))}
+                          className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-500 transition-all text-xs font-bold"
+                        >
+                          {isCollapsed ? "▼" : "▲"}
+                        </button>
+                      </div>
                     </div>
 
                     {!isCollapsed && (

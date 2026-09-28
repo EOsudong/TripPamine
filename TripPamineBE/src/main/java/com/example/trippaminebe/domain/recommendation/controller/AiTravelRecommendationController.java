@@ -76,4 +76,15 @@ public class AiTravelRecommendationController {
         kakaoLocalClient.searchPlaces(keyword, size)
     );
   }
+
+  @PostMapping("/travel-plans/{planId}/days/{dayNum}/regenerate")
+  public ResponseEntity<String> regenerateDay(
+      @PathVariable Long planId,
+      @PathVariable int dayNum,
+      @RequestBody Map<String, List<String>> request
+  ) {
+    List<String> currentPlaces = request.getOrDefault("places", List.of());
+    String dayJson = recommendationService.regenerateDay(planId, dayNum, currentPlaces);
+    return ResponseEntity.ok(dayJson);
+  }
 }
