@@ -7,9 +7,7 @@ import {
   type QuestResponse,
   type UserQuestLogResponse,
 } from "../api/quest";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
+import AppLayout from "../layout/AppLayout";
 import QuestWorldMap from "../components/QuestWorldMap";
 
 type QuestViewStatus = "NOT_STARTED" | UserQuestLogResponse["status"];
@@ -42,7 +40,6 @@ const STATUS_CONFIG: Record<
 
 export default function QuestPage() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profile, setProfile] = useState<MyInfoResponse | null>(null);
   const [quests, setQuests] = useState<QuestResponse[]>([]);
   const [myLogs, setMyLogs] = useState<UserQuestLogResponse[]>([]);
@@ -98,17 +95,8 @@ export default function QuestPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <Header
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((value) => !value)}
-      />
-
-      <main
-        className={`transition-all duration-300 pt-16 ${
-          sidebarOpen ? "lg:pl-64" : "lg:pl-16"
-        }`}
+      <AppLayout
+          pageClassName="bg-slate-950 text-white"
       >
         <div className="mx-auto max-w-6xl px-4 py-10">
           <section className="overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950 p-6 shadow-2xl md:p-8">
@@ -230,9 +218,7 @@ export default function QuestPage() {
             )}
           </section>
         </div>
-        <Footer />
-      </main>
-    </div>
+      </AppLayout>
   );
 }
 

@@ -130,3 +130,10 @@ finlife:
   api:
     base-url: https://finlife.fss.or.kr/finlifeapi
     auth-key: ${FINLIFE_API_KEY}
+
+# TripPamineAI Python/FastAPI runtime
+trippamine:
+  ai:
+    base-url: ${TRIPPAMINE_AI_BASE_URL:http://127.0.0.1:18001}
+    connect-timeout-ms: ${TRIPPAMINE_AI_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TRIPPAMINE_AI_READ_TIMEOUT_MS:30000}

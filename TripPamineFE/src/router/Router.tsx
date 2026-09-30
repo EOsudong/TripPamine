@@ -16,6 +16,7 @@ import QuestPage from "../pages/QuestPage"
 import QuestDetailPage from "../pages/QuestDetailPage"
 import FinancialProductsPage from "../pages/FinancialProductsPage"
 import MysteryTourPlay from "../pages/MysteryTourPlay"   // ← 추가
+import TravelPage from "../pages/TravelPage";
 import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
@@ -23,6 +24,13 @@ export default function Router() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} /> {/* 메인 페이지 */}
+          <Route path="/travel"
+              element={
+                  <ProtectedRoute>
+                      <TravelPage />
+                  </ProtectedRoute>
+              }
+          />
         <Route path="/login" element={<Login />} /> {/* 로그인 */}
         <Route path="/join" element={<Join />} /> {/* 회원가입 */}
         <Route path="/find-id" element={<FindId />} /> {/* 아이디 찾기 */}
@@ -68,8 +76,8 @@ export default function Router() {
                 {/* 사이드바 "정보" 그룹의 "금융상품" 메뉴. 금융감독원 오픈API(금융상품 한눈에)로 받아오는
             정기예금/적금 정보를 보여주는 공개 페이지 — tour 페이지들과 마찬가지로 로그인 없이도
             접근 가능하도록 ProtectedRoute로 감싸지 않습니다. */}
-                <Route path="/finance" element={<FinancialProductsPage />} />
           <Route path="/finance" element={<FinancialProductsPage />} />
+
           {/* 미스터리 투어 생성 후 이동하는 진행 화면 */}
           <Route
               path="/mystery-tour/:mysteryTourId"

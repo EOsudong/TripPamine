@@ -10,10 +10,8 @@
 // [금융상품 북마크 추가] "저장된 금융상품" 탭 — /finance 페이지에서 🔖로 저장한 정기예금/적금을 모아 보여줍니다.
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
-import Footer from "../components/Footer";
 import ManualAccountSection from "../components/ManualAccountSection";
+import AppLayout from "../layout/AppLayout";
 import AccountBook from "../components/AccountBook";
 import { getMyInfoApi } from "../api/auth";
 import { getBookmarksApi, removeBookmarkApi } from "../api/bookmark";
@@ -52,7 +50,6 @@ function formatRate(rate: number | null): string {
 export default function MyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   // 마이페이지 초기 화면 여행 가계부로 설정
   const [tab, setTab] = useState<Tab>("accountBook");
 
@@ -185,19 +182,18 @@ export default function MyPage() {
 
   const activeBookmarkTab = BOOKMARK_TABS.find((t) => t.key === tab);
 
-  return (
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <Header
-            sidebarOpen={sidebarOpen}
-            onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        />
-
-        <main
-            className={`transition-all duration-300 pt-16 ${
-                sidebarOpen ? "lg:pl-64" : "lg:pl-16"
-            }`}
+    return (
+        <AppLayout
+            pageClassName="bg-slate-50"
         >
+            <div
+                className="
+        mx-auto
+        max-w-5xl
+        px-4
+        py-10
+      "
+            >
           <div className="max-w-5xl mx-auto px-4 py-10">
             {/* ================= 유저 프로필 및 스탯 카드 ================= */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex items-center justify-between gap-4 mb-8 flex-wrap">
@@ -363,10 +359,9 @@ export default function MyPage() {
             </section>
           </div>
 
-          <Footer />
-        </main>
-      </div>
-  );
+            </div>
+        </AppLayout>
+    );
 }
 
 // ================= 북마크 카드 (관광정보) =================

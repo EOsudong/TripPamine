@@ -387,9 +387,20 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         bounds.extend(coords);
       };
 
-      const createFallbackMarker = (originalName: string, index: number) => {
+      /**
+       * 장소 검색에 실패한 경우 해당 장소를
+       * "위치 추정 실패/대체 처리 대상"으로 표시한다.
+       *
+       * 실제 마커를 생성하는 함수가 아니라 index 상태만 기록하므로
+       * 장소 이름(place.name)은 필요하지 않다.
+       */
+      const createFallbackMarker = (index: number) => {
         if (isCancelled) return;
-        setEstimatedIndices((prev) => ({ ...prev, [index]: true }));
+
+        setEstimatedIndices((prev) => ({
+          ...prev,
+          [index]: true,
+        }));
       };
 
       const findNearestPlace = (items: any[]): any => {
@@ -446,7 +457,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
         const firstWord = query.split(" ")[0];
 
         if (!query) {
-          createFallbackMarker(place.name, index);
+          createFallbackMarker(index);
           continue;
         }
 
@@ -471,7 +482,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({ isOpen, onClose, p
           const coords = new window.kakao.maps.LatLng(bestMatch.y, bestMatch.x);
           renderMarker(coords, place.name, index, day);
         } else {
-          createFallbackMarker(place.name, index);
+          createFallbackMarker(index);
         }
       }
 

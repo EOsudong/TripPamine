@@ -1,189 +1,439 @@
-// 왼쪽 네비게이션 사이드바.
-// - 데스크탑에서는 항상 보이되, open 값에 따라 "아이콘만(64px)" ↔ "전체 펼침(256px)" 너비만 바뀜
-// - 모바일에서는 open이 true일 때만 화면 위로 슬라이드되어 나타나는 오버레이 형태
-//
-// props
-// - open    : 사이드바가 펼쳐진 상태인지 여부 (Home.jsx 등 상위 페이지의 state)
-// - onClose : 사이드바를 닫을 때 실행할 함수 (배경 클릭, 메뉴 클릭, 모바일 닫기 버튼에서 호출)
-import { useNavigate } from "react-router-dom";
-import { tourMainCategories } from "../data/tourCategories";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
+
+import {
+  tourMainCategories,
+} from "../data/tourCategories";
+
 
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
 }
 
+
+/**
+ * 사이드바에서 사용하는 아이콘 종류.
+ *
+ * 기존처럼 Emoji 문자열을 직접 넣지 않고
+ * 하나의 SVG 스타일로 통일한다.
+ *
+ * 이렇게 하면:
+ *
+ * - Windows / macOS Emoji 모양 차이 제거
+ * - 아이콘 크기 통일
+ * - active color 적용 용이
+ * - 전체 UI 완성도 향상
+ */
+type NavIconName =
+    | "manager"
+    | "travel"
+    | "ai"
+    | "quest"
+    | "user"
+    | "finance"
+    | "calendar"
+    | "map"
+    | "building"
+    | "compass";
+
+
 interface NavItem {
-  icon: string;
+  icon: NavIconName;
   label: string;
-  to: string | null;
+  to: string;
+
+  /**
+   * 같은 Workspace로 취급할 추가 URL.
+   *
+   * 예:
+   *
+   * 여행 플래너
+   * /travel
+   * /mystery-tour/123
+   *
+   * 둘 모두 여행 메뉴를 active 처리한다.
+   */
+  matches?: string[];
 }
+
 
 interface NavGroup {
   group: string;
   items: NavItem[];
 }
 
-// 메뉴 목록을 그룹 단위로 정의.
-// to가 "/#festivals"처럼 "#"을 포함하면 → 홈으로 이동 후 해당 id 위치로 스크롤
-// to가 null이면 → 아직 연결된 페이지가 없는 메뉴 (클릭해도 아무 동작 안 함)
-//
-// "정보" 그룹의 대분류 3개(국내 축제 및 행사 / 국내 관광 여행지 / 국내 관광 산업)는
-// data/tourCategories.ts를 그대로 불러와서 만듭니다. 소분류 탭 구성까지 그 파일 한 곳만
-// 고치면 사이드바 메뉴와 /tour/:categoryKey 페이지가 함께 바뀝니다.
-//
-// [금융상품 정보 추가] "금융상품" 메뉴는 금융감독원 오픈API(금융상품 한눈에)로 받아오는
-// 정기예금/적금 정보를 보여주는 /finance 페이지로 이동합니다.
+
+/**
+ * 관광정보 메뉴는 기존 tourMainCategories 데이터를 그대로 사용한다.
+ *
+ * 기존 데이터 구조를 없애지 않고
+ * 아이콘 표현만 현재 Sidebar 디자인 시스템에 맞춰 변환한다.
+ */
+function getTourIcon(
+    path: string,
+): NavIconName {
+  if (path.includes("festival")) {
+    return "calendar";
+  }
+
+  if (path.includes("destination")) {
+    return "map";
+  }
+
+  if (path.includes("industry")) {
+    return "building";
+  }
+
+  return "compass";
+}
+
+
 const navItems: NavGroup[] = [
   {
-    group: "탐색",
+    group: "Workspace",
     items: [
-      { icon: "🏠", label: "홈", to: "/" },
-      { icon: "🤖", label: "AI 여행 추천", to: "/#ai-planner" },
-      { icon: "🎯", label: "여행 퀘스트", to: "/quests" },
+      {
+        icon: "manager",
+        label: "AI Manager",
+        to: "/",
+      },
+
+      {
+        icon: "travel",
+        label: "여행 플래너",
+        to: "/travel",
+
+        /*
+         * 미스터리 투어 실행 화면도
+         * Travel Workspace에 속하는 것으로 본다.
+         */
+        matches: [
+          "/travel",
+          "/mystery-tour",
+        ],
+      },
+
+      {
+        icon: "ai",
+        label: "AI 여행 추천",
+        to: "/ai-recommend",
+      },
+
+      {
+        icon: "quest",
+        label: "여행 퀘스트",
+        to: "/quests",
+      },
     ],
   },
+
   {
-    group: "마이",
+    group: "Personal",
     items: [
-      { icon: "👤", label: "마이페이지", to: "/mypage" },
-      { icon: "🔖", label: "북마크", to: "/mypage" },
-      { icon: "📅", label: "내 여행 일정", to: "/mypage" },
+      {
+        icon: "user",
+        label: "마이페이지",
+        to: "/mypage",
+      },
+
+      {
+        icon: "finance",
+        label: "금융상품",
+        to: "/finance",
+      },
     ],
   },
+
   {
-    group: "정보",
-    items: [
-      ...tourMainCategories.map((category) => ({
-        icon: category.icon,
-        label: category.label,
-        to: category.path,
-      })),
-      { icon: "🏦", label: "금융상품", to: "/finance" },
-      { icon: "💬", label: "자유게시판", to: null },
-      { icon: "⚙️", label: "설정", to: null },
-    ],
+    group: "Explore",
+    items: tourMainCategories.map(
+        (category) => ({
+          icon: getTourIcon(
+              category.path,
+          ),
+
+          label: category.label,
+
+          to: category.path,
+        }),
+    ),
   },
 ];
 
-export default function Sidebar({ open, onClose }: SidebarProps) {
-  const navigate = useNavigate();
-  // 현재 URL 경로를 직접 읽어와서, 해당 메뉴가 "현재 페이지"인지(active 표시) 판단하는 데 사용
-  const currentPath =
-      typeof window !== "undefined" ? window.location.pathname : "/";
 
-  // 메뉴 클릭 시 이동 처리
-  // 1) to가 없으면(null) 아무 동작 안 함
-  // 2) "/#festivals"처럼 해시가 포함되면 → 먼저 홈으로 이동한 뒤, 렌더링이 끝나길 잠깐(50ms) 기다렸다가
-  //    해당 id를 가진 요소로 부드럽게 스크롤
-  // 3) 그 외에는 일반적인 페이지 이동(navigate)
-  function handleClick(to: string | null) {
-    if (!to) return;
-    if (to.startsWith("/#")) {
-      navigate("/");
-      window.setTimeout(() => {
-        document
-            .getElementById(to.split("#")[1])
-            ?.scrollIntoView({ behavior: "smooth" });
-      }, 50);
-    } else {
-      navigate(to);
+export default function Sidebar({
+                                  open,
+                                  onClose,
+                                }: SidebarProps) {
+  const navigate =
+      useNavigate();
+
+  /*
+   * window.location.pathname을 직접 읽지 않고
+   * React Router의 useLocation()을 사용한다.
+   *
+   * SPA route 이동 시 React 상태 변경에 맞춰
+   * Sidebar active 상태도 자동으로 갱신된다.
+   */
+  const location =
+      useLocation();
+
+  const currentPath =
+      location.pathname;
+
+  const {
+    isLoggedIn,
+  } = useAuth();
+
+
+  /**
+   * 메뉴 이동.
+   *
+   * 현재 Sidebar에서는 더 이상
+   * "/#section" 구조를 사용하지 않는다.
+   *
+   * 각 주요 기능이 독립 Workspace로 분리됐기 때문에
+   * 일반적인 React Router navigation만 처리하면 된다.
+   */
+  const handleClick = (
+      to: string,
+  ) => {
+    navigate(to);
+
+    /*
+     * 모바일에서는 메뉴를 누른 후
+     * Sidebar를 자동으로 닫는다.
+     *
+     * Desktop에서는 main layout이
+     * open 값을 그대로 유지한다.
+     */
+    if (
+        window.innerWidth < 1024
+    ) {
+      onClose();
     }
-    onClose(); // 메뉴 선택 후에는 모바일에서 사이드바를 자동으로 닫아줌
-  }
+  };
+
+
+  /**
+   * 현재 메뉴가 active인지 계산한다.
+   */
+  const isActive = (
+      item: NavItem,
+  ): boolean => {
+    /*
+     * 홈은 정확히 "/"일 때만 active.
+     *
+     * 그렇지 않으면 모든 페이지가
+     * "/" prefix와 일치하기 때문이다.
+     */
+    if (item.to === "/") {
+      return currentPath === "/";
+    }
+
+    const targets =
+        item.matches ??
+        [item.to];
+
+    return targets.some(
+        (path) =>
+            currentPath === path ||
+            currentPath.startsWith(
+                `${path}/`,
+            ),
+    );
+  };
+
 
   return (
       <>
-        {/* 모바일 전용 반투명 배경. 사이드바가 열려있을 때만 보이고, 클릭하면 닫힘 (lg 이상 화면에서는 숨김) */}
+        {/* ==================================================
+          Mobile Backdrop
+         ================================================== */}
+
         {open && (
-            <div
-                className="fixed inset-0 top-16 bg-black/40 z-30 lg:hidden"
+            <button
+                type="button"
+                aria-label="사이드바 닫기"
                 onClick={onClose}
+                className="
+            fixed
+            inset-0
+            top-16
+            z-30
+            bg-slate-950/30
+            backdrop-blur-[2px]
+            lg:hidden
+          "
             />
         )}
 
-        {/* Sidebar panel — 헤더(z-50) 아래에서 시작해서 겹치지 않도록 top-16 사용 */}
+
+        {/* ==================================================
+          Sidebar
+         ================================================== */}
+
         <aside
-            className={`fixed top-16 left-0 h-[calc(100%-4rem)] z-40 bg-white border-r border-slate-100 flex flex-col transition-all duration-300 ease-in-out
-          ${open ? "w-64 shadow-2xl" : "w-0 lg:w-16 overflow-hidden"}
+            className={`
+          fixed
+          bottom-0
+          left-0
+          top-16
+          z-40
+
+          flex
+          flex-col
+
+          border-r
+          border-slate-200/80
+
+          bg-white/95
+          backdrop-blur-xl
+
+          transition-all
+          duration-300
+          ease-out
+
+          ${
+                open
+                    ? `
+                w-[280px]
+                translate-x-0
+                shadow-[0_20px_50px_rgba(15,23,42,0.12)]
+
+                lg:w-64
+                lg:shadow-none
+              `
+                    : `
+                w-[280px]
+                -translate-x-full
+
+                lg:w-16
+                lg:translate-x-0
+                lg:shadow-none
+              `
+            }
         `}
         >
-          {/* 상단 영역: 모바일에서만 닫기 버튼 표시 (로고는 헤더에 이미 있음) */}
+          {/* ==================================================
+            Sidebar Header
+           ================================================== */}
+
           {open && (
-              <div className="flex items-center justify-end px-3 py-3 border-b border-slate-100 shrink-0 lg:hidden">
-                <button
-                    onClick={onClose}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+              <div
+                  className="
+              shrink-0
+              border-b
+              border-slate-100
+              px-3
+              py-4
+            "
+              >
+                <div
+                    className="
+                flex
+                items-center
+                justify-between
+                gap-3
+              "
                 >
-                  <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  {/* AI Workspace Identity */}
+                  <div
+                      className="
+                  flex
+                  min-w-0
+                  items-center
+                  gap-3
+                "
                   >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-          )}
+                    <div
+                        className="
+                    relative
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-xl
 
-          {/* 메뉴 그룹 목록.
-            active(현재 페이지) 여부에 따라 배경색이 바뀌고, open이 false(아이콘 모드)일 때는
-            그룹 제목/라벨 텍스트를 숨기고 아이콘만 중앙 정렬로 보여줍니다 */}
-          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
-            {navItems.map((group) => (
-                <div key={group.group}>
-                  {open && (
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-1.5">
-                        {group.group}
+                    bg-gradient-to-br
+                    from-sky-400
+                    to-indigo-500
+
+                    shadow-sm
+                    shadow-sky-200
+                  "
+                    >
+                  <span
+                      className="
+                      h-2.5
+                      w-2.5
+                      rounded-full
+                      bg-white
+                      shadow-[0_0_12px_rgba(255,255,255,0.9)]
+                    "
+                  />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p
+                          className="
+                      truncate
+                      text-xs
+                      font-black
+                      tracking-[0.13em]
+                      text-slate-900
+                    "
+                      >
+                        AI WORKSPACE
                       </p>
-                  )}
-                  <ul className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const active =
-                          item.to === "/"
-                              ? currentPath === "/"
-                              : item.to === "/quests"
-                                  ? currentPath.startsWith("/quests")
-                                  : item.to && currentPath === item.to;
-                      return (
-                          <li key={item.label}>
-                            <button
-                                onClick={() => handleClick(item.to)}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group
-                          ${active ? "bg-sky-50 text-sky-600" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
-                          ${!open ? "justify-center" : ""}
-                        `}
-                            >
-                              <span className="text-base shrink-0">{item.icon}</span>
-                              {open && <span>{item.label}</span>}
-                              {active && open && (
-                                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />
-                              )}
-                            </button>
-                          </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-            ))}
-          </nav>
 
-          {/* 사이드바 맨 아래: 로그인 안 한 사용자에게 로그인을 유도하는 영역 (펼쳐진 상태에서만 표시) */}
-          {open && (
-              <div className="p-3 border-t border-slate-100">
-                <button
-                    onClick={() => handleClick("/login")}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                      <p
+                          className="
+                      mt-0.5
+                      truncate
+                      text-[10px]
+                      text-slate-400
+                    "
+                      >
+                        Personal Command Center
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 모바일에서만 X 버튼 표시 */}
+                  <button
+                      type="button"
+                      onClick={onClose}
+                      aria-label="사이드바 닫기"
+                      className="
+                  flex
+                  h-8
+                  w-8
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-lg
+
+                  text-slate-400
+
+                  transition
+                  hover:bg-slate-100
+                  hover:text-slate-700
+
+                  lg:hidden
+                "
+                  >
                     <svg
-                        className="w-4 h-4 text-slate-500"
+                        className="h-4 w-4"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -191,21 +441,645 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                       <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          strokeWidth={1.8}
+                          d="M6 18L18 6M6 6l12 12"
                       />
                     </svg>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-slate-700">
-                      로그인이 필요해요
-                    </p>
-                    <p className="text-[10px] text-slate-400">클릭해서 시작하기</p>
-                  </div>
-                </button>
+                  </button>
+                </div>
               </div>
           )}
+
+
+          {/* ==================================================
+            Navigation
+           ================================================== */}
+
+          <nav
+              className={`
+            flex-1
+            overflow-y-auto
+            overflow-x-hidden
+
+            py-4
+
+            ${
+                  open
+                      ? "px-3"
+                      : "px-2"
+              }
+          `}
+          >
+            <div className="space-y-5">
+              {navItems.map(
+                  (group, groupIndex) => (
+                      <div
+                          key={group.group}
+                      >
+                        {/* 그룹 제목 */}
+                        {open ? (
+                            <p
+                                className="
+                        mb-2
+                        px-3
+
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-[0.16em]
+
+                        text-slate-400
+                      "
+                            >
+                              {group.group}
+                            </p>
+                        ) : (
+                            /*
+                             * 접힌 Sidebar에서는
+                             * 그룹 제목 대신 얇은 separator 사용.
+                             */
+                            groupIndex > 0 && (
+                                <div
+                                    className="
+                          mx-auto
+                          mb-3
+                          h-px
+                          w-7
+                          bg-slate-100
+                        "
+                                />
+                            )
+                        )}
+
+
+                        <ul className="space-y-1">
+                          {group.items.map(
+                              (item) => {
+                                const active =
+                                    isActive(item);
+
+                                return (
+                                    <li
+                                        key={
+                                          item.label
+                                        }
+                                    >
+                                      <button
+                                          type="button"
+
+                                          onClick={() =>
+                                              handleClick(
+                                                  item.to,
+                                              )
+                                          }
+
+                                          /*
+                                           * 접힌 모드에서는
+                                           * 브라우저 tooltip으로 메뉴명을 확인할 수 있다.
+                                           */
+                                          title={
+                                            open
+                                                ? undefined
+                                                : item.label
+                                          }
+
+                                          aria-current={
+                                            active
+                                                ? "page"
+                                                : undefined
+                                          }
+
+                                          aria-label={
+                                            item.label
+                                          }
+
+                                          className={`
+                                group
+                                relative
+
+                                flex
+                                w-full
+                                items-center
+
+                                rounded-xl
+
+                                transition-all
+                                duration-200
+
+                                ${
+                                              open
+                                                  ? `
+                                      gap-3
+                                      px-3
+                                      py-2.5
+                                    `
+                                                  : `
+                                      h-11
+                                      justify-center
+                                      px-0
+                                    `
+                                          }
+
+                                ${
+                                              active
+                                                  ? `
+                                      bg-sky-50
+                                      text-sky-700
+                                    `
+                                                  : `
+                                      text-slate-500
+                                      hover:bg-slate-50
+                                      hover:text-slate-900
+                                    `
+                                          }
+                              `}
+                                      >
+                                        {/* Active Rail */}
+                                        {active && (
+                                            <span
+                                                className="
+                                    absolute
+                                    -left-3
+                                    top-1/2
+
+                                    h-6
+                                    w-1
+
+                                    -translate-y-1/2
+
+                                    rounded-r-full
+                                    bg-sky-500
+                                  "
+                                            />
+                                        )}
+
+
+                                        {/* Icon */}
+                                        <span
+                                            className={`
+                                  flex
+                                  h-8
+                                  w-8
+                                  shrink-0
+                                  items-center
+                                  justify-center
+
+                                  rounded-lg
+
+                                  transition-all
+                                  duration-200
+
+                                  ${
+                                                active
+                                                    ? `
+                                        bg-white
+                                        text-sky-600
+                                        shadow-sm
+                                      `
+                                                    : `
+                                        text-slate-400
+                                        group-hover:text-slate-700
+                                      `
+                                            }
+                                `}
+                                        >
+                                <NavIcon
+                                    name={
+                                      item.icon
+                                    }
+                                />
+                              </span>
+
+
+                                        {/* Label */}
+                                        {open && (
+                                            <>
+                                  <span
+                                      className={`
+                                      min-w-0
+                                      flex-1
+                                      truncate
+                                      text-left
+                                      text-sm
+
+                                      ${
+                                          active
+                                              ? "font-bold"
+                                              : "font-medium"
+                                      }
+                                    `}
+                                  >
+                                    {
+                                      item.label
+                                    }
+                                  </span>
+
+                                              {/* Active Dot */}
+                                              {active && (
+                                                  <span
+                                                      className="
+                                        h-1.5
+                                        w-1.5
+                                        shrink-0
+                                        rounded-full
+                                        bg-sky-500
+                                      "
+                                                  />
+                                              )}
+                                            </>
+                                        )}
+                                      </button>
+                                    </li>
+                                );
+                              },
+                          )}
+                        </ul>
+                      </div>
+                  ),
+              )}
+            </div>
+          </nav>
+
+
+          {/* ==================================================
+            Account Footer
+           ================================================== */}
+
+          <div
+              className={`
+            shrink-0
+            border-t
+            border-slate-100
+
+            ${
+                  open
+                      ? "p-3"
+                      : "p-2"
+              }
+          `}
+          >
+            {isLoggedIn ? (
+                <button
+                    type="button"
+                    onClick={() =>
+                        handleClick("/mypage")
+                    }
+                    title={
+                      open
+                          ? undefined
+                          : "마이페이지"
+                    }
+                    className={`
+                group
+                flex
+                w-full
+                items-center
+
+                rounded-xl
+
+                transition
+                hover:bg-slate-50
+
+                ${
+                        open
+                            ? `
+                      gap-3
+                      px-3
+                      py-2.5
+                    `
+                            : `
+                      h-11
+                      justify-center
+                    `
+                    }
+              `}
+                >
+                  <div
+                      className="
+                  flex
+                  h-8
+                  w-8
+                  shrink-0
+                  items-center
+                  justify-center
+
+                  rounded-full
+
+                  bg-gradient-to-br
+                  from-slate-100
+                  to-slate-200
+
+                  text-slate-500
+                "
+                  >
+                    <NavIcon
+                        name="user"
+                    />
+                  </div>
+
+                  {open && (
+                      <>
+                        <div
+                            className="
+                      min-w-0
+                      flex-1
+                      text-left
+                    "
+                        >
+                          <p
+                              className="
+                        truncate
+                        text-xs
+                        font-bold
+                        text-slate-700
+                      "
+                          >
+                            내 계정
+                          </p>
+
+                          <p
+                              className="
+                        mt-0.5
+                        text-[10px]
+                        text-slate-400
+                      "
+                          >
+                            프로필 및 개인 설정
+                          </p>
+                        </div>
+
+                        <span
+                            className="
+                      text-sm
+                      text-slate-300
+                      transition
+                      group-hover:text-sky-500
+                    "
+                        >
+                    →
+                  </span>
+                      </>
+                  )}
+                </button>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() =>
+                        handleClick("/login")
+                    }
+                    title={
+                      open
+                          ? undefined
+                          : "로그인"
+                    }
+                    className={`
+                flex
+                w-full
+                items-center
+
+                rounded-xl
+
+                transition
+
+                ${
+                        open
+                            ? `
+                      gap-3
+                      bg-slate-950
+                      px-3
+                      py-3
+                      text-white
+                      hover:bg-sky-600
+                    `
+                            : `
+                      h-11
+                      justify-center
+                      bg-slate-950
+                      text-white
+                      hover:bg-sky-600
+                    `
+                    }
+              `}
+                >
+              <span
+                  className="
+                  flex
+                  h-7
+                  w-7
+                  shrink-0
+                  items-center
+                  justify-center
+                "
+              >
+                <NavIcon
+                    name="user"
+                />
+              </span>
+
+                  {open && (
+                      <div className="text-left">
+                        <p
+                            className="
+                      text-xs
+                      font-bold
+                    "
+                        >
+                          로그인
+                        </p>
+
+                        <p
+                            className="
+                      mt-0.5
+                      text-[10px]
+                      text-white/60
+                    "
+                        >
+                          AI Manager 시작하기
+                        </p>
+                      </div>
+                  )}
+                </button>
+            )}
+          </div>
         </aside>
       </>
   );
+}
+
+
+/* =====================================================
+ * Sidebar SVG Icons
+ * ===================================================== */
+
+/**
+ * 모든 주요 메뉴 아이콘을 같은 stroke 스타일로 통일한다.
+ */
+function NavIcon({
+                   name,
+                 }: {
+  name: NavIconName;
+}) {
+  const commonProps = {
+    className: "h-[18px] w-[18px]",
+    fill: "none",
+    stroke: "currentColor",
+    viewBox: "0 0 24 24",
+    strokeWidth: 1.8,
+    strokeLinecap:
+        "round" as const,
+    strokeLinejoin:
+        "round" as const,
+  };
+
+
+  switch (name) {
+      /* AI Manager */
+    case "manager":
+      return (
+          <svg {...commonProps}>
+            <path d="M12 3v3" />
+            <path d="M12 18v3" />
+            <path d="M3 12h3" />
+            <path d="M18 12h3" />
+
+            <path d="M5.64 5.64l2.12 2.12" />
+            <path d="M16.24 16.24l2.12 2.12" />
+            <path d="M18.36 5.64l-2.12 2.12" />
+            <path d="M7.76 16.24l-2.12 2.12" />
+
+            <circle
+                cx="12"
+                cy="12"
+                r="3.5"
+            />
+          </svg>
+      );
+
+
+      /* 여행 */
+    case "travel":
+      return (
+          <svg {...commonProps}>
+            <path d="M3 11l18-7-7 18-3-8-8-3z" />
+          </svg>
+      );
+
+
+      /* AI 추천 */
+    case "ai":
+      return (
+          <svg {...commonProps}>
+            <rect
+                x="5"
+                y="6"
+                width="14"
+                height="12"
+                rx="3"
+            />
+
+            <path d="M9 10h.01" />
+            <path d="M15 10h.01" />
+            <path d="M9 14h6" />
+            <path d="M12 3v3" />
+          </svg>
+      );
+
+
+      /* Quest */
+    case "quest":
+      return (
+          <svg {...commonProps}>
+            <path d="M12 3l3 6 6 1-4.5 4.5L18 21l-6-3-6 3 1.5-6.5L3 10l6-1 3-6z" />
+          </svg>
+      );
+
+
+      /* User */
+    case "user":
+      return (
+          <svg {...commonProps}>
+            <circle
+                cx="12"
+                cy="8"
+                r="3"
+            />
+
+            <path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6" />
+          </svg>
+      );
+
+
+      /* 금융 */
+    case "finance":
+      return (
+          <svg {...commonProps}>
+            <path d="M3 9l9-5 9 5" />
+            <path d="M5 10v7" />
+            <path d="M9 10v7" />
+            <path d="M15 10v7" />
+            <path d="M19 10v7" />
+            <path d="M3 20h18" />
+          </svg>
+      );
+
+
+      /* 축제 */
+    case "calendar":
+      return (
+          <svg {...commonProps}>
+            <rect
+                x="4"
+                y="5"
+                width="16"
+                height="15"
+                rx="2"
+            />
+
+            <path d="M8 3v4" />
+            <path d="M16 3v4" />
+            <path d="M4 10h16" />
+          </svg>
+      );
+
+
+      /* 여행지 */
+    case "map":
+      return (
+          <svg {...commonProps}>
+            <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z" />
+            <path d="M9 3v15" />
+            <path d="M15 6v15" />
+          </svg>
+      );
+
+
+      /* 관광산업 */
+    case "building":
+      return (
+          <svg {...commonProps}>
+            <path d="M5 21V5h10v16" />
+            <path d="M15 9h4v12" />
+            <path d="M8 9h4" />
+            <path d="M8 13h4" />
+            <path d="M8 17h4" />
+            <path d="M3 21h18" />
+          </svg>
+      );
+
+
+      /* fallback */
+    case "compass":
+    default:
+      return (
+          <svg {...commonProps}>
+            <circle
+                cx="12"
+                cy="12"
+                r="9"
+            />
+
+            <path d="M15.5 8.5l-2 5-5 2 2-5 5-2z" />
+          </svg>
+      );
+  }
 }
