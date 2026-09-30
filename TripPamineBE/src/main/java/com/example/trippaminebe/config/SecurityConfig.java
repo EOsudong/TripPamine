@@ -138,7 +138,9 @@ public class SecurityConfig {
 								// [금융상품 정보 추가] 금융감독원 오픈API(금융상품 한눈에) 연동 데이터.
 								"/finance/**",
 								// 개발용 GPS 테스트 API만 인증 없이 허용
-								"/quests/*/test-location"
+								"/quests/*/test-location",
+								// [마스코트 이미지 수정]
+								"/mascots/*.png"
 						).permitAll()
 						.requestMatchers("/users/**")
 						.authenticated()
