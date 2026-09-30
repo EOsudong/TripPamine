@@ -1,49 +1,51 @@
 import api from "./axios";
 
-/**
- * 백엔드 GET /ai/emotion/latest 응답 타입.
- *
- * AI Manager 홈에서는 감정 모델의 모든 내부 정보를
- * 보여주지는 않지만, 향후 Insight 생성 등에 사용할 수 있도록
- * 백엔드 응답 구조는 그대로 보존한다.
- */
+
+/* =====================================================
+ * Emotion
+ * ===================================================== */
+
 export interface LatestEmotionResponse {
     observationId: number;
+
     eventId: number | null;
+
     modelRunId: number;
 
     requestId: string;
+
     planId: number | null;
 
     fineLabel: string;
+
     fineLabelName: string;
+
     coarseLabel: string;
 
     confidence: number;
 
     modelVersion: string;
+
     policyVersion: string;
-    contextMode: "FIRST2" | "FULL_FALLBACK";
+
+    contextMode:
+        | "FIRST2"
+        | "FULL_FALLBACK";
 
     fallbackTriggered: boolean;
 
     observedAt: string;
 }
 
+
 /**
- * 로그인 사용자의 가장 최근 감정 상태를 조회한다.
+ * 기존 감정 단독 조회 API.
  *
- * 백엔드는 아직 감정 기록이 없으면
- * 404가 아니라 204 No Content를 반환한다.
- *
- * 따라서:
- *
- * 200 → 감정 데이터
- * 204 → null
+ * 다른 화면에서도 사용할 수 있으므로 삭제하지 않는다.
  */
-export async function getLatestEmotionApi(): Promise<
-    LatestEmotionResponse | null
-> {
+export async function getLatestEmotionApi():
+    Promise<LatestEmotionResponse | null> {
+
     const response =
         await api.get<LatestEmotionResponse>(
             "/ai/emotion/latest",
@@ -54,4 +56,122 @@ export async function getLatestEmotionApi(): Promise<
     }
 
     return response.data ?? null;
+}
+
+
+/* =====================================================
+ * AI Manager Home
+ * ===================================================== */
+
+export interface AiManagerUserContext {
+    userId: number;
+
+    userName: string;
+
+    totalPoints: number;
+
+    grade: string | null;
+
+    profileImageUrl: string | null;
+}
+
+
+export interface AiManagerFocusTravel {
+    planId: number;
+
+    planName: string;
+
+    totalBudget: number;
+
+    companionType: string | null;
+
+    locationCd: string | null;
+
+    blindYn: string;
+
+    startDate: string | null;
+
+    endDate: string | null;
+
+    state:
+        | "ACTIVE"
+        | "UPCOMING";
+
+    daysUntilStart:
+        number | null;
+}
+
+
+export interface AiManagerTravelContext {
+    totalPlanCount: number;
+
+    focusPlan:
+        AiManagerFocusTravel | null;
+}
+
+
+export interface AiManagerRecentCompletedQuest {
+    logId: number;
+
+    questId: number;
+
+    questName: string;
+
+    rewardPoint: number;
+
+    clearDate: string;
+}
+
+
+export interface AiManagerQuestContext {
+    activeCount: number;
+
+    completedCount: number;
+
+    failedCount: number;
+
+    recentCompleted:
+        AiManagerRecentCompletedQuest[];
+}
+
+
+export interface AiManagerHomeResponse {
+    generatedAt: string;
+
+    user:
+        AiManagerUserContext;
+
+    emotion:
+        LatestEmotionResponse | null;
+
+    travel:
+        AiManagerTravelContext;
+
+    quests:
+        AiManagerQuestContext;
+}
+
+
+/**
+ * AI Manager Home 통합 Context API.
+ *
+ * 기존:
+ *
+ * /users/auth/me
+ * /ai/emotion/latest
+ * /travel-plans
+ * /quests/my-logs
+ *
+ * 네 요청을 각각 호출하지 않고
+ * Backend AI Manager가 조립한 결과를 한 번에 받는다.
+ */
+export async function getAiManagerHomeApi():
+    Promise<AiManagerHomeResponse> {
+
+    const response =
+        await api.get<AiManagerHomeResponse>(
+            "/api/ai-manager/home",
+        );
+
+    return response.data;
 }

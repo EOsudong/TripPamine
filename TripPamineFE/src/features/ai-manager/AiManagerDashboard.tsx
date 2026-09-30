@@ -10,121 +10,142 @@ import {
 } from "react-router-dom";
 
 import {
-    getMyInfoApi,
-    type MyInfoResponse,
-} from "../../api/auth";
-
-import {
-    getLatestEmotionApi,
-    type LatestEmotionResponse,
-} from "../../api/aiManager";
-
-import {
-    getTravelPlansApi,
-} from "../../api/travel";
-
-import {
-    questApi,
-    type UserQuestLogResponse,
-} from "../../api/quest";
-
-import type {
-    TravelPlan,
-} from "../../types";
+    getAiManagerHomeApi,
+    type AiManagerActivityEvent,
+    type AiManagerFocusTravel,
+    type AiManagerHomeResponse,
+} from "../../api/aiManagerHome";
 
 import {
     useAuth,
 } from "../../context/AuthContext";
 
-import aiManagerBg from "../../assets/images/ai-travel-bg.png";
+import aiManagerBg
+    from "../../assets/images/ai-travel-bg.png";
 
 
+/**
+ * =========================================================
+ * AI Manager Frontend Domain
+ * =========================================================
+ *
+ * Backend Activity의 Domain과 화면용 Domain을 동일하게 맞춘다.
+ *
+ * finance / diary는 아직 Home 기능이 완전히 연결되지 않았지만
+ * Event Timeline 확장을 위해 미리 표시 가능하게 둔다.
+ */
 type ManagerDomain =
     | "travel"
     | "quest"
     | "emotion"
+    | "finance"
+    | "diary"
     | "system";
 
 
+/**
+ * "지금 확인할 것" 영역의 한 항목.
+ *
+ * Activity와 다른 개념이다.
+ *
+ * Activity:
+ * 이미 발생한 사건
+ *
+ * Attention:
+ * 지금 사용자가 확인하거나 행동할 필요가 있는 항목
+ */
 interface ManagerAttentionItem {
     id: string;
-    domain: ManagerDomain;
+
+    domain:
+        ManagerDomain;
+
     title: string;
+
     description: string;
+
     actionLabel: string;
+
     to: string;
-    priority: "high" | "normal";
-}
 
-
-interface ManagerActivityItem {
-    id: string;
-    domain: ManagerDomain;
-    title: string;
-    description: string;
-    timeLabel: string;
+    priority:
+        | "high"
+        | "normal";
 }
 
 
 /**
+ * =========================================================
  * AI Manager v3 Home
+ * =========================================================
  *
- * 기존 Dashboard 중심 화면을:
+ * 주요 구조:
  *
- * 1. Compact Personal Header
- * 2. Needs Attention
- * 3. Activity Feed
- * 4. Quick Workspaces
- * 5. Persistent Manager Command
+ * Compact Header
+ *      ↓
+ * Needs Attention
+ *      ↓
+ * AI Activity
+ *      ↓
+ * Current Context
+ *      ↓
+ * Workspaces
+ *      ↓
+ * Manager Command
  *
- * 중심 구조로 변경한다.
  *
- * 현재 단계에서는 실제 Manager LLM이나 Action API를
- * 호출하지 않는다.
+ * 이번 STEP C-2의 가장 중요한 변화:
  *
- * 이미 구현된 실제 Context만 사용한다:
+ * 이전:
  *
- * - Profile
- * - Emotion
- * - Travel
- * - Quest
+ * latestEmotion
+ * +
+ * recentCompletedQuests
+ *      ↓
+ * Frontend buildActivityItems()
+ *
+ *
+ * 현재:
+ *
+ * AI_MANAGER_EVENTS
+ *      ↓
+ * Backend AiManagerActivityService
+ *      ↓
+ * homeContext.activities
+ *      ↓
+ * Frontend Render
+ *
+ *
+ * 따라서 Frontend에서는 Activity의 의미를 다시 계산하지 않는다.
  */
 export default function AiManagerDashboard() {
+
     const navigate =
         useNavigate();
 
+
     const {
         isLoggedIn,
-    } = useAuth();
+    } =
+        useAuth();
 
 
+    /* =====================================================
+     * State
+     * ===================================================== */
+
+    /**
+     * AI Manager Backend가 조립한
+     * Home Context 전체.
+     */
     const [
-        profile,
-        setProfile,
+        homeContext,
+        setHomeContext,
     ] =
-        useState<MyInfoResponse | null>(
+        useState<AiManagerHomeResponse | null>(
             null,
         );
 
-    const [
-        emotion,
-        setEmotion,
-    ] =
-        useState<LatestEmotionResponse | null>(
-            null,
-        );
-
-    const [
-        travelPlans,
-        setTravelPlans,
-    ] =
-        useState<TravelPlan[]>([]);
-
-    const [
-        questLogs,
-        setQuestLogs,
-    ] =
-        useState<UserQuestLogResponse[]>([]);
 
     const [
         loading,
@@ -132,11 +153,14 @@ export default function AiManagerDashboard() {
     ] =
         useState(false);
 
+
     const [
-        partialFailure,
-        setPartialFailure,
+        loadError,
+        setLoadError,
     ] =
-        useState(false);
+        useState<string | null>(
+            null,
+        );
 
 
     /* =====================================================
@@ -144,95 +168,96 @@ export default function AiManagerDashboard() {
      * ===================================================== */
 
     useEffect(() => {
+
+        /*
+         * 로그아웃하면 이전 사용자의 Context를 제거한다.
+         */
         if (!isLoggedIn) {
-            setProfile(null);
-            setEmotion(null);
-            setTravelPlans([]);
-            setQuestLogs([]);
-            setPartialFailure(false);
+
+            setHomeContext(
+                null,
+            );
+
+            setLoadError(
+                null,
+            );
+
+            setLoading(
+                false,
+            );
 
             return;
         }
 
 
+        /*
+         * 컴포넌트 unmount 이후
+         * 비동기 응답이 돌아왔을 때
+         * setState를 실행하지 않기 위한 방어.
+         */
         let cancelled =
             false;
 
 
         const loadContext =
             async () => {
-                setLoading(true);
+
+                try {
+
+                    setLoading(
+                        true,
+                    );
+
+                    setLoadError(
+                        null,
+                    );
 
 
-                /*
-                 * 하나의 도메인 API가 실패해도
-                 * 전체 AI Manager를 실패시키지 않는다.
-                 */
-                const results =
-                    await Promise.allSettled([
-                        getMyInfoApi(),
-                        getLatestEmotionApi(),
-                        getTravelPlansApi(),
-                        questApi.getMyLogs(),
-                    ]);
+                    /*
+                     * AI Manager Home Context는
+                     * Backend에서 한 번에 조립한다.
+                     */
+                    const context =
+                        await getAiManagerHomeApi();
 
 
-                if (cancelled) {
-                    return;
+                    if (cancelled) {
+                        return;
+                    }
+
+
+                    setHomeContext(
+                        context,
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "AI Manager Home 조회 실패:",
+                        error,
+                    );
+
+
+                    if (!cancelled) {
+
+                        setHomeContext(
+                            null,
+                        );
+
+                        setLoadError(
+                            "AI Manager Context를 불러오지 못했습니다.",
+                        );
+                    }
+
+                } finally {
+
+                    if (!cancelled) {
+
+                        setLoading(
+                            false,
+                        );
+                    }
                 }
-
-
-                const [
-                    profileResult,
-                    emotionResult,
-                    travelResult,
-                    questResult,
-                ] =
-                    results;
-
-
-                setProfile(
-                    profileResult.status ===
-                    "fulfilled"
-                        ? profileResult.value
-                        : null,
-                );
-
-
-                setEmotion(
-                    emotionResult.status ===
-                    "fulfilled"
-                        ? emotionResult.value
-                        : null,
-                );
-
-
-                setTravelPlans(
-                    travelResult.status ===
-                    "fulfilled"
-                        ? travelResult.value
-                        : [],
-                );
-
-
-                setQuestLogs(
-                    questResult.status ===
-                    "fulfilled"
-                        ? questResult.value
-                        : [],
-                );
-
-
-                setPartialFailure(
-                    results.some(
-                        (result) =>
-                            result.status ===
-                            "rejected",
-                    ),
-                );
-
-
-                setLoading(false);
             };
 
 
@@ -240,105 +265,141 @@ export default function AiManagerDashboard() {
 
 
         return () => {
+
             cancelled =
                 true;
         };
+
     }, [isLoggedIn]);
 
 
     /* =====================================================
-     * Manager Context
-     * ===================================================== */
+     * Context Alias
+     * =====================================================
+     *
+     * 아래 값은 Frontend에서 새로 계산하는 것이 아니다.
+     *
+     * Backend 응답을 JSX에서 읽기 편하도록
+     * 변수 이름만 붙여둔 것이다.
+     */
+
+    const profile =
+        homeContext?.user ??
+        null;
+
+
+    const emotion =
+        homeContext?.emotion ??
+        null;
+
 
     const focusTravel =
-        useMemo(
-            () =>
-                selectFocusTravel(
-                    travelPlans,
-                ),
-            [travelPlans],
-        );
+        homeContext?.travel.focusPlan ??
+        null;
+
+
+    const totalPlanCount =
+        homeContext?.travel.totalPlanCount ??
+        0;
 
 
     const activeQuestCount =
-        useMemo(
-            () =>
-                questLogs.filter(
-                    (log) =>
-                        log.status ===
-                        "PROGRESS",
-                ).length,
-            [questLogs],
-        );
+        homeContext?.quests.activeCount ??
+        0;
 
 
     const completedQuestCount =
-        useMemo(
-            () =>
-                questLogs.filter(
-                    (log) =>
-                        log.status ===
-                        "SUCCESS",
-                ).length,
-            [questLogs],
-        );
+        homeContext?.quests.completedCount ??
+        0;
 
 
-    /*
-     * 사용자가 지금 확인할 필요가 있는 항목.
+    const failedQuestCount =
+        homeContext?.quests.failedCount ??
+        0;
+
+
+    /**
+     * =====================================================
+     * 공식 Activity Feed
+     * =====================================================
      *
-     * 장기적으로 이 계산은 Backend Priority Engine으로 이동한다.
+     * 더 이상:
+     *
+     * recentCompletedQuests
+     * buildActivityItems()
+     *
+     * 를 사용하지 않는다.
+     *
+     * Backend AI_MANAGER_EVENTS 결과 자체가
+     * Activity의 Single Source of Truth다.
+     */
+    const activities =
+        homeContext?.activities ??
+        [];
+
+
+    /* =====================================================
+     * Needs Attention
+     * ===================================================== */
+
+    /**
+     * Attention은 아직 Frontend 규칙 기반이다.
+     *
+     * 이 부분은 향후 Priority Engine 단계에서
+     * Backend로 이동한다.
      */
     const attentionItems =
         useMemo(
-            () =>
-                buildAttentionItems(
+            () => {
+
+                if (!homeContext) {
+                    return [];
+                }
+
+
+                return buildAttentionItems(
                     focusTravel,
                     activeQuestCount,
-                ),
+                );
+
+            },
             [
+                homeContext,
                 focusTravel,
                 activeQuestCount,
             ],
         );
 
 
-    /*
-     * 실제 기록을 기반으로 Activity Feed 생성.
-     *
-     * 현재:
-     * - Emotion observation
-     * - Quest completion
-     *
-     * 향후 AI_MANAGER_EVENTS가 이 역할을 직접 담당한다.
-     */
-    const activityItems =
-        useMemo(
-            () =>
-                buildActivityItems(
-                    emotion,
-                    questLogs,
-                ),
-            [
-                emotion,
-                questLogs,
-            ],
-        );
-
+    /* =====================================================
+     * Guest
+     * ===================================================== */
 
     if (!isLoggedIn) {
+
         return (
             <GuestManagerView
+
                 onLogin={() =>
-                    navigate("/login")
+                    navigate(
+                        "/login",
+                    )
                 }
+
                 onExploreTravel={() =>
-                    navigate("/travel")
+                    navigate(
+                        "/travel",
+                    )
                 }
+
             />
         );
     }
 
+
+    /* =====================================================
+     * Logged-in Home
+     * ===================================================== */
 
     return (
         <div
@@ -348,27 +409,34 @@ export default function AiManagerDashboard() {
         pb-8
       "
         >
+
             {/* =================================================
-          1. Compact AI Header
+          COMPACT AI HEADER
          ================================================= */}
 
             <section
                 className="
           relative
+
           min-h-[310px]
+
           overflow-hidden
+
           border-b
           border-slate-900/20
         "
             >
+
                 <img
                     src={aiManagerBg}
                     alt=""
                     className="
             absolute
             inset-0
+
             h-full
             w-full
+
             object-cover
             object-center
           "
@@ -381,6 +449,7 @@ export default function AiManagerDashboard() {
             inset-0
 
             bg-gradient-to-r
+
             from-slate-950/95
             via-slate-950/80
             to-slate-950/40
@@ -394,6 +463,7 @@ export default function AiManagerDashboard() {
             inset-0
 
             bg-gradient-to-t
+
             from-slate-950/75
             via-transparent
             to-slate-950/20
@@ -407,15 +477,18 @@ export default function AiManagerDashboard() {
             z-10
 
             mx-auto
+
             flex
             min-h-[310px]
             max-w-6xl
+
             items-center
 
             px-5
             py-10
           "
                 >
+
                     <div
                         className="
               grid
@@ -426,7 +499,9 @@ export default function AiManagerDashboard() {
               lg:items-center
             "
                     >
+
                         <div>
+
                             <div
                                 className="
                   flex
@@ -434,6 +509,7 @@ export default function AiManagerDashboard() {
                   gap-2
                 "
                             >
+
                 <span
                     className={`
                     h-2
@@ -443,10 +519,13 @@ export default function AiManagerDashboard() {
                     ${
                         loading
                             ? "animate-pulse bg-amber-300"
-                            : "bg-emerald-400"
+                            : loadError
+                                ? "bg-rose-400"
+                                : "bg-emerald-400"
                     }
                   `}
                 />
+
 
                                 <span
                                     className="
@@ -458,6 +537,7 @@ export default function AiManagerDashboard() {
                                 >
                   AI MANAGER
                 </span>
+
                             </div>
 
 
@@ -480,6 +560,7 @@ export default function AiManagerDashboard() {
                                 <span
                                     className="
                     bg-gradient-to-r
+
                     from-white
                     via-sky-100
                     to-sky-300
@@ -491,12 +572,14 @@ export default function AiManagerDashboard() {
                   {profile?.userName ??
                       "여행자"}님.
                 </span>
+
                             </h1>
 
 
                             <p
                                 className="
                   mt-4
+
                   max-w-2xl
 
                   text-sm
@@ -506,31 +589,48 @@ export default function AiManagerDashboard() {
                   md:text-base
                 "
                             >
-                                {attentionItems.length >
-                                0
-                                    ? `오늘 확인할 내용이 ${attentionItems.length}개 있어요. 중요한 것부터 정리해드릴게요.`
-                                    : "지금 바로 확인해야 할 중요한 항목은 없어요. 최근 Context를 정리해두었습니다."}
+
+                                {loading
+                                    ? "현재 Context를 확인하고 있어요."
+                                    : loadError
+                                        ? "현재 Context를 불러오지 못했습니다."
+                                        : attentionItems.length > 0
+                                            ? `오늘 확인할 내용이 ${attentionItems.length}개 있어요. 중요한 것부터 정리해드릴게요.`
+                                            : "지금 바로 확인해야 할 중요한 항목은 없어요. 최근 Context를 정리해두었습니다."}
+
                             </p>
+
                         </div>
 
 
-                        {/* AI Status Visual */}
                         <div
                             className="
                 hidden
+
                 items-center
                 justify-center
+
                 lg:flex
               "
                         >
+
                             <ManagerCore
                                 loading={loading}
+                                error={Boolean(loadError)}
                             />
+
                         </div>
+
                     </div>
+
                 </div>
+
             </section>
 
+
+            {/* =================================================
+          MAIN
+         ================================================= */}
 
             <div
                 className="
@@ -543,8 +643,9 @@ export default function AiManagerDashboard() {
           px-5
         "
             >
+
                 {/* =================================================
-            2. Needs Attention
+            NEEDS ATTENTION
            ================================================= */}
 
                 <section
@@ -552,6 +653,7 @@ export default function AiManagerDashboard() {
             -mt-8
 
             overflow-hidden
+
             rounded-2xl
 
             border
@@ -563,12 +665,15 @@ export default function AiManagerDashboard() {
             shadow-slate-200/40
           "
                 >
+
                     <div
                         className="
               flex
               flex-wrap
+
               items-center
               justify-between
+
               gap-3
 
               border-b
@@ -576,10 +681,13 @@ export default function AiManagerDashboard() {
 
               px-5
               py-4
+
               md:px-6
             "
                     >
+
                         <div>
+
                             <p
                                 className="
                   text-[10px]
@@ -591,9 +699,11 @@ export default function AiManagerDashboard() {
                                 NEEDS YOUR ATTENTION
                             </p>
 
+
                             <h2
                                 className="
                   mt-1
+
                   text-lg
                   font-black
                   text-slate-950
@@ -601,12 +711,14 @@ export default function AiManagerDashboard() {
                             >
                                 지금 확인할 것
                             </h2>
+
                         </div>
 
 
                         <span
                             className="
                 rounded-full
+
                 bg-slate-100
 
                 px-3
@@ -619,87 +731,84 @@ export default function AiManagerDashboard() {
                         >
               {attentionItems.length}개
             </span>
+
                     </div>
 
 
-                    {attentionItems.length ===
-                    0 ? (
+                    {loadError ? (
+
+                        <EmptyPanel
+                            symbol="!"
+                            title="Context를 불러오지 못했습니다."
+                            description="잠시 후 페이지를 다시 불러와 주세요."
+                            error
+                        />
+
+                    ) : loading && !homeContext ? (
+
                         <div
                             className="
                 px-6
                 py-10
+
                 text-center
+
+                text-sm
+                text-slate-400
               "
                         >
-                            <div
-                                className="
-                  mx-auto
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-
-                  rounded-full
-                  bg-emerald-50
-
-                  text-emerald-500
-                "
-                            >
-                                ✓
-                            </div>
-
-                            <p
-                                className="
-                  mt-3
-                  text-sm
-                  font-bold
-                  text-slate-700
-                "
-                            >
-                                지금은 확인할 항목이 없어요.
-                            </p>
-
-                            <p
-                                className="
-                  mt-1
-                  text-xs
-                  text-slate-400
-                "
-                            >
-                                필요한 일이 생기면 AI Manager가 여기에 먼저 정리합니다.
-                            </p>
+                            AI Manager가 현재 Context를 확인하고 있습니다.
                         </div>
+
+                    ) : attentionItems.length === 0 ? (
+
+                        <EmptyPanel
+                            symbol="✓"
+                            title="지금은 확인할 항목이 없어요."
+                            description="필요한 일이 생기면 AI Manager가 여기에 먼저 정리합니다."
+                        />
+
                     ) : (
+
                         <div>
+
                             {attentionItems.map(
                                 (
                                     item,
                                     index,
                                 ) => (
+
                                     <AttentionRow
+
                                         key={item.id}
+
                                         item={item}
+
                                         last={
                                             index ===
-                                            attentionItems.length -
-                                            1
+                                            attentionItems.length - 1
                                         }
+
                                         onOpen={() =>
                                             navigate(
                                                 item.to,
                                             )
                                         }
+
                                     />
+
                                 ),
                             )}
+
                         </div>
+
                     )}
+
                 </section>
 
 
                 {/* =================================================
-            3. Activity + Context
+            ACTIVITY + CONTEXT
            ================================================= */}
 
                 <section
@@ -712,88 +821,198 @@ export default function AiManagerDashboard() {
             lg:grid-cols-[minmax(0,1fr)_340px]
           "
                 >
-                    {/* Activity Feed */}
+
+                    {/* =========================
+              AI Activity
+             ========================= */}
 
                     <article
                         className="
               rounded-2xl
+
               border
               border-slate-200
+
               bg-white
             "
                     >
+
                         <div
                             className="
+                flex
+
+                items-center
+                justify-between
+
+                gap-3
+
                 border-b
                 border-slate-100
 
                 px-5
                 py-5
+
                 md:px-6
               "
                         >
-                            <p
-                                className="
-                  text-[10px]
-                  font-black
-                  tracking-[0.16em]
-                  text-slate-400
-                "
-                            >
-                                AI ACTIVITY
-                            </p>
 
-                            <h2
-                                className="
-                  mt-1
-                  text-lg
-                  font-black
-                  text-slate-950
-                "
-                            >
-                                최근 변화
-                            </h2>
-                        </div>
+                            <div>
+
+                                <p
+                                    className="
+                    text-[10px]
+                    font-black
+                    tracking-[0.16em]
+                    text-slate-400
+                  "
+                                >
+                                    AI ACTIVITY
+                                </p>
 
 
-                        <div
-                            className="
-                px-5
-                py-2
-                md:px-6
-              "
-                        >
-                            {activityItems.map(
-                                (
-                                    item,
-                                    index,
-                                ) => (
-                                    <ActivityRow
-                                        key={item.id}
-                                        item={item}
-                                        last={
-                                            index ===
-                                            activityItems.length -
-                                            1
-                                        }
-                                    />
-                                ),
+                                <h2
+                                    className="
+                    mt-1
+
+                    text-lg
+                    font-black
+                    text-slate-950
+                  "
+                                >
+                                    최근 업데이트
+                                </h2>
+
+                            </div>
+
+
+                            {activities.length > 0 && (
+
+                                <span
+                                    className="
+                    rounded-full
+
+                    bg-slate-100
+
+                    px-2.5
+                    py-1
+
+                    text-[10px]
+                    font-bold
+                    text-slate-500
+                  "
+                                >
+                  {activities.length} events
+                </span>
+
                             )}
+
                         </div>
+
+
+                        {activities.length === 0 ? (
+
+                            /*
+                             * 여기서는 가짜 Activity Event를 만들지 않는다.
+                             *
+                             * 실제 AI_MANAGER_EVENTS가 없다면
+                             * 단순 Empty State만 보여준다.
+                             */
+                            <div
+                                className="
+                  px-6
+                  py-10
+
+                  text-center
+                "
+                            >
+
+                                <p
+                                    className="
+                    text-sm
+                    font-bold
+                    text-slate-700
+                  "
+                                >
+                                    아직 기록된 활동이 없어요.
+                                </p>
+
+
+                                <p
+                                    className="
+                    mt-1
+
+                    text-xs
+                    leading-5
+                    text-slate-400
+                  "
+                                >
+                                    감정 분석, 퀘스트 완료 등 실제 활동이 발생하면
+                                    AI Manager Timeline에 기록됩니다.
+                                </p>
+
+                            </div>
+
+                        ) : (
+
+                            <div
+                                className="
+                  px-5
+                  py-2
+
+                  md:px-6
+                "
+                            >
+
+                                {activities.map(
+                                    (
+                                        activity,
+                                        index,
+                                    ) => (
+
+                                        <ActivityRow
+
+                                            key={
+                                                activity.eventId
+                                            }
+
+                                            activity={
+                                                activity
+                                            }
+
+                                            last={
+                                                index ===
+                                                activities.length - 1
+                                            }
+
+                                        />
+
+                                    ),
+                                )}
+
+                            </div>
+
+                        )}
+
                     </article>
 
 
-                    {/* Current Context */}
+                    {/* =========================
+              Current Context
+             ========================= */}
 
                     <aside
                         className="
               rounded-2xl
+
               border
               border-slate-200
+
               bg-white
+
               p-5
             "
                     >
+
                         <p
                             className="
                 text-[10px]
@@ -805,25 +1024,29 @@ export default function AiManagerDashboard() {
                             CURRENT CONTEXT
                         </p>
 
+
                         <h2
                             className="
                 mt-1
+
                 text-lg
                 font-black
                 text-slate-950
               "
                         >
-                            상세정보
+                            관리 정보
                         </h2>
 
 
                         <div
                             className="
                 mt-5
+
                 divide-y
                 divide-slate-100
               "
                         >
+
                             <ContextRow
                                 label="감정"
                                 value={
@@ -832,33 +1055,71 @@ export default function AiManagerDashboard() {
                                 }
                             />
 
+
                             <ContextRow
-                                label="다음 여행"
+                                label="여행 계획"
+                                value={`${totalPlanCount}개`}
+                            />
+
+
+                            <ContextRow
+                                label="대표 여행"
                                 value={
                                     focusTravel?.planName ??
                                     "예정 없음"
                                 }
                             />
 
+
                             <ContextRow
                                 label="진행 퀘스트"
                                 value={`${activeQuestCount}개`}
                             />
+
 
                             <ContextRow
                                 label="완료 퀘스트"
                                 value={`${completedQuestCount}개`}
                             />
 
+
+                            {failedQuestCount > 0 && (
+
+                                <ContextRow
+                                    label="재도전 퀘스트"
+                                    value={`${failedQuestCount}개`}
+                                />
+
+                            )}
+
+
+                            <ContextRow
+                                label="Activity"
+                                value={`${activities.length}개`}
+                            />
+
+
+                            <ContextRow
+                                label="보유 포인트"
+                                value={
+                                    profile
+                                        ? `${profile.totalPoints.toLocaleString()} P`
+                                        : "-"
+                                }
+                            />
+
+
                             <ContextRow
                                 label="자산"
                                 value="연결 준비 중"
                                 muted
                             />
+
                         </div>
 
 
-                        {partialFailure && (
+                        {loadError && (
+
                             <div
                                 className="
                   mt-5
@@ -866,27 +1127,30 @@ export default function AiManagerDashboard() {
                   rounded-xl
 
                   border
-                  border-amber-200
+                  border-rose-200
 
-                  bg-amber-50
+                  bg-rose-50
 
                   px-3
                   py-2.5
 
                   text-xs
                   leading-5
-                  text-amber-700
+                  text-rose-700
                 "
                             >
-                                일부 Context를 불러오지 못했습니다.
+                                {loadError}
                             </div>
+
                         )}
+
                     </aside>
+
                 </section>
 
 
                 {/* =================================================
-            4. Workspaces
+            WORKSPACES
            ================================================= */}
 
                 <section
@@ -894,55 +1158,53 @@ export default function AiManagerDashboard() {
             pb-8
           "
                 >
-                    <div
+
+                    <p
                         className="
-              flex
-              items-end
-              justify-between
+              text-[10px]
+              font-black
+              tracking-[0.16em]
+              text-slate-400
             "
                     >
-                        <div>
-                            <p
-                                className="
-                  text-[10px]
-                  font-black
-                  tracking-[0.16em]
-                  text-slate-400
-                "
-                            >
-                                WORKSPACES
-                            </p>
+                        WORKSPACES
+                    </p>
 
-                            <h2
-                                className="
-                  mt-1
-                  text-lg
-                  font-black
-                  text-slate-950
-                "
-                            >
-                                직접 열기
-                            </h2>
-                        </div>
-                    </div>
+
+                    <h2
+                        className="
+              mt-1
+
+              text-lg
+              font-black
+              text-slate-950
+            "
+                    >
+                        직접 열기
+                    </h2>
 
 
                     <div
                         className="
               mt-4
+
               grid
               gap-2
 
               md:grid-cols-3
             "
                     >
+
                         <WorkspaceRow
                             label="여행"
                             description="여행 계획과 미스터리 투어"
                             onClick={() =>
-                                navigate("/travel")
+                                navigate(
+                                    "/travel",
+                                )
                             }
                         />
+
 
                         <WorkspaceRow
                             label="AI 여행 추천"
@@ -954,41 +1216,54 @@ export default function AiManagerDashboard() {
                             }
                         />
 
+
                         <WorkspaceRow
                             label="퀘스트"
                             description="위치 기반 미션과 보상"
                             onClick={() =>
-                                navigate("/quests")
+                                navigate(
+                                    "/quests",
+                                )
                             }
                         />
+
                     </div>
+
                 </section>
 
 
                 {/* =================================================
-            5. Persistent Manager Command
+            MANAGER COMMAND
            ================================================= */}
 
                 <ManagerCommandBar
-                    onNavigate={navigate}
+                    onNavigate={
+                        navigate
+                    }
                 />
+
             </div>
+
         </div>
     );
 }
 
 
-/* =====================================================
+/* =========================================================
  * Guest
- * ===================================================== */
+ * ========================================================= */
 
 function GuestManagerView({
                               onLogin,
                               onExploreTravel,
                           }: {
-    onLogin: () => void;
-    onExploreTravel: () => void;
+    onLogin:
+        () => void;
+
+    onExploreTravel:
+        () => void;
 }) {
+
     return (
         <section
             className="
@@ -999,14 +1274,17 @@ function GuestManagerView({
         overflow-hidden
       "
         >
+
             <img
                 src={aiManagerBg}
                 alt=""
                 className="
           absolute
           inset-0
+
           h-full
           w-full
+
           object-cover
           object-center
         "
@@ -1019,22 +1297,10 @@ function GuestManagerView({
           inset-0
 
           bg-gradient-to-r
+
           from-slate-950/95
           via-slate-950/80
           to-slate-950/45
-        "
-            />
-
-
-            <div
-                className="
-          absolute
-          inset-0
-
-          bg-gradient-to-t
-          from-slate-950/80
-          via-transparent
-          to-slate-950/20
         "
             />
 
@@ -1045,8 +1311,8 @@ function GuestManagerView({
           z-10
 
           mx-auto
-          flex
 
+          flex
           min-h-[calc(100vh-4rem)]
           max-w-6xl
 
@@ -1056,50 +1322,23 @@ function GuestManagerView({
           py-20
         "
             >
+
                 <div
                     className="
             max-w-3xl
           "
                 >
-                    <div
+
+                    <p
                         className="
-              inline-flex
-              items-center
-              gap-2
-
-              rounded-full
-
-              border
-              border-white/15
-
-              bg-white/10
-
-              px-3
-              py-1.5
-
-              backdrop-blur
+              text-[10px]
+              font-black
+              tracking-[0.18em]
+              text-sky-200
             "
                     >
-            <span
-                className="
-                h-2
-                w-2
-                rounded-full
-                bg-sky-400
-              "
-            />
-
-                        <span
-                            className="
-                text-[10px]
-                font-black
-                tracking-[0.18em]
-                text-sky-100
-              "
-                        >
-              TRIPPAMINE AI MANAGER
-            </span>
-                    </div>
+                        TRIPPAMINE AI MANAGER
+                    </p>
 
 
                     <h1
@@ -1121,6 +1360,7 @@ function GuestManagerView({
                         <span
                             className="
                 bg-gradient-to-r
+
                 from-white
                 via-sky-100
                 to-sky-300
@@ -1132,12 +1372,14 @@ function GuestManagerView({
               당신의 일상을
               이해하는 AI
             </span>
+
                     </h1>
 
 
                     <p
                         className="
               mt-6
+
               max-w-2xl
 
               text-base
@@ -1147,21 +1389,20 @@ function GuestManagerView({
               md:text-lg
             "
                     >
-                        감정, 여행, 퀘스트,
-                        자산과 기록을 연결해
-                        필요한 일을 먼저 정리하고
-                        다음 행동을 제안합니다.
+                        "계획은 AI가, 짜릿함은 당신이. 심장이 뛰는 대로 떠나세요."
                     </p>
 
 
                     <div
                         className="
               mt-9
+
               flex
               flex-wrap
               gap-3
             "
                     >
+
                         <button
                             type="button"
                             onClick={onLogin}
@@ -1188,9 +1429,7 @@ function GuestManagerView({
 
                         <button
                             type="button"
-                            onClick={
-                                onExploreTravel
-                            }
+                            onClick={onExploreTravel}
                             className="
                 rounded-xl
 
@@ -1215,27 +1454,37 @@ function GuestManagerView({
                         >
                             여행 기능 둘러보기
                         </button>
+
                     </div>
+
                 </div>
+
             </div>
+
         </section>
     );
 }
 
 
-/* =====================================================
+/* =========================================================
  * Attention
- * ===================================================== */
+ * ========================================================= */
 
 function AttentionRow({
                           item,
                           last,
                           onOpen,
                       }: {
-    item: ManagerAttentionItem;
-    last: boolean;
-    onOpen: () => void;
+    item:
+        ManagerAttentionItem;
+
+    last:
+        boolean;
+
+    onOpen:
+        () => void;
 }) {
+
     return (
         <div
             className={`
@@ -1248,7 +1497,6 @@ function AttentionRow({
 
         md:flex-row
         md:items-center
-
         md:px-6
 
         ${
@@ -1258,6 +1506,7 @@ function AttentionRow({
             }
       `}
         >
+
             <DomainIndicator
                 domain={
                     item.domain
@@ -1271,6 +1520,7 @@ function AttentionRow({
           flex-1
         "
             >
+
                 <div
                     className="
             flex
@@ -1278,6 +1528,7 @@ function AttentionRow({
             gap-2
           "
                 >
+
                     <p
                         className="
               font-black
@@ -1287,8 +1538,10 @@ function AttentionRow({
                         {item.title}
                     </p>
 
+
                     {item.priority ===
                         "high" && (
+
                             <span
                                 className="
                 rounded-full
@@ -1305,7 +1558,9 @@ function AttentionRow({
                             >
               PRIORITY
             </span>
+
                         )}
+
                 </div>
 
 
@@ -1320,6 +1575,7 @@ function AttentionRow({
                 >
                     {item.description}
                 </p>
+
             </div>
 
 
@@ -1351,22 +1607,39 @@ function AttentionRow({
             >
                 {item.actionLabel}
             </button>
+
         </div>
     );
 }
 
 
-/* =====================================================
+/* =========================================================
  * Activity
- * ===================================================== */
+ * ========================================================= */
 
+/**
+ * Backend에서 이미 완성된 Activity Event를 그대로 그린다.
+ *
+ * Frontend에서는:
+ *
+ * - Quest SUCCESS 판정
+ * - Emotion Event 판정
+ * - 제목 생성
+ * - 설명 생성
+ *
+ * 을 하지 않는다.
+ */
 function ActivityRow({
-                         item,
+                         activity,
                          last,
                      }: {
-    item: ManagerActivityItem;
-    last: boolean;
+    activity:
+        AiManagerActivityEvent;
+
+    last:
+        boolean;
 }) {
+
     return (
         <div
             className="
@@ -1374,6 +1647,7 @@ function ActivityRow({
         gap-4
       "
         >
+
             <div
                 className="
           relative
@@ -1381,92 +1655,242 @@ function ActivityRow({
           flex
           w-5
           shrink-0
+
           justify-center
         "
             >
+
         <span
             className={`
             mt-6
+
             h-2
             w-2
+
             rounded-full
 
             ${getDomainDotClass(
-                item.domain,
+                activity.domain,
             )}
           `}
         />
 
+
                 {!last && (
+
                     <span
                         className="
               absolute
+
               bottom-0
               top-8
 
               w-px
+
               bg-slate-100
             "
                     />
+
                 )}
+
             </div>
 
 
             <div
                 className="
           flex-1
+
           py-5
         "
             >
+
                 <div
                     className="
             flex
+
             items-center
             justify-between
+
             gap-4
           "
                 >
-                    <p
+
+                    <div
                         className="
-              text-sm
-              font-bold
-              text-slate-800
+              flex
+              min-w-0
+
+              items-center
+              gap-2
             "
                     >
-                        {item.title}
-                    </p>
+
+                        <DomainIndicator
+                            domain={
+                                activity.domain
+                            }
+                        />
+
+
+                        <p
+                            className="
+                truncate
+
+                text-sm
+                font-bold
+                text-slate-800
+              "
+                        >
+                            {activity.title}
+                        </p>
+
+                    </div>
+
 
                     <span
                         className="
               shrink-0
+
               text-[10px]
               text-slate-400
             "
                     >
-            {item.timeLabel}
+            {activity.occurredAt
+                ? formatRelativeTime(
+                    activity.occurredAt,
+                )
+                : "시간 정보 없음"}
           </span>
+
                 </div>
 
 
                 <p
                     className="
-            mt-1
+            mt-2
+
             text-xs
             leading-5
             text-slate-500
           "
                 >
-                    {item.description}
+                    {activity.description}
                 </p>
+
+
+                {/*
+         * Event Type은 일반 사용자에게 항상 보여줄 필요는 없다.
+         *
+         * 하지만 개발 단계에서는 Event Pipeline 확인에 유용하므로
+         * 작고 약한 색상으로 표시한다.
+         *
+         * 운영 UI가 안정화되면 제거해도 된다.
+         */}
+                <p
+                    className="
+            mt-2
+
+            text-[9px]
+            font-bold
+            tracking-wide
+            text-slate-300
+          "
+                >
+                    {activity.eventType}
+                </p>
+
             </div>
+
         </div>
     );
 }
 
 
-/* =====================================================
+/* =========================================================
+ * Empty Panel
+ * ========================================================= */
+
+function EmptyPanel({
+                        symbol,
+                        title,
+                        description,
+                        error = false,
+                    }: {
+    symbol: string;
+
+    title: string;
+
+    description: string;
+
+    error?: boolean;
+}) {
+
+    return (
+        <div
+            className="
+        px-6
+        py-10
+
+        text-center
+      "
+        >
+
+            <div
+                className={`
+          mx-auto
+
+          flex
+          h-10
+          w-10
+
+          items-center
+          justify-center
+
+          rounded-full
+
+          ${
+                    error
+                        ? "bg-rose-50 text-rose-500"
+                        : "bg-emerald-50 text-emerald-500"
+                }
+        `}
+            >
+                {symbol}
+            </div>
+
+
+            <p
+                className="
+          mt-3
+
+          text-sm
+          font-bold
+          text-slate-700
+        "
+            >
+                {title}
+            </p>
+
+
+            <p
+                className="
+          mt-1
+
+          text-xs
+          text-slate-400
+        "
+            >
+                {description}
+            </p>
+
+        </div>
+    );
+}
+
+
+/* =========================================================
  * Context
- * ===================================================== */
+ * ========================================================= */
 
 function ContextRow({
                         label,
@@ -1474,20 +1898,26 @@ function ContextRow({
                         muted = false,
                     }: {
     label: string;
+
     value: string;
+
     muted?: boolean;
 }) {
+
     return (
         <div
             className="
         flex
+
         items-center
         justify-between
+
         gap-4
 
         py-3
       "
         >
+
       <span
           className="
           text-xs
@@ -1496,6 +1926,7 @@ function ContextRow({
       >
         {label}
       </span>
+
 
             <span
                 className={`
@@ -1511,14 +1942,15 @@ function ContextRow({
             >
         {value}
       </span>
+
         </div>
     );
 }
 
 
-/* =====================================================
+/* =========================================================
  * Workspace
- * ===================================================== */
+ * ========================================================= */
 
 function WorkspaceRow({
                           label,
@@ -1526,9 +1958,12 @@ function WorkspaceRow({
                           onClick,
                       }: {
     label: string;
+
     description: string;
+
     onClick: () => void;
 }) {
+
     return (
         <button
             type="button"
@@ -1537,8 +1972,10 @@ function WorkspaceRow({
         group
 
         flex
+
         items-center
         justify-between
+
         gap-4
 
         rounded-xl
@@ -1559,7 +1996,9 @@ function WorkspaceRow({
         hover:bg-sky-50/30
       "
         >
+
             <div>
+
                 <p
                     className="
             text-sm
@@ -1570,16 +2009,20 @@ function WorkspaceRow({
                     {label}
                 </p>
 
+
                 <p
                     className="
             mt-1
+
             text-xs
             text-slate-400
           "
                 >
                     {description}
                 </p>
+
             </div>
+
 
             <span
                 className="
@@ -1593,35 +2036,36 @@ function WorkspaceRow({
             >
         →
       </span>
+
         </button>
     );
 }
 
 
-/* =====================================================
- * Persistent Command Bar
- * ===================================================== */
+/* =========================================================
+ * Command
+ * ========================================================= */
 
 /**
- * Manager Chat이 구현되기 전 사용할
- * 실제 동작 가능한 Quick Command Bar.
+ * 아직 실제 Manager Chat API를 연결하지 않았다.
  *
- * 현재는 단순한 Navigation Intent만 처리한다.
+ * 현재는 단순 Navigation Intent만 지원한다.
  *
- * 가짜 AI 답변을 만들지 않는다.
+ * 가짜 AI 답변을 생성하지 않는 것이 중요하다.
  */
 function ManagerCommandBar({
                                onNavigate,
                            }: {
-    onNavigate: (
-        to: string,
-    ) => void;
+    onNavigate:
+        (to: string) => void;
 }) {
+
     const [
         query,
         setQuery,
     ] =
         useState("");
+
 
     const [
         hint,
@@ -1636,6 +2080,7 @@ function ManagerCommandBar({
         event:
         FormEvent<HTMLFormElement>,
     ) => {
+
         event.preventDefault();
 
 
@@ -1655,6 +2100,7 @@ function ManagerCommandBar({
                 "퀘스트",
             )
         ) {
+
             onNavigate(
                 "/quests",
             );
@@ -1668,6 +2114,7 @@ function ManagerCommandBar({
                 "추천",
             )
         ) {
+
             onNavigate(
                 "/ai-recommend",
             );
@@ -1681,6 +2128,7 @@ function ManagerCommandBar({
                 "여행",
             )
         ) {
+
             onNavigate(
                 "/travel",
             );
@@ -1697,6 +2145,7 @@ function ManagerCommandBar({
                 "계정",
             )
         ) {
+
             onNavigate(
                 "/mypage",
             );
@@ -1715,6 +2164,7 @@ function ManagerCommandBar({
         <div
             className="
         sticky
+
         bottom-4
         z-30
 
@@ -1724,10 +2174,9 @@ function ManagerCommandBar({
         pb-2
       "
         >
+
             <form
-                onSubmit={
-                    handleSubmit
-                }
+                onSubmit={handleSubmit}
                 className="
           rounded-2xl
 
@@ -1744,19 +2193,24 @@ function ManagerCommandBar({
           backdrop-blur-xl
         "
             >
+
                 <div
                     className="
             flex
+
             items-center
             gap-2
           "
                 >
+
                     <div
                         className="
               flex
+
               h-10
               w-10
               shrink-0
+
               items-center
               justify-center
 
@@ -1774,16 +2228,22 @@ function ManagerCommandBar({
 
                     <input
                         value={query}
+
                         onChange={(
                             event,
                         ) => {
+
                             setQuery(
                                 event.target.value,
                             );
 
-                            setHint(null);
+                            setHint(
+                                null,
+                            );
                         }}
+
                         placeholder="TP Manager에게 물어보세요"
+
                         className="
               min-w-0
               flex-1
@@ -1805,11 +2265,15 @@ function ManagerCommandBar({
 
                     <button
                         type="submit"
+                        aria-label="명령 실행"
+
                         className="
               flex
+
               h-10
               w-10
               shrink-0
+
               items-center
               justify-center
 
@@ -1823,14 +2287,15 @@ function ManagerCommandBar({
 
               hover:bg-sky-600
             "
-                        aria-label="명령 실행"
                     >
                         ↑
                     </button>
+
                 </div>
 
 
                 {hint && (
+
                     <p
                         className="
               px-12
@@ -1843,28 +2308,36 @@ function ManagerCommandBar({
                     >
                         {hint}
                     </p>
+
                 )}
+
             </form>
+
         </div>
     );
 }
 
 
-/* =====================================================
- * AI Core
- * ===================================================== */
+/* =========================================================
+ * Manager Core
+ * ========================================================= */
 
 function ManagerCore({
                          loading,
+                         error,
                      }: {
     loading: boolean;
+
+    error: boolean;
 }) {
+
     return (
         <div
             className="
         relative
 
         flex
+
         h-44
         w-44
 
@@ -1872,6 +2345,7 @@ function ManagerCore({
         justify-center
       "
         >
+
             <div
                 className="
           absolute
@@ -1916,6 +2390,7 @@ function ManagerCore({
           relative
 
           flex
+
           h-20
           w-20
 
@@ -1925,9 +2400,12 @@ function ManagerCore({
           rounded-full
 
           bg-gradient-to-br
-          from-sky-300
-          via-sky-500
-          to-indigo-600
+
+          ${
+                    error
+                        ? "from-rose-300 via-rose-500 to-red-700"
+                        : "from-sky-300 via-sky-500 to-indigo-600"
+                }
 
           shadow-[0_0_60px_rgba(56,189,248,0.55)]
 
@@ -1938,6 +2416,7 @@ function ManagerCore({
                 }
         `}
             >
+
         <span
             className="
             h-5
@@ -1950,23 +2429,28 @@ function ManagerCore({
             shadow-[0_0_25px_rgba(255,255,255,1)]
           "
         />
+
             </div>
+
         </div>
     );
 }
 
 
-/* =====================================================
- * Domain UI
- * ===================================================== */
+/* =========================================================
+ * Domain Presentation
+ * ========================================================= */
 
 function DomainIndicator({
                              domain,
                          }: {
-    domain: ManagerDomain;
+    domain:
+        ManagerDomain;
 }) {
+
     const data =
         {
+
             travel: {
                 label:
                     "TRAVEL",
@@ -1991,6 +2475,22 @@ function DomainIndicator({
                     "bg-indigo-50 text-indigo-600",
             },
 
+            finance: {
+                label:
+                    "FINANCE",
+
+                className:
+                    "bg-amber-50 text-amber-600",
+            },
+
+            diary: {
+                label:
+                    "DIARY",
+
+                className:
+                    "bg-violet-50 text-violet-600",
+            },
+
             system: {
                 label:
                     "MANAGER",
@@ -1998,6 +2498,7 @@ function DomainIndicator({
                 className:
                     "bg-slate-100 text-slate-500",
             },
+
         }[domain];
 
 
@@ -2005,9 +2506,11 @@ function DomainIndicator({
         <span
             className={`
         flex
-        h-9
-        min-w-16
+
+        h-7
+        min-w-14
         shrink-0
+
         items-center
         justify-center
 
@@ -2015,7 +2518,7 @@ function DomainIndicator({
 
         px-2
 
-        text-[9px]
+        text-[8px]
         font-black
         tracking-wide
 
@@ -2029,9 +2532,12 @@ function DomainIndicator({
 
 
 function getDomainDotClass(
-    domain: ManagerDomain,
+    domain:
+    ManagerDomain,
 ): string {
+
     switch (domain) {
+
         case "travel":
             return "bg-sky-500";
 
@@ -2041,38 +2547,91 @@ function getDomainDotClass(
         case "emotion":
             return "bg-indigo-500";
 
+        case "finance":
+            return "bg-amber-500";
+
+        case "diary":
+            return "bg-violet-500";
+
         default:
             return "bg-slate-400";
     }
 }
 
 
-/* =====================================================
+/* =========================================================
  * Attention Builder
- * ===================================================== */
+ * ========================================================= */
 
+/**
+ * 아직은 Frontend 기반 간단한 Priority Rule.
+ *
+ * 다음 Priority Engine 단계에서 Backend로 이동한다.
+ */
 function buildAttentionItems(
-    travel: TravelPlan | null,
-    activeQuestCount: number,
-): ManagerAttentionItem[] {
+    travel:
+        AiManagerFocusTravel | null,
+
+    activeQuestCount:
+    number,
+):
+    ManagerAttentionItem[] {
+
     const items:
         ManagerAttentionItem[] =
         [];
 
 
     if (travel) {
-        const days =
-            daysUntilTravel(
-                travel,
-            );
+
+        if (
+            travel.state ===
+            "ACTIVE"
+        ) {
+
+            items.push({
+
+                id:
+                    `travel-${travel.planId}`,
+
+                domain:
+                    "travel",
+
+                title:
+                    `${travel.planName} 여행이 진행 중이에요`,
+
+                description:
+                    "현재 여행 일정과 필요한 정보를 확인해보세요.",
+
+                actionLabel:
+                    "여행 확인",
+
+                to:
+                    "/travel",
+
+                priority:
+                    "high",
+            });
+        }
 
 
         if (
-            days !== null &&
-            days >= 0 &&
-            days <= 7
+            travel.state ===
+            "UPCOMING" &&
+
+            travel.daysUntilStart !==
+            null &&
+
+            travel.daysUntilStart <=
+            7
         ) {
+
+            const days =
+                travel.daysUntilStart;
+
+
             items.push({
+
                 id:
                     `travel-${travel.planId}`,
 
@@ -2105,7 +2664,9 @@ function buildAttentionItems(
     if (
         activeQuestCount > 0
     ) {
+
         items.push({
+
             id:
                 "active-quests",
 
@@ -2132,10 +2693,11 @@ function buildAttentionItems(
 
     if (
         !travel &&
-        activeQuestCount ===
-        0
+        activeQuestCount === 0
     ) {
+
         items.push({
+
             id:
                 "start-travel",
 
@@ -2146,7 +2708,7 @@ function buildAttentionItems(
                 "아직 예정된 여행이 없어요",
 
             description:
-                "첫 여행 계획을 등록하면 AI Manager가 여행 Context를 연결하기 시작합니다.",
+                "첫 여행 계획을 등록하면 AI Manager가 여행 계획을 연결하기 시작합니다.",
 
             actionLabel:
                 "여행 만들기",
@@ -2164,233 +2726,19 @@ function buildAttentionItems(
 }
 
 
-/* =====================================================
- * Activity Builder
- * ===================================================== */
+/* =========================================================
+ * Time Helpers
+ * ========================================================= */
 
-function buildActivityItems(
-    emotion:
-        LatestEmotionResponse | null,
-
-    questLogs:
-    UserQuestLogResponse[],
-): ManagerActivityItem[] {
-    const items:
-        ManagerActivityItem[] =
-        [];
-
-
-    if (emotion) {
-        items.push({
-            id:
-                `emotion-${emotion.observationId}`,
-
-            domain:
-                "emotion",
-
-            title:
-                "최근 감정이 기록됐어요",
-
-            description:
-                `'${emotion.fineLabelName}' 상태로 관찰되었습니다.`,
-
-            timeLabel:
-                formatRelativeTime(
-                    emotion.observedAt,
-                ),
-        });
-    }
-
-
-    const completed =
-        questLogs
-            .filter(
-                (log) =>
-                    log.status ===
-                    "SUCCESS" &&
-                    log.clearDate,
-            )
-            .sort(
-                (a, b) =>
-                    new Date(
-                        b.clearDate!,
-                    ).getTime() -
-                    new Date(
-                        a.clearDate!,
-                    ).getTime(),
-            )
-            .slice(
-                0,
-                3,
-            );
-
-
-    completed.forEach(
-        (log) => {
-            items.push({
-                id:
-                    `quest-${log.logId}`,
-
-                domain:
-                    "quest",
-
-                title:
-                    "퀘스트를 완료했어요",
-
-                description:
-                    `${log.questName} · +${log.rewardPoint.toLocaleString()} P`,
-
-                timeLabel:
-                    formatRelativeTime(
-                        log.clearDate!,
-                    ),
-            });
-        },
-    );
-
-
-    if (
-        items.length === 0
-    ) {
-        items.push({
-            id:
-                "no-activity",
-
-            domain:
-                "system",
-
-            title:
-                "아직 최근 활동이 많지 않아요",
-
-            description:
-                "여행 계획과 퀘스트, 감정 기록이 쌓이면 AI Manager가 변화 흐름을 정리합니다.",
-
-            timeLabel:
-                "현재",
-        });
-    }
-
-
-    return items.slice(
-        0,
-        5,
-    );
-}
-
-
-/* =====================================================
- * Travel
- * ===================================================== */
-
-function selectFocusTravel(
-    plans: TravelPlan[],
-): TravelPlan | null {
-    if (
-        plans.length === 0
-    ) {
-        return null;
-    }
-
-
-    const now =
-        Date.now();
-
-
-    const active =
-        plans.find(
-            (plan) => {
-                if (
-                    !plan.startDate ||
-                    !plan.endDate
-                ) {
-                    return false;
-                }
-
-
-                const start =
-                    new Date(
-                        plan.startDate,
-                    ).getTime();
-
-                const end =
-                    new Date(
-                        plan.endDate,
-                    ).getTime();
-
-
-                return (
-                    start <= now &&
-                    end >= now
-                );
-            },
-        );
-
-
-    if (active) {
-        return active;
-    }
-
-
-    const upcoming =
-        plans
-            .filter(
-                (plan) =>
-                    plan.startDate &&
-                    new Date(
-                        plan.startDate,
-                    ).getTime() >
-                    now,
-            )
-            .sort(
-                (a, b) =>
-                    new Date(
-                        a.startDate!,
-                    ).getTime() -
-                    new Date(
-                        b.startDate!,
-                    ).getTime(),
-            );
-
-
-    return (
-        upcoming[0] ??
-        null
-    );
-}
-
-
-function daysUntilTravel(
-    plan: TravelPlan,
-): number | null {
-    if (!plan.startDate) {
-        return null;
-    }
-
-
-    const start =
-        new Date(
-            plan.startDate,
-        ).getTime();
-
-
-    return Math.ceil(
-        (start - Date.now()) /
-        (
-            1000 *
-            60 *
-            60 *
-            24
-        ),
-    );
-}
-
-
-/* =====================================================
- * Time
- * ===================================================== */
-
+/**
+ * 인사말은 Browser의 현재 시간을 사용한다.
+ *
+ * D-Day처럼 중요한 Business 시간 계산은
+ * Backend가 담당한다.
+ */
 function getTimeGreeting():
     string {
+
     const hour =
         new Date().getHours();
 
@@ -2414,11 +2762,25 @@ function getTimeGreeting():
 }
 
 
+/**
+ * Event 발생 시각을 상대 시간으로 표현한다.
+ *
+ * 예:
+ *
+ * 방금
+ * 10분 전
+ * 3시간 전
+ * 2일 전
+ */
 function formatRelativeTime(
     value: string,
 ): string {
+
     const date =
-        new Date(value);
+        new Date(
+            value,
+        );
+
 
     const diffMs =
         Date.now() -
@@ -2426,11 +2788,14 @@ function formatRelativeTime(
 
 
     const minutes =
-        Math.floor(
-            diffMs /
-            (
-                1000 *
-                60
+        Math.max(
+            0,
+            Math.floor(
+                diffMs /
+                (
+                    1000 *
+                    60
+                ),
             ),
         );
 

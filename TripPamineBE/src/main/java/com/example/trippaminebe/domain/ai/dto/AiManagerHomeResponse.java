@@ -4,18 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 /**
  * AI Manager Home 통합 응답.
  *
- * <p>
- * 프론트가 사용자 / 감정 / 여행 / 퀘스트 API를 각각 호출하지 않고,
- * AI Manager가 현재 사용자 Context를 한 번에 내려주기 위한 DTO입니다.
- * </p>
- *
- * <p>
- * 현재 STEP B에서는 "Context 집계"까지만 담당합니다.
- * 어떤 항목이 더 중요한지 판단하는 Priority Engine은 다음 단계에서 추가합니다.
- * </p>
+ * User / Emotion / Travel / Quest Context뿐 아니라
+ * 이제 공식 Activity Event Timeline도 포함한다.
  */
 public record AiManagerHomeResponse(
 
@@ -23,95 +17,148 @@ public record AiManagerHomeResponse(
 
 		UserContext user,
 
-		/**
-		 * 아직 감정 관측 이력이 없다면 null.
-		 *
-		 * 기존 GET /ai/emotion/latest의 LatestEmotionResponse를
-		 * 그대로 재사용합니다.
-		 */
 		LatestEmotionResponse emotion,
 
 		TravelContext travel,
 
-		QuestContext quests
+		QuestContext quests,
+
+		/**
+		 * AI_MANAGER_EVENTS 기반 공식 Activity Feed.
+		 */
+		List<ActivityEvent> activities
+
 ) {
 
-	/**
-	 * AI Manager가 Home에서 필요로 하는 최소 사용자 정보.
-	 *
-	 * 비밀번호 / 이메일 / 전화번호 등 불필요한 개인정보를
-	 * Home 응답에 반복 노출하지 않습니다.
-	 */
+	/* =====================================================
+	 * User
+	 * ===================================================== */
+
 	public record UserContext(
+
 			Long userId,
+
 			String userName,
+
 			Long totalPoints,
+
 			String grade,
+
 			String profileImageUrl
 	) {
 	}
 
 
-	/**
-	 * 여행 Context.
-	 *
-	 * 전체 여행 목록을 모두 Home으로 보내는 대신
-	 * Home에서 실제 필요한 개수 + 대표 여행만 내려줍니다.
-	 */
+	/* =====================================================
+	 * Travel
+	 * ===================================================== */
+
 	public record TravelContext(
+
 			int totalPlanCount,
+
 			FocusTravel focusPlan
 	) {
 	}
 
 
-	/**
-	 * AI Manager가 현재 집중해서 볼 여행.
-	 *
-	 * state:
-	 *
-	 * ACTIVE   = 현재 여행 기간 중
-	 * UPCOMING = 앞으로 시작할 가장 가까운 여행
-	 */
 	public record FocusTravel(
+
 			Long planId,
+
 			String planName,
+
 			BigDecimal totalBudget,
+
 			String companionType,
+
 			String locationCd,
+
 			String blindYn,
+
 			LocalDateTime startDate,
+
 			LocalDateTime endDate,
+
 			String state,
+
 			Long daysUntilStart
 	) {
 	}
 
 
-	/**
-	 * 사용자 퀘스트 현황.
-	 *
-	 * Home에서 모든 Quest Log를 받을 필요는 없으므로
-	 * 상태별 count와 최근 완료 이력만 전달합니다.
-	 */
+	/* =====================================================
+	 * Quest
+	 * ===================================================== */
+
 	public record QuestContext(
+
 			long activeCount,
+
 			long completedCount,
+
 			long failedCount,
+
+			/**
+			 * 현재 Context 용으로 유지한다.
+			 *
+			 * Activity Feed는 더 이상 이 값을 조합해서 만들지 않는다.
+			 */
 			List<RecentCompletedQuest> recentCompleted
 	) {
 	}
 
 
-	/**
-	 * AI Activity Feed에 사용할 최근 완료 퀘스트.
-	 */
 	public record RecentCompletedQuest(
+
 			Long logId,
+
 			Long questId,
+
 			String questName,
+
 			Long rewardPoint,
+
 			LocalDateTime clearDate
+	) {
+	}
+
+
+	/* =====================================================
+	 * Activity
+	 * ===================================================== */
+
+	/**
+	 * AI_MANAGER_EVENTS를 사용자 화면에 노출하기 위한 DTO.
+	 *
+	 * payloadJson 자체는 Frontend에 노출하지 않는다.
+	 *
+	 * 이유:
+	 *
+	 * 1. 내부 구현 Detail 숨김
+	 * 2. 불필요한 개인정보 노출 방지
+	 * 3. Frontend가 Event JSON Schema에 종속되는 것 방지
+	 */
+	public record ActivityEvent(
+
+			Long eventId,
+
+			/**
+			 * emotion / quest / travel / finance / diary / system
+			 */
+			String domain,
+
+			String eventType,
+
+			String sourceType,
+
+			String sourceId,
+
+			String title,
+
+			String description,
+
+			LocalDateTime occurredAt
 	) {
 	}
 }

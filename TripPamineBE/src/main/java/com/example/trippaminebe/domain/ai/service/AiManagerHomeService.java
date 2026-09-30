@@ -56,7 +56,7 @@ public class AiManagerHomeService {
 	private final EmotionQueryService emotionQueryService;
 	private final TravelPlanService travelPlanService;
 	private final QuestService questService;
-
+	private final AiManagerActivityService aiManagerActivityService;
 
 	/**
 	 * 현재 로그인 사용자의 AI Manager Home Context를 생성합니다.
@@ -176,6 +176,11 @@ public class AiManagerHomeService {
 						recentCompleted
 				);
 
+		List<AiManagerHomeResponse.ActivityEvent> activities =
+				aiManagerActivityService.findRecent(
+						userId
+				);
+
 
 		/* =================================================
 		 * 4. User
@@ -204,7 +209,8 @@ public class AiManagerHomeService {
 				userContext,
 				latestEmotion,
 				travelContext,
-				questContext
+				questContext,
+				activities
 		);
 	}
 
