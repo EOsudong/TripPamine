@@ -1,0 +1,99 @@
+{
+  "source": {
+    "file": "data\\training\\emotion\\normalized\\v1\\training.jsonl",
+    "file_size_bytes": 59276062,
+    "sha256": "f578f1abd3cd36f77ba762ba4b06ed55966ce7331473cba2aea07a880f5907cd"
+  },
+  "output": {
+    "file": "data\\training\\emotion\\classification\\v1\\training.jsonl",
+    "file_size_bytes": 24648452,
+    "sha256": "b2cc9bc397346808dd94d8b7eaba625d53ea4f87d027bd97b53f469490bca29c"
+  },
+  "summary": {
+    "total_records": 51628,
+    "written_records": 51628
+  },
+  "distribution": {
+    "fine_emotion": {
+      "E10": 958,
+      "E11": 926,
+      "E12": 875,
+      "E13": 1054,
+      "E14": 803,
+      "E15": 845,
+      "E16": 873,
+      "E17": 882,
+      "E18": 975,
+      "E19": 969,
+      "E20": 958,
+      "E21": 870,
+      "E22": 950,
+      "E23": 906,
+      "E24": 1002,
+      "E25": 838,
+      "E26": 828,
+      "E27": 993,
+      "E28": 896,
+      "E29": 884,
+      "E30": 893,
+      "E31": 991,
+      "E32": 971,
+      "E33": 864,
+      "E34": 901,
+      "E35": 842,
+      "E36": 860,
+      "E37": 1229,
+      "E38": 869,
+      "E39": 899,
+      "E40": 937,
+      "E41": 896,
+      "E42": 911,
+      "E43": 901,
+      "E44": 910,
+      "E45": 949,
+      "E46": 840,
+      "E47": 984,
+      "E48": 953,
+      "E49": 861,
+      "E50": 859,
+      "E51": 900,
+      "E52": 872,
+      "E53": 865,
+      "E54": 859,
+      "E55": 883,
+      "E56": 897,
+      "E57": 833,
+      "E58": 918,
+      "E59": 870,
+      "E60": 660,
+      "E61": 631,
+      "E62": 609,
+      "E63": 597,
+      "E64": 655,
+      "E65": 563,
+      "E66": 568,
+      "E67": 639,
+      "E68": 634,
+      "E69": 570
+    },
+    "coarse_emotion": {
+      "기쁨": 6126,
+      "당황": 8756,
+      "분노": 9160,
+      "불안": 9319,
+      "상처": 9142,
+      "슬픔": 9125
+    },
+    "quality": {
+      "VALID": 48114,
+      "WARNING": 3514
+    },
+    "issues": {
+      "CONTAINS_ENGLISH": 98,
+      "INCOMPLETE_THIRD_TURN": 2,
+      "TOO_MANY_PUNCTUATION_MARKS": 175,
+      "TOO_MANY_SENTENCES": 2296,
+      "WORD_COUNT_OUT_OF_RANGE": 2257
+    }
+  }
+}
