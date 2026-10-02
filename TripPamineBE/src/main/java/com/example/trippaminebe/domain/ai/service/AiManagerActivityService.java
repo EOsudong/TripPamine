@@ -12,6 +12,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -65,10 +67,6 @@ public class AiManagerActivityService {
 	private final AiEmotionObservationRepository
 			aiEmotionObservationRepository;
 
-
-	/**
-	 * Spring Boot 4 + Jackson 3 기본 JSON Mapper.
-	 */
 	private final JsonMapper
 			jsonMapper;
 
@@ -335,6 +333,35 @@ public class AiManagerActivityService {
 					effectiveOccurredAt(
 							event
 					)
+			);
+		}
+
+		/*
+		 * =========================================================
+		 * Travel Activity 전용 Mapping
+		 * =========================================================
+		 *
+		 * 이전에는 SOURCE_TYPE=TRAVEL이라는 정보만 보고
+		 * 모든 Travel Event를 같은 문구로 표시했다.
+		 *
+		 * 이제 EVENT_TYPE까지 구분해:
+		 *
+		 * TRAVEL_PLAN_CREATED
+		 * TRAVEL_PLAN_UPDATED
+		 * TRAVEL_PLAN_DELETED
+		 *
+		 * 각각 다른 사용자용 문구로 변환한다.
+		 */
+		if (
+				event.getEventType() != null
+						&&
+						event.getEventType().startsWith(
+								"TRAVEL_PLAN_"
+						)
+		) {
+
+			return toTravelActivity(
+					event
 			);
 		}
 
@@ -606,6 +633,390 @@ public class AiManagerActivityService {
 		) {
 
 			return fallback;
+		}
+	}
+
+	/**
+	 * =========================================================
+	 * Travel Event → Activity
+	 * =========================================================
+	 *
+	 * AI_MANAGER_EVENTS.PAYLOAD_JSON에 저장해 둔
+	 * 여행 당시 Snapshot을 이용해 사용자에게 보여줄 문구를 만든다.
+	 *
+	 * 중요한 이유:
+	 *
+	 * TRAVEL_PLAN_DELETED Event의 경우
+	 * 현재 여행 목록에서는 이미 DEL_YN='Y'로 제외된다.
+	 *
+	 * 따라서 현재 TRAVEL_PLANS를 다시 조회해서 제목을 만들기보다,
+	 * Event 발생 당시 저장해 둔 PAYLOAD_JSON을 사용하는 것이
+	 * Event Log 구조에 더 적합하다.
+	 */
+	private AiManagerHomeResponse.ActivityEvent toTravelActivity(
+			AiManagerEvent event
+	) {
+
+		JsonNode payload =
+				readTravelPayload(
+						event
+				);
+
+
+		/*
+		 * Event 생성 당시 저장한 여행 이름.
+		 */
+		String planName =
+				travelPayloadText(
+						payload,
+						"planName",
+						"여행 계획"
+				);
+
+
+		/*
+		 * CREATE / UPDATE에서 사용자에게
+		 * 출발일을 함께 보여주기 위한 문자열.
+		 */
+		String startDateText =
+				formatTravelStartDate(
+						payload
+				);
+
+
+		String title;
+
+		String description;
+
+
+		switch (
+				event.getEventType()
+		) {
+
+			/* =================================================
+			 * CREATE
+			 * ================================================= */
+
+			case "TRAVEL_PLAN_CREATED" -> {
+
+				title =
+						"새 여행 계획이 등록됐어요";
+
+
+				description =
+						buildTravelPlanDescription(
+								planName,
+								startDateText
+						);
+			}
+
+
+			/* =================================================
+			 * UPDATE
+			 * ================================================= */
+
+			case "TRAVEL_PLAN_UPDATED" -> {
+
+				title =
+						"여행 계획이 변경됐어요";
+
+
+				description =
+						buildTravelPlanDescription(
+								planName,
+								startDateText
+						);
+			}
+
+
+			/* =================================================
+			 * DELETE
+			 * ================================================= */
+
+			case "TRAVEL_PLAN_DELETED" -> {
+
+				title =
+						"여행 계획이 삭제됐어요";
+
+
+				description =
+						planName
+								+ " 여행 계획이 삭제되었습니다.";
+			}
+
+
+			/*
+			 * 현재는 위 3종만 존재하지만
+			 * 앞으로 TRAVEL_PLAN_STARTED 등의 Event가 추가될 수 있다.
+			 *
+			 * 알 수 없는 Travel Event라고 해서
+			 * Activity 전체 조회가 실패하면 안 되므로 fallback한다.
+			 */
+			default -> {
+
+				title =
+						"여행 계획에 변화가 있어요";
+
+
+				description =
+						planName;
+			}
+		}
+
+
+		return new AiManagerHomeResponse.ActivityEvent(
+
+				event.getEventId(),
+
+				"travel",
+
+				event.getEventType(),
+
+				event.getSourceType(),
+
+				event.getSourceId(),
+
+				title,
+
+				description,
+
+				resolveOccurredAt(
+						event
+				)
+		);
+	}
+
+
+	/**
+	 * Travel Payload의 문자열 값을 안전하게 읽는다.
+	 */
+	private String travelPayloadText(
+			JsonNode payload,
+			String fieldName,
+			String fallback
+	) {
+
+		if (
+				payload == null
+						||
+						fieldName == null
+						||
+						fieldName.isBlank()
+		) {
+
+			return fallback;
+		}
+
+
+		JsonNode valueNode =
+				payload.get(
+						fieldName
+				);
+
+
+		if (
+				valueNode == null
+						||
+						valueNode.isNull()
+		) {
+
+			return fallback;
+		}
+
+
+		/*
+		 * Jackson 3 JsonNode의 문자열 값을 읽는다.
+		 */
+		String value =
+				valueNode.asString();
+
+
+		if (
+				value == null
+						||
+						value.isBlank()
+		) {
+
+			return fallback;
+		}
+
+
+		return value;
+	}
+
+
+	/**
+	 * Event Payload의 startDate를
+	 * 사용자 화면용 "M월 d일 출발" 형식으로 변환한다.
+	 *
+	 * DB 저장 형식 예:
+	 *
+	 * 2026-10-11T02:46
+	 *
+	 * 화면:
+	 *
+	 * 10월 11일 출발
+	 */
+	private String formatTravelStartDate(
+			JsonNode payload
+	) {
+
+		String startDate =
+				travelPayloadText(
+						payload,
+						"startDate",
+						null
+				);
+
+
+		if (
+				startDate == null
+						||
+						startDate.isBlank()
+		) {
+
+			return null;
+		}
+
+
+		try {
+
+			LocalDateTime dateTime =
+					LocalDateTime.parse(
+							startDate
+					);
+
+
+			DateTimeFormatter formatter =
+					DateTimeFormatter.ofPattern(
+							"M월 d일"
+					);
+
+
+			return dateTime
+					.format(
+							formatter
+					)
+					+ " 출발";
+
+		} catch (
+				DateTimeParseException e
+		) {
+
+			/*
+			 * Event Payload 하나의 날짜 문자열이 잘못됐다고 해서
+			 * AI Manager Home 전체가 500이 되면 안 된다.
+			 *
+			 * 날짜만 표시하지 않고 나머지 Activity는 정상 반환한다.
+			 */
+			return null;
+		}
+	}
+
+
+	/**
+	 * CREATE / UPDATE 설명 공통 조립.
+	 */
+	private String buildTravelPlanDescription(
+			String planName,
+			String startDateText
+	) {
+
+		if (
+				startDateText == null
+						||
+						startDateText.isBlank()
+		) {
+
+			return planName;
+		}
+
+
+		return planName
+				+ " · "
+				+ startDateText;
+	}
+
+
+	/**
+	 * 실제 Event 발생시각을 반환한다.
+	 *
+	 * OCCURRED_AT을 우선하고,
+	 * 예전 Event처럼 값이 없는 경우 CREATED_AT으로 fallback한다.
+	 */
+	private LocalDateTime resolveOccurredAt(
+			AiManagerEvent event
+	) {
+
+		if (
+				event.getOccurredAt() != null
+		) {
+
+			return event.getOccurredAt();
+		}
+
+
+		return event.getCreatedAt();
+	}
+
+	/**
+	 * Travel Event의 PAYLOAD_JSON을 직접 읽는다.
+	 *
+	 * 기존 readPayload()가 Emotion/Quest 중심으로 작성되어 있거나,
+	 * Event별 Payload 처리 방식이 달라 Travel Payload를 제대로 읽지 못하는
+	 * 상황을 피하기 위해 Travel 전용 Parser를 둔다.
+	 *
+	 * AI_MANAGER_EVENTS.PAYLOAD_JSON 예:
+	 *
+	 * {
+	 *   "planId": 58,
+	 *   "planName": "AI Manager Event Update Test",
+	 *   "totalBudget": 150000,
+	 *   "companionType": "ALONE",
+	 *   "locationCd": "ETC",
+	 *   "blindYn": "N",
+	 *   "startDate": "2026-10-11T02:46",
+	 *   "endDate": "2026-10-13T02:46"
+	 * }
+	 */
+	private JsonNode readTravelPayload(
+			AiManagerEvent event
+	) {
+
+		if (
+				event == null
+						||
+						event.getPayloadJson() == null
+						||
+						event.getPayloadJson().isBlank()
+		) {
+
+			return null;
+		}
+
+
+		try {
+
+			/*
+			 * Spring Boot 4 / Jackson 3.
+			 *
+			 * PAYLOAD_JSON 문자열 자체를 JsonNode Tree로 변환한다.
+			 */
+			return jsonMapper.readTree(
+					event.getPayloadJson()
+			);
+
+		} catch (
+				Exception e
+		) {
+
+			/*
+			 * Activity 하나의 JSON이 깨져 있다고 해서
+			 * /api/ai-manager/home 전체가 500이 되면 안 된다.
+			 *
+			 * null을 반환하면 이후 Mapper가 fallback 문구를 사용한다.
+			 */
+			return null;
 		}
 	}
 }
