@@ -11,12 +11,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 // TRAVEL_PLANS.START_DATE 주석("출발 3시간 전 오픈 체크용")대로,
-// 출발이 3시간 이내로 임박한 여행 계획을 주기적으로 스캔해서 AI 타임 네고(핫딜) 제안을 발송
+// 출발이 하루 이내로 임박한 여행 계획을 주기적으로 스캔해서 AI 타임 네고(핫딜) 제안을 발송
 @Component
 @RequiredArgsConstructor
 public class AiNegoScheduler {
 
-    private static final int LEAD_TIME_HOURS = 3;
+    private static final int LEAD_TIME_HOURS = 24;
 
     private final TravelPlanRepository travelPlanRepository;
     private final AiNegoService aiNegoService;

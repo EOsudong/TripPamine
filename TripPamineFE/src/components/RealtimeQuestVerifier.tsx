@@ -1,5 +1,8 @@
-import React, { useState } from "react";
-import { usePreciseGeolocation } from "../custom/usePreciseGeolocation";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import {
   extractQuestErrorMessage,
   questApi,
@@ -8,172 +11,590 @@ import {
   type UserQuestLogResponse,
 } from "../api/quest";
 
+
+type GpsSignalStrength =
+    | "EXCELLENT"
+    | "GOOD"
+    | "POOR"
+    | "SEARCHING";
+
+
 interface RealtimeQuestVerifierProps {
   quest: QuestResponse;
-  initialStatus: QuestStatus;
-  // 클리어 시도 결과(성공/실패 포함)가 바뀔 때마다 부모(MyPage)에게 최신 로그를 올려준다.
-  // 포인트 누적, 목록 상태 갱신을 부모가 서버가 내려준 값 그대로 반영하도록 하기 위함
-  // (프론트에서 임의로 rewardPoint를 더하지 않음 - 서버가 실제로 지급한 값만 신뢰).
-  onLogUpdate: (log: UserQuestLogResponse) => void;
+
+  initialStatus:
+      QuestStatus;
+
+  onLogUpdate:
+      (
+          log:
+          UserQuestLogResponse,
+      ) => void;
+
+  /*
+   * QuestDetailPage가 수집한 동일 GPS Context.
+   */
+  latitude:
+      number | null;
+
+  longitude:
+      number | null;
+
+  accuracy:
+      number | null;
+
+  gpsSignalStrength:
+      GpsSignalStrength;
+
+  gpsError:
+      string | null;
 }
 
-export const RealtimeQuestVerifier: React.FC<RealtimeQuestVerifierProps> = ({
-  quest,
-  initialStatus,
-  onLogUpdate,
-}) => {
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [status, setStatus] = useState<QuestStatus>(initialStatus);
-  const [customError, setCustomError] = useState<string | null>(null);
 
-  const questCleared = status === "SUCCESS";
+export function RealtimeQuestVerifier({
+                                        quest,
+                                        initialStatus,
+                                        onLogUpdate,
 
-  // 위치 실시간 훅. 이미 클리어된 퀘스트면 배터리 소모를 막기 위해 추적을 멈춘다.
-  const {
-    latitude,
-    longitude,
-    accuracy,
-    gpsSignalStrength,
-    error: gpsError,
-  } = usePreciseGeolocation(!questCleared);
+                                        latitude,
+                                        longitude,
+                                        accuracy,
+                                        gpsSignalStrength,
+                                        gpsError,
+                                      }: RealtimeQuestVerifierProps) {
+  const [
+    isVerifying,
+    setIsVerifying,
+  ] = useState(false);
 
-  const handleVerifyLocation = async () => {
-    if (latitude == null || longitude == null) {
-      setCustomError(
-        "GPS 정보 수신을 기다리는 중입니다. 잠시 후 다시 시도해 주세요.",
+  const [
+    status,
+    setStatus,
+  ] =
+      useState<QuestStatus>(
+          initialStatus,
       );
-      return;
-    }
 
-    // 오차가 너무 큰 상태에서는 굳이 서버까지 요청을 보내지 않고 먼저 안내한다.
-    // (서버도 동일 기준으로 한 번 더 검증하므로 이건 UX 개선용 선제 차단이지, 유일한 방어선이 아님)
-    if (gpsSignalStrength === "POOR") {
-      setCustomError(
-        "GPS 수신 신호가 너무 약해 검증이 불가합니다. 실외로 이동해 주세요.",
+  const [
+    customError,
+    setCustomError,
+  ] = useState<string | null>(
+      null,
+  );
+
+
+  /*
+   * 부모의 questLog 상태가 변경될 경우
+   * 내부 status도 동기화한다.
+   */
+  useEffect(() => {
+    setStatus(
+        initialStatus,
+    );
+  }, [initialStatus]);
+
+
+  const questCleared =
+      status === "SUCCESS";
+
+
+  const handleVerifyLocation =
+      async () => {
+        if (
+            latitude === null ||
+            longitude === null
+        ) {
+          setCustomError(
+              "현재 위치를 확인하고 있습니다. GPS 좌표가 수신된 뒤 다시 시도해주세요.",
+          );
+
+          return;
+        }
+
+
+        /*
+         * GPS 정확도가 낮은 상황에서는
+         * 불필요한 Backend 요청을 먼저 막는다.
+         *
+         * Backend에서도 동일하게 검증하므로
+         * 이것은 보안 로직이 아닌 UX 선제 검증이다.
+         */
+        if (
+            gpsSignalStrength ===
+            "POOR"
+        ) {
+          setCustomError(
+              "GPS 정확도가 낮아 위치 인증이 어렵습니다. 가능하면 실외로 이동한 뒤 다시 시도해주세요.",
+          );
+
+          return;
+        }
+
+
+        try {
+          setIsVerifying(
+              true,
+          );
+
+          setCustomError(
+              null,
+          );
+
+
+          const log =
+              await questApi.clearQuest(
+                  quest.questId,
+                  {
+                    currentLat:
+                    latitude,
+
+                    currentLng:
+                    longitude,
+
+                    accuracyMeters:
+                        accuracy ??
+                        undefined,
+                  },
+              );
+
+
+          setStatus(
+              log.status,
+          );
+
+          onLogUpdate(
+              log,
+          );
+
+
+          if (
+              log.status ===
+              "FAILED"
+          ) {
+            setCustomError(
+                `아직 인증 반경 ${quest.clearRadius}m 밖에 있습니다. 목표 위치에 조금 더 가까이 이동해주세요.`,
+            );
+          }
+        } catch (error) {
+          console.error(
+              "퀘스트 위치 인증 실패:",
+              error,
+          );
+
+          setCustomError(
+              extractQuestErrorMessage(
+                  error,
+                  "현재 위치를 인증하는 중 문제가 발생했습니다.",
+              ),
+          );
+        } finally {
+          setIsVerifying(
+              false,
+          );
+        }
+      };
+
+
+  const signal =
+      getSignalPresentation(
+          gpsSignalStrength,
+          accuracy,
       );
-      return;
-    }
 
-    try {
-      setIsVerifying(true);
-      setCustomError(null);
-
-      const log = await questApi.clearQuest(quest.questId, {
-        currentLat: latitude,
-        currentLng: longitude,
-        accuracyMeters: accuracy ?? undefined,
-      });
-
-      setStatus(log.status);
-      onLogUpdate(log);
-
-      if (log.status === "FAILED") {
-        setCustomError(
-          `아직 인증 반경(${quest.clearRadius}m) 밖에 있습니다. 목표 지점에 더 가까이 이동한 뒤 다시 시도해 주세요.`,
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      // 백엔드가 200m 초과 GPS 오차 리젝, 이미 SUCCESS 처리된 퀘스트 재시도 등을 이 메시지로 내려줌
-      setCustomError(
-        extractQuestErrorMessage(err, "위치 정보 검증 중 오류가 발생했습니다."),
-      );
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const renderSignalBadge = () => {
-    switch (gpsSignalStrength) {
-      case "EXCELLENT":
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/50">
-            🛰️ 초정밀 수신 중 (오차 {accuracy?.toFixed(1)}m 이내)
-          </span>
-        );
-      case "GOOD":
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/50">
-            📡 보통 감도 (오차 {accuracy?.toFixed(1)}m)
-          </span>
-        );
-      case "POOR":
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/50">
-            ⚠️ 오차 높음 (실내/지하 등 검증 불가)
-          </span>
-        );
-      default:
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400">
-            🔍 위성 탐색 중...
-          </span>
-        );
-    }
-  };
 
   return (
-    <div className="rounded-3xl bg-slate-900 p-6 text-white border border-slate-800 shadow-xl max-w-md mx-auto">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xl font-extrabold text-white flex items-center gap-2">
-          🎯 {quest.questName}
-        </h4>
-        <span className="text-base font-black text-yellow-400">
-          {quest.rewardPoint.toLocaleString()} P
-        </span>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>실시간 GPS 수신 감도</span>
-          {renderSignalBadge()}
-        </div>
-      </div>
-
-      {(gpsError || customError) && (
-        <div className="mt-4 rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs text-rose-400 leading-relaxed">
-          {gpsError || customError}
-        </div>
-      )}
-
-      <div className="mt-6">
-        {questCleared ? (
-          <div className="rounded-2xl bg-emerald-500 text-slate-950 p-4 text-center font-black animate-pulse shadow-lg shadow-emerald-500/20">
-            🎉 축하합니다! 퀘스트 정복 완료!
-          </div>
-        ) : (
-          <button
-            onClick={handleVerifyLocation}
-            disabled={isVerifying || latitude == null}
-            className={`w-full py-4 rounded-2xl text-center text-sm font-black transition-all ${
-              isVerifying
-                ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                : latitude == null
-                  ? "bg-slate-800 text-slate-400 cursor-wait"
-                  : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:opacity-90 shadow-lg shadow-cyan-500/20 active:scale-95"
-            }`}
+      <section
+          className="
+        overflow-hidden
+        rounded-2xl
+        border
+        border-slate-800
+        bg-slate-900
+      "
+      >
+        <div
+            className="
+          border-b
+          border-white/5
+          p-5
+        "
+        >
+          <p
+              className="
+            text-[10px]
+            font-black
+            tracking-[0.18em]
+            text-cyan-400
+          "
           >
-            {isVerifying ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                지구 타원체 기준 위성 매핑 중...
-              </span>
-            ) : latitude == null ? (
-              "📡 GPS 신호 탐색 대기 중..."
-            ) : status === "FAILED" ? (
-              "다시 위치 인증하기"
-            ) : (
-              "실시간 위치 매칭 완료하기"
-            )}
-          </button>
-        )}
-      </div>
+            LOCATION VERIFY
+          </p>
 
-      <p className="text-[11px] text-gray-500 text-center mt-3 leading-normal">
-        * 본 퀘스트는 초정밀 위치 검증 모델을 적용하고 있습니다.
-        <br />
-        GPS를 조작하는 행위 적발 시 제재 대상이 될 수 있습니다.
-      </p>
-    </div>
+          <h3
+              className="
+            mt-2
+            text-lg
+            font-black
+            text-white
+          "
+          >
+            위치 인증
+          </h3>
+
+          <p
+              className="
+            mt-1
+            text-xs
+            leading-5
+            text-slate-400
+          "
+          >
+            현재 GPS 위치를 서버에서 다시 검증해
+            퀘스트 완료 여부를 판정합니다.
+          </p>
+        </div>
+
+
+        {/* GPS signal */}
+
+        <div
+            className="
+          p-5
+        "
+        >
+          <div
+              className="
+            rounded-xl
+            border
+            border-white/5
+            bg-slate-950/60
+            p-4
+          "
+          >
+            <div
+                className="
+              flex
+              items-center
+              justify-between
+              gap-3
+            "
+            >
+              <div>
+                <p
+                    className="
+                  text-[10px]
+                  font-bold
+                  text-slate-500
+                "
+                >
+                  GPS SIGNAL
+                </p>
+
+                <p
+                    className="
+                  mt-1
+                  text-sm
+                  font-bold
+                  text-white
+                "
+                >
+                  {signal.label}
+                </p>
+              </div>
+
+              <span
+                  className={`
+                h-3
+                w-3
+                rounded-full
+                ${signal.dotClass}
+              `}
+              />
+            </div>
+
+            <div
+                className="
+              mt-4
+              grid
+              grid-cols-2
+              gap-2
+            "
+            >
+              <SmallMetric
+                  label="측위 오차"
+                  value={
+                    accuracy === null
+                        ? "--"
+                        : `±${Math.round(
+                            accuracy,
+                        )}m`
+                  }
+              />
+
+              <SmallMetric
+                  label="인증 범위"
+                  value={`${quest.clearRadius}m`}
+              />
+            </div>
+          </div>
+
+
+          {(gpsError ||
+              customError) && (
+              <div
+                  className="
+              mt-4
+              rounded-xl
+              border
+              border-rose-500/20
+              bg-rose-500/10
+              p-3
+              text-xs
+              leading-5
+              text-rose-300
+            "
+              >
+                {gpsError ??
+                    customError}
+              </div>
+          )}
+
+
+          <div className="mt-5">
+            {questCleared ? (
+                <div
+                    className="
+                rounded-xl
+                border
+                border-emerald-400/20
+                bg-emerald-400/10
+                p-5
+                text-center
+              "
+                >
+                  <div
+                      className="
+                  mx-auto
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-emerald-400
+                  text-slate-950
+                "
+                  >
+                    ✓
+                  </div>
+
+                  <p
+                      className="
+                  mt-3
+                  text-sm
+                  font-black
+                  text-emerald-300
+                "
+                  >
+                    퀘스트 완료
+                  </p>
+
+                  <p
+                      className="
+                  mt-1
+                  text-xs
+                  text-slate-400
+                "
+                  >
+                    보상 포인트가 반영되었습니다.
+                  </p>
+                </div>
+            ) : (
+                <button
+                    type="button"
+
+                    onClick={
+                      handleVerifyLocation
+                    }
+
+                    disabled={
+                        isVerifying ||
+                        latitude === null ||
+                        longitude === null
+                    }
+
+                    className="
+                flex
+                w-full
+                items-center
+                justify-center
+                gap-2
+
+                rounded-xl
+                bg-cyan-500
+                px-4
+                py-3.5
+
+                text-sm
+                font-black
+                text-slate-950
+
+                transition
+
+                hover:bg-cyan-400
+
+                disabled:cursor-not-allowed
+                disabled:bg-slate-800
+                disabled:text-slate-500
+              "
+                >
+                  {isVerifying ? (
+                      <>
+                  <span
+                      className="
+                      h-4
+                      w-4
+                      animate-spin
+                      rounded-full
+                      border-2
+                      border-current
+                      border-t-transparent
+                    "
+                  />
+
+                        위치 확인 중...
+                      </>
+                  ) : latitude ===
+                  null ? (
+                      "GPS 위치 수신 대기 중"
+                  ) : status ===
+                  "FAILED" ? (
+                      "다시 위치 인증하기"
+                  ) : (
+                      "현재 위치 인증하기"
+                  )}
+                </button>
+            )}
+          </div>
+
+
+          <p
+              className="
+            mt-4
+            text-center
+            text-[10px]
+            leading-4
+            text-slate-500
+          "
+          >
+            실제 성공 여부는 서버에서 현재 좌표,
+            GPS 정확도와 퀘스트 인증 범위를 기준으로
+            최종 판정합니다.
+          </p>
+        </div>
+      </section>
   );
-};
+}
+
+
+function getSignalPresentation(
+    signal:
+    GpsSignalStrength,
+
+    accuracy:
+        number | null,
+) {
+  switch (signal) {
+    case "EXCELLENT":
+      return {
+        label:
+            accuracy === null
+                ? "매우 좋음"
+                : `매우 좋음 · ±${Math.round(
+                    accuracy,
+                )}m`,
+
+        dotClass:
+            "bg-emerald-400",
+      };
+
+
+    case "GOOD":
+      return {
+        label:
+            accuracy === null
+                ? "양호"
+                : `양호 · ±${Math.round(
+                    accuracy,
+                )}m`,
+
+        dotClass:
+            "bg-cyan-400",
+      };
+
+
+    case "POOR":
+      return {
+        label:
+            accuracy === null
+                ? "신호 불안정"
+                : `정확도 낮음 · ±${Math.round(
+                    accuracy,
+                )}m`,
+
+        dotClass:
+            "bg-rose-400",
+      };
+
+
+    case "SEARCHING":
+    default:
+      return {
+        label:
+            "위치 탐색 중",
+
+        dotClass:
+            "bg-slate-500 animate-pulse",
+      };
+  }
+}
+
+
+function SmallMetric({
+                       label,
+                       value,
+                     }: {
+  label: string;
+  value: string;
+}) {
+  return (
+      <div
+          className="
+        rounded-lg
+        bg-white/[0.03]
+        px-3
+        py-2.5
+      "
+      >
+        <p
+            className="
+          text-[10px]
+          text-slate-500
+        "
+        >
+          {label}
+        </p>
+
+        <p
+            className="
+          mt-1
+          text-xs
+          font-bold
+          text-slate-200
+        "
+        >
+          {value}
+        </p>
+      </div>
+  );
+}
