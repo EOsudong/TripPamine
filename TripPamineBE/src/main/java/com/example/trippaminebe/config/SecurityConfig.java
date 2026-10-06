@@ -111,6 +111,9 @@ public class SecurityConfig {
 				// API 요청별 접근 설정
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+						// [게시판 추가] 게시글 목록/상세/댓글 목록 조회와 첨부 이미지는 비로그인도 볼 수 있게 GET만 허용.
+						// 작성/수정/삭제/좋아요/댓글 작성은 아래 anyRequest().authenticated()에 걸려 로그인 필수.
+						.requestMatchers(HttpMethod.GET, "/boards/**", "/board-images/**").permitAll()
 						//인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
 						.requestMatchers(
 								"/ws/**",

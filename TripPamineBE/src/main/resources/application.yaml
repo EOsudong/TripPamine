@@ -68,7 +68,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB       # 파일 하나당 최대 용량
-      max-request-size: 10MB    # 한 요청당 전체 최대 용량
+      max-request-size: 30MB    # 한 요청당 전체 최대 용량
 
 encrypt:
   secret-key: ${ENCRYPT_SECRET_KEY}
@@ -92,6 +92,9 @@ app:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
     allowed-origins: http://localhost:5173,http://localhost:5174,http://10.0.2.2:5173
+
+  board:
+    upload-dir: ./uploads/board
 
 server:
   port: 8080
