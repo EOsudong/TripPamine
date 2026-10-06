@@ -15,7 +15,7 @@ public class FinlifeApiConfig {
   public RestTemplate finlifeApiRestTemplate() {
     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(5000);
-    factory.setReadTimeout(8000);
+    factory.setReadTimeout(30000);
     return new RestTemplate(factory);
   }
 }
