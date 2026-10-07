@@ -60,26 +60,128 @@ export interface UserSuspendRequest {
 }
 
 // ===================== 퀘스트 관리 =====================
+// Quest.entity.QuestType과 1:1
+export type QuestType = "LOCATION" | "DISCOVERY" | "PHOTO" | "ACTION" | "CHAIN"
+
 // QuestResponse (도메인 quest/dto/response/QuestResponse.java)
+// [RPG 확장] 레벨/EXP/챕터/난이도 관련 필드 추가.
 export interface AdminQuest {
   questId: number
   questName: string
+  description: string | null
   targetLat: number
   targetLng: number
   rewardPoint: number
+  rewardExp: number
   clearRadius: number
+  questType: QuestType
+  difficulty: number
+  imageUrl: string | null
+  thumbnailUrl: string | null
+  chapterId: number | null
+  chapterName: string | null
+  requiredLevel: number
+  isActive: boolean
+  // 관리자 조회에서는 항상 false (로그인한 "일반 사용자" 기준 잠금 여부만 의미가 있음)
+  locked: boolean
 }
 
 // QuestRequest (도메인 quest/dto/request/QuestRequest.java) - 등록/수정 공용
 export interface QuestUpsertRequest {
   questName: string
+  description?: string
   targetLat: number
   targetLng: number
   rewardPoint?: number
+  rewardExp?: number
   clearRadius?: number // 비우면 서버가 기본값 100m로 채움
+  questType?: QuestType // 비우면 서버가 기본값 LOCATION으로 채움
+  difficulty?: number // 1~3 권장. 비우면 서버가 기본값 1로 채움
+  imageUrl?: string
+  thumbnailUrl?: string
+  chapterId?: number // 비우면 미분류
+  requiredLevel?: number // 비우면 서버가 기본값 1로 채움
+  isActive?: boolean // 비우면 서버가 기본값 true(노출)로 채움
 }
 
+// ===================== 퀘스트 챕터 관리 =====================
+// QuestChapterResponse (도메인 quest/dto/response/QuestChapterResponse.java)
+export interface AdminQuestChapter {
+  chapterId: number
+  chapterName: string
+  description: string | null
+  region: string | null
+  orderNo: number
+  requiredLevel: number
+  imageUrl: string | null
+  locked: boolean
+}
 
+// QuestChapterRequest (도메인 quest/dto/request/QuestChapterRequest.java) - 등록/수정 공용
+export interface QuestChapterUpsertRequest {
+  chapterName: string
+  description?: string
+  region?: string
+  orderNo?: number
+  requiredLevel?: number
+  imageUrl?: string
+}
+
+// ===================== 칭호 관리 =====================
+// Title.entity.TitleConditionType과 1:1
+export type TitleConditionType = "FIRST_QUEST_CLEAR" | "QUEST_COUNT" | "LEVEL_REACHED"
+
+// TitleResponse (도메인 quest/dto/response/TitleResponse.java)
+// 관리자 조회에서는 특정 유저 기준 보유/장착 개념이 없으므로 earned/equipped는 항상 false,
+// earnedAt은 항상 null로 내려온다(= AdminQuest.locked가 관리자 조회에서 항상 false인 것과 동일한 패턴).
+export interface AdminTitle {
+  titleId: number
+  titleName: string
+  description: string | null
+  iconUrl: string | null
+  requiredConditionType: TitleConditionType
+  requiredConditionValue: number | null
+  earned: boolean
+  earnedAt: string | null
+  equipped: boolean
+}
+
+// TitleRequest (도메인 quest/dto/request/TitleRequest.java) - 등록/수정 공용
+export interface TitleUpsertRequest {
+  titleName: string
+  description?: string
+  iconUrl?: string
+  requiredConditionType: TitleConditionType
+  // FIRST_QUEST_CLEAR에서는 사용하지 않음(비워도 됨)
+  requiredConditionValue?: number
+}
+
+// ===================== 연쇄 퀘스트 단계 관리 =====================
+// QuestStepResponse (도메인 quest/dto/response/QuestStepResponse.java)
+// 관리자 조회에서는 특정 유저 기준 클리어 여부 개념이 없으므로 cleared는 항상 false
+// (AdminQuest.locked, AdminTitle.earned과 동일한 패턴).
+export interface AdminQuestStep {
+  stepId: number
+  questId: number
+  stepOrder: number
+  stepName: string
+  description: string | null
+  targetLat: number
+  targetLng: number
+  clearRadius: number
+  cleared: boolean
+}
+
+// QuestStepRequest (도메인 quest/dto/request/QuestStepRequest.java) - 등록/수정 공용
+export interface QuestStepUpsertRequest {
+  // 미입력 시: 등록은 서버가 자동 배정(현재 단계 수 + 1), 수정은 기존 값 유지
+  stepOrder?: number
+  stepName: string
+  description?: string
+  targetLat: number
+  targetLng: number
+  clearRadius?: number // 비우면 서버가 기본값 100m로 채움
+}
 
 
 // ===================== 게시판 관리 =====================
