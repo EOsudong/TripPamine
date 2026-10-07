@@ -44,3 +44,6 @@ src/main/resources/API/google-credentials.json
 ### .env 등록 ###
 .env
 /src/main/resources/wallets/
+
+### 업로드된 이미지가 커밋되지 않도록 ###
+uploads/

@@ -133,3 +133,41 @@ export async function apiRequest<T>(
 
   return data as T
 }
+
+// [게시판 추가] multipart/form-data 요청용 (이미지 첨부 게시글 작성/수정).
+// Content-Type은 브라우저가 boundary까지 붙여서 자동 설정하므로 직접 넣지 않는다.
+export async function apiFormRequest<T>(
+    path: string,
+    formData: FormData,
+    method: "POST" | "PUT" = "POST",
+): Promise<T> {
+  const headers: Record<string, string> = {}
+  const token = getAdminToken()
+  if (token && isAdminTokenExpired(token)) {
+    expireAdminSession()
+    throw new ApiError("관리자 로그인이 만료되었습니다.", 401)
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(path, { method, headers, body: formData })
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      expireAdminSession()
+    }
+    const message =
+        data?.message ??
+        (response.status === 401
+            ? "관리자 로그인이 만료되었습니다."
+            : "요청 처리 중 오류가 발생했습니다.")
+    throw new ApiError(message, response.status)
+  }
+
+  return data as T
+}
