@@ -11,31 +11,59 @@ import java.util.Optional;
 public interface AssetSnapshotRepository
         extends JpaRepository<AssetSnapshot, Long> {
 
+
     // =========================================
     // 가장 최근 자산 정보
     // =========================================
 
     Optional<AssetSnapshot>
-    findTopByUserIdOrderBySnapshotDateDesc(Long userId);
+    findTopByUserIdOrderBySnapshotDateDesc(
+            Long userId
+    );
 
 
     // =========================================
-    // 자산 변화 그래프용
+    // 사용자의 전체 자산 변화 그래프
     // =========================================
 
     List<AssetSnapshot>
-    findByUserIdOrderBySnapshotDateAsc(Long userId);
+    findByUserIdOrderBySnapshotDateAsc(
+            Long userId
+    );
 
 
     // =========================================
-    // 특정 사용자의 특정 날짜 Snapshot 조회
+    // 특정 사용자의 특정 날짜 Snapshot
     //
-    // 하루에 Snapshot 하나만 사용하기 위한 메서드
+    // 하루에 Snapshot 하나만 사용
     // =========================================
 
     Optional<AssetSnapshot>
     findByUserIdAndSnapshotDate(
             Long userId,
             LocalDate snapshotDate
+    );
+
+
+    // =========================================
+    // 기간별 자산 Snapshot 조회
+    //
+    // 예:
+    // 1주일
+    // 1개월
+    // 1분기
+    // 1년
+    //
+    // startDate 이상
+    // endDate 이하
+    //
+    // 날짜 오름차순으로 반환
+    // =========================================
+
+    List<AssetSnapshot>
+    findByUserIdAndSnapshotDateBetweenOrderBySnapshotDateAsc(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
     );
 }

@@ -902,4 +902,170 @@ public class AssetDashboardService {
                 ? amount
                 : 0L;
     }
+// =====================================================
+// 기간별 자산 흐름 조회
+//
+// WEEK    : 최근 7일
+// MONTH   : 최근 1개월
+// QUARTER : 최근 3개월
+// YEAR    : 최근 1년
+// =====================================================
+
+    @Transactional(readOnly = true)
+    public List<AssetDashboardResponseDto.AssetHistoryInfo>
+    getAssetHistoryByPeriod(
+            Long userId,
+            String period
+    ) {
+
+        // =========================================
+        // 1. 기간 기본값
+        // =========================================
+
+        String normalizedPeriod =
+                period == null || period.isBlank()
+                        ? "MONTH"
+                        : period.trim().toUpperCase();
+
+
+        // =========================================
+        // 2. 종료 날짜
+        // =========================================
+
+        LocalDate endDate =
+                LocalDate.now();
+
+
+        // =========================================
+        // 3. 시작 날짜 계산
+        // =========================================
+
+        LocalDate startDate;
+
+        switch (normalizedPeriod) {
+
+            case "WEEK" ->
+
+                    startDate =
+                            endDate.minusDays(6);
+
+
+            case "MONTH" ->
+
+                    startDate =
+                            endDate.minusMonths(1)
+                                    .plusDays(1);
+
+
+            case "QUARTER" ->
+
+                    startDate =
+                            endDate.minusMonths(3)
+                                    .plusDays(1);
+
+
+            case "YEAR" ->
+
+                    startDate =
+                            endDate.minusYears(1)
+                                    .plusDays(1);
+
+
+            default ->
+
+                    throw new IllegalArgumentException(
+                            "지원하지 않는 조회 기간입니다. "
+                                    + "WEEK, MONTH, QUARTER, YEAR 중 하나를 사용해주세요."
+                    );
+        }
+
+
+        // =========================================
+        // 4. 기간 내 Snapshot 조회
+        // =========================================
+
+        List<AssetSnapshot> snapshots =
+                assetSnapshotRepository
+                        .findByUserIdAndSnapshotDateBetweenOrderBySnapshotDateAsc(
+                                userId,
+                                startDate,
+                                endDate
+                        );
+
+
+        // =========================================
+        // 5. Snapshot -> AssetHistoryInfo 변환
+        // =========================================
+
+        List<AssetDashboardResponseDto.AssetHistoryInfo>
+                history =
+                snapshots
+                        .stream()
+
+                        .map(
+                                snapshot ->
+                                        new AssetDashboardResponseDto.AssetHistoryInfo(
+
+                                                snapshot.getSnapshotDate(),
+
+                                                snapshot.getTotalAsset() != null
+                                                        ? snapshot.getTotalAsset()
+                                                        : 0L,
+
+                                                snapshot.getTotalIncome() != null
+                                                        ? snapshot.getTotalIncome()
+                                                        : 0L,
+
+                                                snapshot.getTotalExpense() != null
+                                                        ? snapshot.getTotalExpense()
+                                                        : 0L
+                                        )
+                        )
+
+                        .toList();
+
+
+        // =========================================
+        // 6. 개발 확인용 로그
+        // =========================================
+
+        System.out.println(
+                "========================================="
+        );
+
+        System.out.println(
+                "[Asset History]"
+        );
+
+        System.out.println(
+                "userId = " + userId
+        );
+
+        System.out.println(
+                "period = " + normalizedPeriod
+        );
+
+        System.out.println(
+                "startDate = " + startDate
+        );
+
+        System.out.println(
+                "endDate = " + endDate
+        );
+
+        System.out.println(
+                "history size = " + history.size()
+        );
+
+        System.out.println(
+                "========================================="
+        );
+
+
+        // =========================================
+        // 7. 반환
+        // =========================================
+
+        return history;
+    }
 }

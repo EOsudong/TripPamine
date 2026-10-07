@@ -29,7 +29,7 @@ import AppLayout from "../layout/AppLayout"
 
 import { useAuth } from "../context/AuthContext"
 import { API_BASE_URL } from "../api/axios"
-
+import ChartDataLabels from "chartjs-plugin-datalabels"
 // =====================================================
 // 공통 Tailwind 클래스 (예전 AssetDashboardPage.css를 대체)
 // =====================================================
@@ -72,6 +72,7 @@ ChartJS.register(
     Tooltip,
     Legend,
     Filler,
+    ChartDataLabels,
 )
 
 
@@ -105,6 +106,12 @@ interface AssetHistoryInfo {
   totalIncome: number
   totalExpense: number
 }
+
+type AssetHistoryPeriod =
+    | "WEEK"
+    | "MONTH"
+    | "QUARTER"
+    | "YEAR"
 
 
 interface CategoryExpenseInfo {
@@ -217,6 +224,26 @@ export default function AssetDashboardPage() {
   const [
     error,
     setError,
+  ] = useState<string | null>(null)
+
+  const [
+    assetHistoryPeriod,
+    setAssetHistoryPeriod,
+  ] = useState<AssetHistoryPeriod>("MONTH")
+
+  const [
+    periodAssetHistory,
+    setPeriodAssetHistory,
+  ] = useState<AssetHistoryInfo[]>([])
+
+  const [
+    assetHistoryLoading,
+    setAssetHistoryLoading,
+  ] = useState(false)
+
+  const [
+    assetHistoryError,
+    setAssetHistoryError,
   ] = useState<string | null>(null)
 
 
@@ -412,6 +439,70 @@ export default function AssetDashboardPage() {
 
 
   // ===================================================
+  // 기간별 자산 흐름 API
+  // ===================================================
+
+  useEffect(() => {
+    if (!isLoggedIn || userId == null) {
+      setPeriodAssetHistory([])
+      return
+    }
+
+    const fetchAssetHistory = async () => {
+      try {
+        setAssetHistoryLoading(true)
+        setAssetHistoryError(null)
+
+        const accessToken = localStorage.getItem("accessToken")
+
+        if (!accessToken) {
+          throw new Error("로그인 토큰을 확인할 수 없습니다.")
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/assets/dashboard/history?period=${assetHistoryPeriod}`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+        )
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error("Asset History API Error =", errorText)
+          throw new Error("자산 흐름 정보를 불러오지 못했습니다.")
+        }
+
+        const data: AssetHistoryInfo[] = await response.json()
+
+        setPeriodAssetHistory(
+            Array.isArray(data) ? data : [],
+        )
+      } catch (error) {
+        console.error("Asset History Error =", error)
+        setPeriodAssetHistory([])
+        setAssetHistoryError(
+            error instanceof Error
+                ? error.message
+                : "자산 흐름 정보를 불러오지 못했습니다.",
+        )
+      } finally {
+        setAssetHistoryLoading(false)
+      }
+    }
+
+    fetchAssetHistory()
+  }, [
+    userId,
+    isLoggedIn,
+    assetHistoryPeriod,
+  ])
+
+
+  // ===================================================
   // 금액 표시
   // ===================================================
 
@@ -598,7 +689,74 @@ export default function AssetDashboardPage() {
 
         labels: {
           usePointStyle: true,
+          pointStyle: "circle",
           padding: 18,
+
+          generateLabels: (chart) => {
+
+            const dataset =
+                chart.data.datasets[0]
+
+            if (!dataset) {
+              return []
+            }
+
+            const values =
+                dataset.data.map(
+                    (value) =>
+                        Number(value ?? 0),
+                )
+
+            const total =
+                values.reduce(
+                    (sum, value) =>
+                        sum + value,
+                    0,
+                )
+
+            return (
+                chart.data.labels?.map(
+                    (label, index) => {
+
+                      const value =
+                          values[index] ?? 0
+
+                      const percentage =
+                          total > 0
+                              ? (
+                                  value
+                                  / total
+                                ) * 100
+                              : 0
+
+                      const colors =
+                          dataset.backgroundColor
+
+                      let fillStyle =
+                          "#94a3b8"
+
+                      if (
+                          Array.isArray(colors)
+                          && typeof colors[index] === "string"
+                      ) {
+                        fillStyle =
+                            colors[index] as string
+                      }
+
+                      return {
+                        text:
+                            `${String(label)} ${percentage.toFixed(1)}%`,
+                        fillStyle,
+                        strokeStyle:
+                            "transparent",
+                        lineWidth: 0,
+                        hidden: false,
+                        index,
+                      }
+                    },
+                ) ?? []
+            )
+          },
         },
       },
 
@@ -614,12 +772,92 @@ export default function AssetDashboardPage() {
                     context.raw ?? 0,
                 )
 
-            return `${context.label}: ${formatMoney(value)}`
+            const values =
+                context.dataset.data.map(
+                    (item) =>
+                        Number(item ?? 0),
+                )
+
+            const total =
+                values.reduce(
+                    (sum, item) =>
+                        sum + item,
+                    0,
+                )
+
+            const percentage =
+                total > 0
+                    ? (
+                        value
+                        / total
+                      ) * 100
+                    : 0
+
+            return (
+                `${context.label}: `
+                + `${formatMoney(value)} `
+                + `(${percentage.toFixed(1)}%)`
+            )
           },
+        },
+      },
+
+
+      datalabels: {
+
+        color: "#ffffff",
+
+        font: {
+          size: 11,
+          weight: 700,
+        },
+
+        formatter: (
+            value,
+            context,
+        ) => {
+
+          const dataset =
+              context.chart.data.datasets[0]
+
+          if (!dataset) {
+            return ""
+          }
+
+          const values =
+              dataset.data.map(
+                  (item) =>
+                      Number(item ?? 0),
+              )
+
+          const total =
+              values.reduce(
+                  (sum, item) =>
+                      sum + item,
+                  0,
+              )
+
+          const currentValue =
+              Number(value ?? 0)
+
+          const percentage =
+              total > 0
+                  ? (
+                      currentValue
+                      / total
+                    ) * 100
+                  : 0
+
+          if (percentage < 3) {
+            return ""
+          }
+
+          return `${percentage.toFixed(1)}%`
         },
       },
     },
   }
+
 
   // ===================================================
   // Asset Change
@@ -676,7 +914,26 @@ export default function AssetDashboardPage() {
   // ===================================================
 
   const assetHistory =
-      dashboard?.assetHistory ?? []
+      periodAssetHistory
+
+
+  const assetHistoryPeriodLabel:
+      Record<AssetHistoryPeriod, string> = {
+        WEEK: "1주일",
+        MONTH: "1개월",
+        QUARTER: "1분기",
+        YEAR: "1년",
+      }
+
+  const assetHistoryPeriods: {
+    value: AssetHistoryPeriod
+    label: string
+  }[] = [
+    { value: "WEEK", label: "1주일" },
+    { value: "MONTH", label: "1개월" },
+    { value: "QUARTER", label: "1분기" },
+    { value: "YEAR", label: "1년" },
+  ]
 
 
   // ===================================================
@@ -866,6 +1123,11 @@ export default function AssetDashboardPage() {
 
 
     plugins: {
+
+      datalabels: {
+        display: false,
+      },
+
 
       legend: {
         display: true,
@@ -1094,35 +1356,18 @@ export default function AssetDashboardPage() {
 
           <div className="flex w-full flex-col items-start gap-[3px] rounded-[13px] border border-slate-200 bg-white px-[15px] py-3 shadow-[0_3px_12px_rgba(15,23,42,0.03)] md:w-auto md:min-w-[155px] md:items-end">
 
-          <span className="text-[10px] text-slate-400">
-            현재 조회
-          </span>
-
+            <span className="text-[10px] text-slate-400">
+              현재 조회
+            </span>
 
             <strong className="text-[13px] text-slate-700">
               {dashboard.year}년{" "}
               {dashboard.month}월
             </strong>
 
-
-            <div className="flex w-full flex-col items-start gap-[3px] rounded-[13px] border border-slate-200 bg-white px-[15px] py-3 shadow-[0_3px_12px_rgba(15,23,42,0.03)] md:w-auto md:min-w-[155px] md:items-end">
-
-          <span className="text-[10px] text-slate-400">
-            현재 조회
-          </span>
-
-
-          <strong className="text-[13px] text-slate-700">
-            {dashboard.year}년{" "}
-            {dashboard.month}월
-          </strong>
-
-
-          <small className="text-[9px] text-slate-400">
-            월간 자산 현황
-          </small>
-
-        </div>
+            <small className="text-[9px] text-slate-400">
+              월간 자산 현황
+            </small>
 
           </div>
 
@@ -1322,8 +1567,47 @@ export default function AssetDashboardPage() {
               </div>
 
 
-              <div className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1.5 text-[10px] font-bold text-sky-600">
-                1눈금 50만원
+              <div className="flex w-full flex-col items-start gap-2 md:w-auto md:items-end">
+
+                <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+                  {assetHistoryPeriods.map((period) => {
+                    const selected =
+                        assetHistoryPeriod === period.value
+
+                    return (
+                      <button
+                          key={period.value}
+                          type="button"
+                          disabled={assetHistoryLoading}
+                          onClick={() =>
+                              setAssetHistoryPeriod(period.value)
+                          }
+                          className={`rounded-lg px-3 py-1.5 text-[10px] font-extrabold transition ${
+                              selected
+                                  ? "bg-white text-sky-600 shadow-sm"
+                                  : "text-slate-500 hover:bg-white/70 hover:text-slate-700"
+                          } ${
+                              assetHistoryLoading
+                                  ? "cursor-wait opacity-60"
+                                  : "cursor-pointer"
+                          }`}
+                      >
+                        {period.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1.5 text-[10px] font-bold text-sky-600">
+                    {assetHistoryPeriodLabel[assetHistoryPeriod]} 보기
+                  </span>
+
+                  <span className="whitespace-nowrap rounded-full bg-slate-50 px-2.5 py-1.5 text-[10px] font-bold text-slate-500">
+                    1눈금 50만원
+                  </span>
+                </div>
+
               </div>
 
             </div>
@@ -1331,7 +1615,19 @@ export default function AssetDashboardPage() {
 
             <div className="relative h-[300px] w-full sm:h-[330px] md:h-[390px] xl:h-[420px]">
 
-              {assetHistory.length > 0 ? (
+              {assetHistoryLoading ? (
+
+                  <div className={EMPTY}>
+                    선택한 기간의 자산 흐름을 불러오는 중입니다.
+                  </div>
+
+              ) : assetHistoryError ? (
+
+                  <div className={EMPTY}>
+                    {assetHistoryError}
+                  </div>
+
+              ) : assetHistory.length > 0 ? (
 
                   <Line
                       data={
@@ -1345,7 +1641,7 @@ export default function AssetDashboardPage() {
               ) : (
 
                   <div className={EMPTY}>
-                    아직 자산 흐름 데이터가 없습니다.
+                    선택한 기간에 자산 흐름 데이터가 없습니다.
                   </div>
 
               )}
