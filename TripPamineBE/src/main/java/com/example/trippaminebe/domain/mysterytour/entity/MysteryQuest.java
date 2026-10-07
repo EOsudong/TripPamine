@@ -48,6 +48,9 @@ public class MysteryQuest {
     @Column(name = "TARGET_LAT", precision = 10, scale = 7)
     private BigDecimal targetLat;
 
+    @Column(name = "OCR_KEYWORD", length = 200)
+    private String ocrKeyword;
+
     @Column(name = "TARGET_LNG", precision = 10, scale = 7)
     private BigDecimal targetLng;
 

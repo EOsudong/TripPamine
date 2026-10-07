@@ -12,7 +12,7 @@ import api from "./axios";
 // 백엔드가 "진행 중인 투어 없음"을 204 No Content로 내려주는 엔드포인트들이 있어서,
 // 204를 에러가 아닌 정상 응답으로 취급하도록 허용한다.
 const allowNoContent = (status: number) =>
-    (status >= 200 && status < 300) || status === 204;
+  (status >= 200 && status < 300) || status === 204;
 
 export interface MysteryTourRequest {
   travelDate: string;
@@ -25,19 +25,19 @@ export interface MysteryTourRequest {
 }
 
 export type MysteryTourStatus =
-    | "READY"
-    | "PROGRESS"
-    | "SUCCESS"
-    | "CANCELLED"
-    | "ABANDONED";
+  | "READY"
+  | "PROGRESS"
+  | "SUCCESS"
+  | "CANCELLED"
+  | "ABANDONED";
 
 export type MysteryQuestStatus =
-    | "LOCKED"
-    | "PROGRESS"
-    | "SUCCESS"
-    | "FAILED"
-    | "SKIPPED"
-    | "ABANDONED";
+  | "LOCKED"
+  | "PROGRESS"
+  | "SUCCESS"
+  | "FAILED"
+  | "SKIPPED"
+  | "ABANDONED";
 
 export interface MysteryTourResponse {
   mysteryTourId: number;
@@ -83,7 +83,7 @@ function getStoredUserId(): string | null {
 
 /** 미스터리 투어 생성 */
 export const createMysteryTour = async (
-    data: MysteryTourRequest,
+  data: MysteryTourRequest,
 ): Promise<MysteryTourResponse> => {
   const userId = getStoredUserId();
 
@@ -92,8 +92,8 @@ export const createMysteryTour = async (
   }
 
   const response = await api.post<MysteryTourResponse>(
-      `/mystery-tours?userId=${userId}`,
-      data,
+    `/mystery-tours?userId=${userId}`,
+    data,
   );
 
   return response.data;
@@ -101,35 +101,56 @@ export const createMysteryTour = async (
 
 /** 현재 진행 중인 미스터리 투어. 없으면(204) null */
 export const getActiveMysteryTour =
-    async (): Promise<MysteryTourResponse | null> => {
-      const userId = getStoredUserId();
+  async (): Promise<MysteryTourResponse | null> => {
+    const userId = getStoredUserId();
 
-      if (!userId) {
-        return null;
-      }
+    if (!userId) {
+      return null;
+    }
 
-      const response = await api.get<MysteryTourResponse>(
-          `/mystery-tours/active?userId=${userId}`,
-          {validateStatus: allowNoContent},
-      );
+    const response = await api.get<MysteryTourResponse>(
+      `/mystery-tours/active?userId=${userId}`,
+      { validateStatus: allowNoContent },
+    );
 
-      return response.status === 204 ? null : response.data;
-    };
+    return response.status === 204 ? null : response.data;
+  };
 
 /** 투어 시작 (생성 후 실제 출발 처리) */
 export const startMysteryTour = async (
-    mysteryTourId: number,
+  mysteryTourId: number,
 ): Promise<void> => {
   await api.post(`/mystery-tours/${mysteryTourId}/start`, {});
 };
 
 /** 현재 수행해야 할 퀘스트. 없으면(204) null */
 export const getCurrentMysteryQuest = async (
-    mysteryTourId: number,
+  mysteryTourId: number,
 ): Promise<MysteryQuestResponse | null> => {
   const response = await api.get<MysteryQuestResponse>(
-      `/mystery-tours/${mysteryTourId}/quests/current`,
-      {validateStatus: allowNoContent},
+    `/mystery-tours/${mysteryTourId}/quests/current`,
+    { validateStatus: allowNoContent },
+  );
+
+  return response.status === 204 ? null : response.data;
+};
+export const completeMysteryPhotoQuest = async (
+  mysteryTourId: number,
+  mysteryQuestId: number,
+  file: File,
+): Promise<MysteryQuestResponse | null> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await api.post<MysteryQuestResponse>(
+    `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/complete-photo`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      validateStatus: allowNoContent,
+    },
   );
 
   return response.status === 204 ? null : response.data;
@@ -139,14 +160,14 @@ export const getCurrentMysteryQuest = async (
  *  PHOTO/SIMPLE 타입은 location 없이 호출해도 된다(기존과 동일).
  *  다음 퀘스트가 없으면(204) null */
 export const completeMysteryQuest = async (
-    mysteryTourId: number,
-    mysteryQuestId: number,
-    location?: MysteryQuestCompleteRequest,
+  mysteryTourId: number,
+  mysteryQuestId: number,
+  location?: MysteryQuestCompleteRequest,
 ): Promise<MysteryQuestResponse | null> => {
   const response = await api.post<MysteryQuestResponse>(
-      `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/complete`,
-      location ?? {},
-      {validateStatus: allowNoContent},
+    `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/complete`,
+    location ?? {},
+    { validateStatus: allowNoContent },
   );
 
   return response.status === 204 ? null : response.data;
@@ -155,13 +176,13 @@ export const completeMysteryQuest = async (
 /** 현재 퀘스트를 보상 없이 스킵하고 다음 퀘스트를 연다.
  *  마지막 퀘스트를 스킵한 경우(204) null */
 export const skipMysteryQuest = async (
-    mysteryTourId: number,
-    mysteryQuestId: number,
+  mysteryTourId: number,
+  mysteryQuestId: number,
 ): Promise<MysteryQuestResponse | null> => {
   const response = await api.post<MysteryQuestResponse>(
-      `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/skip`,
-      {},
-      {validateStatus: allowNoContent},
+    `/mystery-tours/${mysteryTourId}/quests/${mysteryQuestId}/skip`,
+    {},
+    { validateStatus: allowNoContent },
   );
 
   return response.status === 204 ? null : response.data;
@@ -169,14 +190,14 @@ export const skipMysteryQuest = async (
 
 /** 시작된 미스터리 투어 전체 포기. 포기한 투어는 다시 진행할 수 없다. */
 export const abandonMysteryTour = async (
-    mysteryTourId: number,
+  mysteryTourId: number,
 ): Promise<void> => {
   await api.post(`/mystery-tours/${mysteryTourId}/abandon`, {});
 };
 
 /** 투어 취소 */
 export const cancelMysteryTour = async (
-    mysteryTourId: number,
+  mysteryTourId: number,
 ): Promise<void> => {
   await api.delete(`/mystery-tours/${mysteryTourId}`);
 };

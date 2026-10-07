@@ -3,6 +3,7 @@ import AdminLogin from "../pages/AdminLogin"
 import AdminDashboard from "../pages/AdminDashboard"
 import AdminUsers from "../pages/AdminUsers"
 import AdminQuests from "../pages/AdminQuests"
+import AdminBoards from "../pages/AdminBoards"
 import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
@@ -34,7 +35,18 @@ export default function Router() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/boards"
+                    element={
+                        <ProtectedRoute>
+                            <AdminBoards />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </BrowserRouter>
     )
 }
+
+
+

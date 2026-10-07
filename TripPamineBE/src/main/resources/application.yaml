@@ -68,7 +68,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB       # 파일 하나당 최대 용량
-      max-request-size: 10MB    # 한 요청당 전체 최대 용량
+      max-request-size: 30MB    # 한 요청당 전체 최대 용량
 
 encrypt:
   secret-key: ${ENCRYPT_SECRET_KEY}
@@ -92,6 +92,9 @@ app:
     # CORS 허용 Origin. 여러 개면 콤마로 구분한다.
     # 예) CORS_ALLOWED_ORIGINS=http://localhost:5173,https://xxx.trycloudflare.com
     allowed-origins: http://localhost:5173,http://localhost:5174,http://10.0.2.2:5173
+
+  board:
+    upload-dir: ./uploads/board
 
 server:
   port: 8080
@@ -131,4 +134,9 @@ finlife:
     base-url: https://finlife.fss.or.kr/finlifeapi
     auth-key: ${FINLIFE_API_KEY}
 
-화
+# TripPamineAI Python/FastAPI runtime
+trippamine:
+  ai:
+    base-url: ${TRIPPAMINE_AI_BASE_URL:http://127.0.0.1:18001}
+    connect-timeout-ms: ${TRIPPAMINE_AI_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TRIPPAMINE_AI_READ_TIMEOUT_MS:30000}

@@ -10,6 +10,8 @@ export default defineConfig({
       // 백엔드(Spring Boot, 기본 8080)로 /admin 요청을 그대로 전달.
       // 이렇게 해두면 프론트에서 CORS 걱정 없이 상대경로("/admin/...")로 fetch 가능
       "/admin": "http://localhost:8080",
+      // [게시판 추가] 게시글 첨부 이미지(<img src="/board-images/...">)도 백엔드에서 받아오기
+      "/board-images": "http://localhost:8080",
     },
   },
 })

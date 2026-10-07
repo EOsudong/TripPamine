@@ -1,5 +1,6 @@
+// React Router 설정 파일.
+// URL 주소(경로)와 어떤 페이지 컴포넌트를 보여줄지 여기서 한 번에 관리합니다.
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Join from "../pages/Join";
@@ -11,60 +12,41 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
+import QuestPage from "../pages/QuestPage"
+import QuestDetailPage from "../pages/QuestDetailPage"
+import FinancialProductsPage from "../pages/FinancialProductsPage"
+import MysteryTourPlay from "../pages/MysteryTourPlay"   // ← 추가
+import TravelPage from "../pages/TravelPage";
+import BoardListPage from "../pages/BoardListPage"
+import BoardDetailPage from "../pages/BoardDetailPage"
+import BoardWritePage from "../pages/BoardWritePage"
+import ProtectedRoute from "../components/ProtectedRoute"
 import QuestPage from "../pages/QuestPage";
 import QuestDetailPage from "../pages/QuestDetailPage";
 import FinancialProductsPage from "../pages/FinancialProductsPage";
 import MysteryTourPlay from "../pages/MysteryTourPlay";
-
 import AssetDashboardPage from "../pages/AssetDashboardPage";
-
 import ProtectedRoute from "../components/ProtectedRoute";
 
 
 export default function Router() {
-
     return (
-
         <BrowserRouter>
-
             <Routes>
-
-                {/* 메인 */}
-                <Route
-                    path="/"
-                    element={<Home />}
+                <Route path="/" element={<Home />} /> {/* 메인 페이지 */}
+                <Route path="/travel"
+                       element={
+                           <ProtectedRoute>
+                               <TravelPage />
+                           </ProtectedRoute>
+                       }
                 />
-
-
-                {/* 로그인 */}
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
-
-
-                {/* 회원가입 */}
-                <Route
-                    path="/join"
-                    element={<Join />}
-                />
-
-
-                {/* 아이디 찾기 */}
-                <Route
-                    path="/find-id"
-                    element={<FindId />}
-                />
-
-
-                {/* 비밀번호 찾기 */}
-                <Route
-                    path="/find-pw"
-                    element={<FindPw />}
-                />
-
-
-                {/* 마이페이지 */}
+                <Route path="/login" element={<Login />} /> {/* 로그인 */}
+                <Route path="/join" element={<Join />} /> {/* 회원가입 */}
+                <Route path="/find-id" element={<FindId />} /> {/* 아이디 찾기 */}
+                <Route path="/find-pw" element={<FindPw />} /> {/* 비밀번호 찾기 */}
+                {/* 마이페이지 (북마크/저장된 코스/가계부) — 로그인한 사용자만 접근 가능.
+            로그인 안 한 상태로 들어오면 ProtectedRoute가 /login으로 보내고, 로그인 성공 후 다시 여기로 돌아옴 */}
                 <Route
                     path="/mypage"
                     element={
@@ -144,16 +126,12 @@ export default function Router() {
                         </ProtectedRoute>
                     }
                 />
+                {/* 사이드바 "정보" 그룹의 "금융상품" 메뉴. 금융감독원 오픈API(금융상품 한눈에)로 받아오는
+            정기예금/적금 정보를 보여주는 공개 페이지 — tour 페이지들과 마찬가지로 로그인 없이도
+            접근 가능하도록 ProtectedRoute로 감싸지 않습니다. */}
+                <Route path="/finance" element={<FinancialProductsPage />} />
 
-
-                {/* 금융상품 */}
-                <Route
-                    path="/finance"
-                    element={<FinancialProductsPage />}
-                />
-
-
-                {/* 미스터리 투어 */}
+                {/* 미스터리 투어 생성 후 이동하는 진행 화면 */}
                 <Route
                     path="/mystery-tour/:mysteryTourId"
                     element={
@@ -162,7 +140,25 @@ export default function Router() {
                         </ProtectedRoute>
                     }
                 />
-
+                {/* 게시판: 목록/상세는 비로그인도 볼 수 있고, 작성/수정은 로그인 필요 */}
+                <Route path="/boards" element={<BoardListPage />} />
+                <Route
+                    path="/boards/write"
+                    element={
+                        <ProtectedRoute>
+                            <BoardWritePage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route path="/boards/:postId" element={<BoardDetailPage />} />
+                <Route
+                    path="/boards/:postId/edit"
+                    element={
+                        <ProtectedRoute>
+                            <BoardWritePage />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
 
         </BrowserRouter>

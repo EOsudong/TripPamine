@@ -8,6 +8,7 @@ const navItems = [
   { to: "/", label: "대시보드", icon: "◆" },
   { to: "/users", label: "회원 관리", icon: "◇" },
   { to: "/quests", label: "퀘스트 관리", icon: "◈" },
+  { to: "/boards", label: "게시판 관리", icon: "▣" },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

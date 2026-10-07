@@ -62,6 +62,11 @@ public class MysteryTourAiService {
                 12. GPS 퀘스트가 아니면 placeKeyword는 null로 출력합니다.
                 13. 위도와 경도는 생성하지 마세요. 좌표는 서버가 Kakao Local API로 확정합니다.
                 14. 반드시 JSON만 출력하고 마크다운은 출력하지 마세요.
+                15. verifyType이 PHOTO인 경우 ocrKeyword를 반드시 생성합니다.
+                16. ocrKeyword는 사용자가 촬영한 사진에서 OCR로 실제 확인할 수 있는 짧은 핵심 단어로 작성합니다.
+                17. 예를 들어 카페 영수증 인증이면 "커피", 음식점 영수증 인증이면 음식점명 또는 음식 관련 핵심 단어,
+                    관광지 안내판 인증이면 해당 장소명의 핵심 단어를 사용합니다.
+                18. verifyType이 PHOTO가 아니면 ocrKeyword는 null로 출력합니다.
 
                 JSON 형식:
 
@@ -76,6 +81,7 @@ public class MysteryTourAiService {
                       "description": "3시간 안에 가평역에 도착하세요.",
                       "verifyType": "GPS",
                       "placeKeyword": "경기도 가평군 가평역",
+                      "ocrKeyword": null,
                       "timeLimitMin": 180,
                       "rewardPoint": 200
                     }
