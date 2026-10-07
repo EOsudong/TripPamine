@@ -32,11 +32,6 @@ interface CurrentUser {
  * - Header는 Brand + 전역 사용자 Action만 담당
  */
 export default function Header({
-                                   sidebarOpen,
-                                   onToggleSidebar,
-                               }: HeaderProps) {
-
-export default function Header({
     sidebarOpen,
     onToggleSidebar,
 }: HeaderProps) {

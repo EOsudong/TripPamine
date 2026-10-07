@@ -12,22 +12,16 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
-import QuestPage from "../pages/QuestPage"
-import QuestDetailPage from "../pages/QuestDetailPage"
-import FinancialProductsPage from "../pages/FinancialProductsPage"
-import MysteryTourPlay from "../pages/MysteryTourPlay"   // ← 추가
-import TravelPage from "../pages/TravelPage";
-import BoardListPage from "../pages/BoardListPage"
-import BoardDetailPage from "../pages/BoardDetailPage"
-import BoardWritePage from "../pages/BoardWritePage"
-import ProtectedRoute from "../components/ProtectedRoute"
 import QuestPage from "../pages/QuestPage";
 import QuestDetailPage from "../pages/QuestDetailPage";
 import FinancialProductsPage from "../pages/FinancialProductsPage";
 import MysteryTourPlay from "../pages/MysteryTourPlay";
+import TravelPage from "../pages/TravelPage";
+import BoardListPage from "../pages/BoardListPage";
+import BoardDetailPage from "../pages/BoardDetailPage";
+import BoardWritePage from "../pages/BoardWritePage";
 import AssetDashboardPage from "../pages/AssetDashboardPage";
 import ProtectedRoute from "../components/ProtectedRoute";
-
 
 export default function Router() {
     return (
