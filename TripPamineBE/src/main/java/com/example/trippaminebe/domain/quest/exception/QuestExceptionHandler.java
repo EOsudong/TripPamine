@@ -30,4 +30,34 @@ public class QuestExceptionHandler {
                 "message", e.getMessage()
             ));
     }
+
+    @ExceptionHandler(QuestChapterNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleQuestChapterNotFound(QuestChapterNotFoundException e) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(Map.of(
+                "status", 404,
+                "message", e.getMessage()
+            ));
+    }
+
+    @ExceptionHandler(TitleNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleTitleNotFound(TitleNotFoundException e) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(Map.of(
+                "status", 404,
+                "message", e.getMessage()
+            ));
+    }
+
+    @ExceptionHandler(QuestStepNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleQuestStepNotFound(QuestStepNotFoundException e) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(Map.of(
+                "status", 404,
+                "message", e.getMessage()
+            ));
+    }
 }

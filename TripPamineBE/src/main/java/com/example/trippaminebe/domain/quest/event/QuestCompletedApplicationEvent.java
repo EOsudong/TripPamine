@@ -51,6 +51,9 @@ public record QuestCompletedApplicationEvent(
 
 		Long rewardPoint,
 
+		//AI Manager 등 이벤트 소비자가 필요 시 활용.
+		Long rewardExp,
+
 		LocalDateTime clearDate
 ) {
 }
