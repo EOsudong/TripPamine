@@ -1,0 +1,1529 @@
+/* =========================================================
+   TRIPPAMINE ASSET DASHBOARD
+   AssetDashboardPage.css
+========================================================= */
+
+
+/* =========================================================
+   1. PAGE
+========================================================= */
+
+.asset-page {
+  width: 100%;
+  min-height: 100vh;
+
+  background: #f7f9fc;
+  color: #0f172a;
+}
+
+.asset-page *,
+.asset-page *::before,
+.asset-page *::after {
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   2. MAIN
+========================================================= */
+
+.asset-main {
+  width: 100%;
+  min-height: 100vh;
+
+  margin-left: 0;
+
+  background: #f7f9fc;
+}
+
+.asset-main-open {
+  margin-left: 0;
+}
+
+
+/* =========================================================
+   3. FIXED SIDEBAR MENU BUTTON
+========================================================= */
+
+/*
+   삼단 버튼은 항상 화면 왼쪽 위에 고정된다.
+
+   사이드바를 열거나 닫아도
+   버튼 위치는 움직이지 않는다.
+*/
+
+.asset-fixed-menu-button {
+  position: fixed;
+
+  top: 20px;
+  left: 20px;
+
+  z-index: 9999;
+
+  width: 44px;
+  height: 44px;
+
+  padding: 0;
+
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 4px 14px
+    rgba(15, 23, 42, 0.10);
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.asset-fixed-menu-button span {
+  display: block;
+
+  width: 18px;
+  height: 2px;
+
+  border-radius: 999px;
+
+  background: #475569;
+
+  transition:
+    background 0.2s ease;
+}
+
+.asset-fixed-menu-button:hover {
+  background: #f0f9ff;
+
+  border-color: #38bdf8;
+
+  box-shadow:
+    0 5px 16px
+    rgba(14, 165, 233, 0.15);
+}
+
+.asset-fixed-menu-button:hover span {
+  background: #0284c7;
+}
+
+
+/* =========================================================
+   4. TOP HEADER
+========================================================= */
+
+.asset-top-header {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 100;
+
+  width: 100%;
+  min-height: 84px;
+
+  padding:
+    14px
+    40px
+    14px
+    88px;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  background:
+    rgba(255, 255, 255, 0.98);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  box-shadow:
+    0 1px 4px
+    rgba(15, 23, 42, 0.03);
+
+  transition:
+    padding-left 0.3s ease;
+}
+
+
+/*
+   사이드바 OPEN
+
+   헤더 배경은 화면 전체를 유지한다.
+   헤더 내용만 사이드바 오른쪽으로 이동한다.
+*/
+
+.asset-top-header-sidebar-open {
+  padding-left: 280px;
+}
+
+
+/* =========================================================
+   5. HEADER LEFT
+========================================================= */
+
+.asset-top-header-left {
+  min-width: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 17px;
+}
+
+
+/* =========================================================
+   6. BRAND
+========================================================= */
+
+.asset-brand {
+  flex-shrink: 0;
+
+  color: #0284c7;
+
+  font-size: 18px;
+  font-weight: 900;
+
+  letter-spacing: 0.08em;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   7. HEADER DIVIDER
+========================================================= */
+
+.asset-top-divider {
+  flex-shrink: 0;
+
+  width: 1px;
+  height: 36px;
+
+  background: #e2e8f0;
+}
+
+
+/* =========================================================
+   8. HEADER TITLE
+========================================================= */
+
+.asset-top-title {
+  min-width: 0;
+}
+
+.asset-top-title h2 {
+  margin: 0;
+
+  color: #0f172a;
+
+  font-size: 20px;
+  font-weight: 800;
+
+  letter-spacing: -0.03em;
+}
+
+.asset-top-title p {
+  margin: 4px 0 0;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+
+  line-height: 1.4;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   9. HEADER RIGHT
+========================================================= */
+
+.asset-top-header-right {
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 18px;
+}
+
+
+/* =========================================================
+   10. HEADER PERIOD
+========================================================= */
+
+.asset-header-period {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+
+  gap: 3px;
+}
+
+.asset-header-period span {
+  color: #94a3b8;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.asset-header-period strong {
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   11. HEADER USER / PROFILE
+========================================================= */
+
+.asset-header-user,
+.asset-profile {
+  min-width: 190px;
+
+  padding: 8px 12px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  box-shadow:
+    0 3px 12px
+    rgba(15, 23, 42, 0.035);
+}
+
+
+/* =========================================================
+   12. USER AVATAR
+========================================================= */
+
+.asset-user-avatar,
+.asset-profile-avatar {
+  flex: 0 0 auto;
+
+  width: 40px;
+  height: 40px;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #e0f2fe,
+      #f0f9ff
+    );
+
+  color: #0284c7;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.asset-profile-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   13. USER INFO
+========================================================= */
+
+.asset-header-user > div:last-child,
+.asset-profile-main {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.asset-header-user span {
+  color: #94a3b8;
+
+  font-size: 9px;
+}
+
+.asset-header-user strong {
+  color: #0f172a;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-profile-name-row {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+}
+
+.asset-profile-name-row > strong {
+  max-width: 110px;
+
+  overflow: hidden;
+
+  color: #0f172a;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.asset-profile-grade {
+  padding: 3px 7px;
+
+  border-radius: 999px;
+
+  background: #f0f9ff;
+
+  color: #0284c7;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  white-space: nowrap;
+}
+
+.asset-profile-meta {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+}
+
+.asset-profile-meta strong {
+  color: #0284c7;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  white-space: nowrap;
+}
+
+.asset-profile-divider {
+  color: #cbd5e1;
+}
+
+
+/* =========================================================
+   14. CONTENT CONTAINER
+========================================================= */
+
+.asset-container {
+  width: 100%;
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  padding:
+    40px
+    40px
+    70px;
+
+  transition:
+    padding-left 0.3s ease;
+}
+
+
+/*
+   사이드바가 열렸을 때
+   본문이 사이드바 아래로 들어가지 않도록 공간 확보
+*/
+
+.asset-container-sidebar-open {
+  padding-left: 286px;
+}
+
+
+/* =========================================================
+   15. PAGE TITLE
+========================================================= */
+
+.asset-header {
+  margin-bottom: 30px;
+
+  display: flex;
+
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 30px;
+}
+
+.asset-eyebrow {
+  margin: 0 0 8px;
+
+  color: #0284c7;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 0.18em;
+}
+
+.asset-header h1 {
+  margin: 0;
+
+  color: #0f172a;
+
+  font-size: 30px;
+  font-weight: 850;
+
+  letter-spacing: -0.04em;
+}
+
+.asset-description {
+  margin: 10px 0 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+
+  line-height: 1.65;
+}
+
+
+/* =========================================================
+   16. DATE BOX
+========================================================= */
+
+.asset-date-box {
+  min-width: 155px;
+
+  padding: 12px 15px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+
+  gap: 3px;
+
+  box-shadow:
+    0 3px 12px
+    rgba(15, 23, 42, 0.03);
+}
+
+.asset-date-box span {
+  color: #94a3b8;
+
+  font-size: 10px;
+}
+
+.asset-date-box strong {
+  color: #334155;
+
+  font-size: 13px;
+}
+
+.asset-date-box small {
+  color: #94a3b8;
+
+  font-size: 9px;
+}
+
+
+/* =========================================================
+   17. SUMMARY GRID
+========================================================= */
+
+.asset-summary-grid {
+  margin-bottom: 22px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+
+  gap: 16px;
+}
+
+
+/* =========================================================
+   18. SUMMARY CARD
+========================================================= */
+
+.asset-summary-card {
+  min-width: 0;
+  min-height: 125px;
+
+  padding: 20px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+
+  background: #ffffff;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+
+  box-shadow:
+    0 4px 16px
+    rgba(15, 23, 42, 0.035);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.asset-summary-card:hover {
+  transform: translateY(-2px);
+
+  border-color: #bae6fd;
+
+  box-shadow:
+    0 10px 26px
+    rgba(15, 23, 42, 0.07);
+}
+
+
+/* =========================================================
+   19. SUMMARY ICON
+========================================================= */
+
+.asset-summary-icon {
+  flex: 0 0 auto;
+
+  width: 46px;
+  height: 46px;
+
+  border-radius: 14px;
+
+  background: #f0f9ff;
+
+  color: #0284c7;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.asset-summary-icon-income {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.asset-summary-icon-expense {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.asset-summary-icon-travel {
+  background: #fdf4ff;
+  color: #c026d3;
+}
+
+
+/* =========================================================
+   20. SUMMARY TEXT
+========================================================= */
+
+.asset-summary-card > div:last-child {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+}
+
+.asset-summary-label {
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.asset-summary-value {
+  color: #0f172a;
+
+  font-size: 21px;
+  font-weight: 850;
+
+  letter-spacing: -0.035em;
+
+  word-break: break-word;
+}
+
+.asset-summary-card p {
+  margin: 0;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+}
+
+.asset-income {
+  color: #16a34a;
+}
+
+.asset-expense {
+  color: #dc2626;
+}
+
+.asset-travel {
+  color: #c026d3;
+}
+
+
+/* =========================================================
+   21. COMMON CARD
+========================================================= */
+
+.asset-card {
+  min-width: 0;
+
+  padding: 24px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 4px 18px
+    rgba(15, 23, 42, 0.035);
+}
+
+.asset-card-header {
+  min-height: 58px;
+
+  margin-bottom: 20px;
+
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.asset-card-kicker {
+  display: inline-block;
+
+  margin-bottom: 5px;
+
+  color: #0284c7;
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 0.15em;
+}
+
+.asset-card-header h2 {
+  margin: 0;
+
+  color: #0f172a;
+
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.asset-card-header p {
+  margin: 5px 0 0;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+.asset-chart-unit,
+.asset-month-badge {
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  background: #f0f9ff;
+
+  color: #0284c7;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   22. CHART GRID
+========================================================= */
+
+.asset-chart-grid {
+  margin-bottom: 22px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.7fr)
+    minmax(320px, 0.8fr);
+
+  gap: 20px;
+}
+
+.asset-line-card,
+.asset-category-card {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   23. LINE CHART
+========================================================= */
+
+.asset-line-chart {
+  position: relative;
+
+  width: 100%;
+
+  height: 420px;
+  min-height: 420px;
+}
+
+
+/* =========================================================
+   24. DOUGHNUT CHART
+========================================================= */
+
+.asset-doughnut-chart {
+  position: relative;
+
+  width: 100%;
+  max-width: 310px;
+
+  height: 275px;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   25. CATEGORY HIGHLIGHT
+========================================================= */
+
+.asset-category-highlight {
+  margin-top: 18px;
+
+  padding: 16px;
+
+  border: 1px solid #e0f2fe;
+  border-radius: 14px;
+
+  background: #f8fcff;
+
+  text-align: center;
+}
+
+.asset-category-highlight span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+}
+
+.asset-category-highlight strong {
+  display: block;
+
+  color: #0284c7;
+
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.asset-category-highlight p {
+  margin: 5px 0 0;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   26. BOTTOM GRID
+========================================================= */
+
+.asset-bottom-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 20px;
+}
+
+
+/* =========================================================
+   27. BUDGET LIST
+========================================================= */
+
+.asset-list {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.asset-list-item {
+  min-height: 65px;
+
+  padding: 13px 2px;
+
+  border-bottom: 1px solid #f1f5f9;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.asset-list-item:last-child {
+  border-bottom: none;
+}
+
+.asset-list-item > div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.asset-list-item span {
+  color: #94a3b8;
+
+  font-size: 9px;
+}
+
+.asset-list-item strong {
+  color: #334155;
+
+  font-size: 13px;
+}
+
+.asset-list-money {
+  color: #0284c7 !important;
+
+  font-size: 14px !important;
+}
+
+
+/* =========================================================
+   28. GOALS
+========================================================= */
+
+.asset-goal-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 22px;
+}
+
+.asset-goal-item {
+  padding-bottom: 20px;
+
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.asset-goal-item:last-child {
+  padding-bottom: 0;
+
+  border-bottom: none;
+}
+
+.asset-goal-title-row {
+  margin-bottom: 12px;
+
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.asset-goal-title-row > div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.asset-goal-title-row span {
+  color: #94a3b8;
+
+  font-size: 9px;
+}
+
+.asset-goal-title-row strong {
+  color: #0f172a;
+
+  font-size: 14px;
+}
+
+.asset-goal-percent {
+  color: #0284c7 !important;
+
+  font-size: 16px !important;
+}
+
+
+/* =========================================================
+   29. PROGRESS
+========================================================= */
+
+.asset-progress-track {
+  width: 100%;
+  height: 8px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background: #e2e8f0;
+}
+
+.asset-progress-bar {
+  height: 100%;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #0284c7,
+      #38bdf8
+    );
+
+  transition: width 0.5s ease;
+}
+
+.asset-goal-money {
+  margin-top: 9px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.asset-goal-money span {
+  color: #64748b;
+
+  font-size: 10px;
+}
+
+.asset-goal-date,
+.asset-goal-item small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #94a3b8;
+
+  font-size: 9px;
+}
+
+
+/* =========================================================
+   30. EMPTY
+========================================================= */
+
+.asset-empty {
+  min-height: 220px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+
+  text-align: center;
+}
+
+.asset-empty-small {
+  min-height: 130px;
+}
+
+
+/* =========================================================
+   31. LOADING / ERROR
+========================================================= */
+
+.asset-state-box {
+  min-height: 100vh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  text-align: center;
+}
+
+.asset-state-box h2 {
+  margin: 10px 0 0;
+
+  color: #334155;
+
+  font-size: 17px;
+}
+
+.asset-state-box p {
+  margin: 0;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+}
+
+.asset-loading-spinner {
+  width: 34px;
+  height: 34px;
+
+  border: 3px solid #e2e8f0;
+  border-top-color: #0284c7;
+
+  border-radius: 50%;
+
+  animation:
+    asset-spin
+    0.8s
+    linear
+    infinite;
+}
+
+@keyframes asset-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.asset-error-symbol {
+  width: 40px;
+  height: 40px;
+
+  border-radius: 50%;
+
+  background: #fef2f2;
+
+  color: #ef4444;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.asset-login-button {
+  margin-top: 10px;
+
+  padding: 10px 18px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #0284c7;
+
+  color: #ffffff;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.asset-login-button:hover {
+  background: #0369a1;
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   32. LARGE TABLET
+========================================================= */
+
+@media (max-width: 1300px) {
+
+  .asset-top-header-sidebar-open {
+    padding-left: 276px;
+  }
+
+  .asset-container-sidebar-open {
+    padding-left: 280px;
+  }
+
+  .asset-summary-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+  .asset-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   33. TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+  .asset-top-header {
+    padding-right: 24px;
+  }
+
+  .asset-top-header-sidebar-open {
+    padding-left: 272px;
+  }
+
+  .asset-container {
+    padding-right: 24px;
+  }
+
+  .asset-container-sidebar-open {
+    padding-left: 276px;
+  }
+
+  .asset-top-title p {
+    display: none;
+  }
+
+  .asset-header-user,
+  .asset-profile {
+    min-width: 170px;
+  }
+
+  .asset-summary-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+  .asset-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-line-chart {
+    height: 390px;
+    min-height: 390px;
+  }
+}
+
+
+/* =========================================================
+   34. MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+  /*
+     모바일에서도 버튼은 왼쪽 위 고정
+  */
+
+  .asset-fixed-menu-button {
+    top: 14px;
+    left: 14px;
+
+    width: 40px;
+    height: 40px;
+
+    border-radius: 11px;
+  }
+
+  .asset-fixed-menu-button span {
+    width: 16px;
+  }
+
+
+  /*
+     모바일에서는 Sidebar가 overlay 형태이므로
+     Header와 본문을 옆으로 밀지 않는다.
+  */
+
+  .asset-main-open {
+    margin-left: 0;
+  }
+
+  .asset-top-header,
+  .asset-top-header-sidebar-open {
+    min-height: 70px;
+
+    padding:
+      12px
+      16px
+      12px
+      68px;
+  }
+
+  .asset-top-header-left {
+    gap: 10px;
+  }
+
+  .asset-brand {
+    font-size: 14px;
+  }
+
+  .asset-top-divider {
+    display: none;
+  }
+
+  .asset-top-title p {
+    display: none;
+  }
+
+  .asset-top-title h2 {
+    font-size: 17px;
+  }
+
+  .asset-header-period {
+    display: none;
+  }
+
+  .asset-header-user,
+  .asset-profile {
+    min-width: auto;
+
+    padding: 6px;
+
+    border: none;
+
+    box-shadow: none;
+  }
+
+  .asset-header-user > div:last-child,
+  .asset-profile-main {
+    display: none;
+  }
+
+  .asset-user-avatar,
+  .asset-profile-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .asset-container,
+  .asset-container-sidebar-open {
+    padding:
+      28px
+      16px
+      50px;
+  }
+
+  .asset-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 15px;
+  }
+
+  .asset-header h1 {
+    font-size: 25px;
+  }
+
+  .asset-date-box {
+    width: 100%;
+
+    align-items: flex-start;
+  }
+
+  .asset-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-summary-card {
+    min-height: 100px;
+  }
+
+  .asset-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-card {
+    padding: 18px;
+  }
+
+  .asset-card-header {
+    flex-direction: column;
+
+    gap: 8px;
+  }
+
+  .asset-line-chart {
+    height: 330px;
+    min-height: 330px;
+  }
+
+  .asset-doughnut-chart {
+    max-width: 260px;
+
+    height: 240px;
+  }
+}
+
+
+/* =========================================================
+   35. SMALL MOBILE
+========================================================= */
+
+@media (max-width: 480px) {
+
+  .asset-brand {
+    font-size: 13px;
+
+    letter-spacing: 0.04em;
+  }
+
+  .asset-top-title {
+    display: none;
+  }
+
+  .asset-header h1 {
+    font-size: 22px;
+  }
+
+  .asset-summary-value {
+    font-size: 18px;
+  }
+
+  .asset-summary-icon {
+    width: 40px;
+    height: 40px;
+
+    font-size: 17px;
+  }
+
+  .asset-line-chart {
+    height: 300px;
+    min-height: 300px;
+  }
+
+  .asset-goal-money {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 4px;
+  }
+}

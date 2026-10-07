@@ -1,11 +1,14 @@
 package com.example.trippaminebe.security.jwt;
 
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetailsService;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,110 +19,236 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+
 @RequiredArgsConstructor
-public class JWTAuthenticationFilter extends OncePerRequestFilter {
-  //JWTUtils 및 커스텀 UserDetailService 생성자 주입
+public class JWTAuthenticationFilter
+        extends OncePerRequestFilter {
+
+  // =========================================
+  // JWT 관련 객체
+  // =========================================
+
   private final JWTUtils jwtUtils;
-  private final CustomUserDetailsService customUserDetailsService;
 
-  //로그아웃 검증 생성자 주입
-  private final TokenBlacklistService tokenBlacklistService;
+  private final CustomUserDetailsService
+          customUserDetailsService;
 
-  // 코드 수정 -- 인증이 필요없는 공개 경로만 추가하도록 수정
-  // ====== permitAll로 열린 경로를 여기에 계속 추가해주세요. ======
+  private final TokenBlacklistService
+          tokenBlacklistService;
+
+
+  // =========================================
+  // JWT Filter 제외 경로
+  // =========================================
+
   @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) {
+  protected boolean shouldNotFilter(
+          HttpServletRequest request
+  ) {
+
     String uri = request.getRequestURI();
+
     return uri.startsWith("/users/auth/login")
-        || uri.startsWith("/users/auth/signup")
-        || uri.startsWith("/users/auth/check-email")
-        || uri.startsWith("/oauth2")
-        || uri.startsWith("/login/oauth2")
-        || uri.startsWith("/swagger-ui")
-        || uri.startsWith("/admin")
-        || uri.startsWith("/v3/api-docs");
+            || uri.startsWith("/users/auth/signup")
+            || uri.startsWith("/users/auth/check-email")
+            || uri.startsWith("/oauth2")
+            || uri.startsWith("/login/oauth2")
+            || uri.startsWith("/swagger-ui")
+            || uri.startsWith("/admin")
+            || uri.startsWith("/v3/api-docs");
   }
+
+
+  // =========================================
+  // JWT 인증
+  // =========================================
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      FilterChain filterChain)
-      throws ServletException, IOException {
+
+          HttpServletRequest request,
+
+          HttpServletResponse response,
+
+          FilterChain filterChain
+
+  ) throws ServletException, IOException {
+
 
     try {
-      // 1. Authorization 헤더에서 JWT 추출
-      String token = resolveToken(request);
 
-      // 2. 토큰이 존재하고 유효한 경우에만 인증 처리
-      if (StringUtils.hasText(token)
-          && jwtUtils.validateToken(token)
-          && !tokenBlacklistService.isBlacklisted(token)) {
+      // =====================================
+      // Authorization Header에서
+      // JWT 추출
+      // =====================================
 
-        // 3. JWT에서 이메일 추출
-        String email = jwtUtils.getEmailFromToken(token);
-
-        //로그아웃된 토큰인지 확인
-/*        if (tokenBlacklistService.isBlacklisted(token)){
-          logger.warn("로그아웃된 JWT입니다.");
-
-          filterChain.doFilter(request,response);
-
-          return;
-        }*/
+      String token =
+              resolveToken(request);
 
 
-        // 4. 아직 인증되지 않은 경우
-        if (email != null && SecurityContextHolder
-            .getContext()
-            .getAuthentication() == null) {
+      // =====================================
+      // JWT가 존재하고
+      // 정상적인 토큰인지 확인
+      // =====================================
 
-          // 5. DB에서 사용자 조회
+      if (
+
+              StringUtils.hasText(token)
+
+                      && jwtUtils.validateToken(token)
+
+                      && !tokenBlacklistService
+                      .isBlacklisted(token)
+
+      ) {
+
+
+        // =================================
+        // JWT에서 사용자 이메일 추출
+        // =================================
+
+        String email =
+                jwtUtils
+                        .getEmailFromToken(token);
+
+
+        // =================================
+        // 아직 인증 정보가 없는 경우
+        // 사용자 인증 처리
+        // =================================
+
+        if (
+
+                email != null
+
+                        && SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        == null
+
+        ) {
+
+
+          // =============================
+          // 사용자 조회
+          // =============================
+
           UserDetails userDetails =
-              customUserDetailsService.loadUserByUsername(email);
+                  customUserDetailsService
+                          .loadUserByUsername(
+                                  email
+                          );
 
-          UsernamePasswordAuthenticationToken authentication =
-              new UsernamePasswordAuthenticationToken(
-                  userDetails,
-                  null,
-                  userDetails.getAuthorities()
-              );
 
-          // 7. 요청 정보 추가
+          // =============================
+          // Spring Security
+          // Authentication 생성
+          // =============================
+
+          UsernamePasswordAuthenticationToken
+                  authentication =
+
+                  new UsernamePasswordAuthenticationToken(
+
+                          userDetails,
+
+                          null,
+
+                          userDetails.getAuthorities()
+
+                  );
+
+
+          // =============================
+          // 요청 정보 추가
+          // =============================
+
           authentication.setDetails(
-              new WebAuthenticationDetailsSource()
-                  .buildDetails(request)
+
+                  new WebAuthenticationDetailsSource()
+                          .buildDetails(
+                                  request
+                          )
+
           );
 
-          // 8. SecurityContext에 인증 저장
+
+          // =============================
+          // SecurityContext에
+          // 로그인 사용자 저장
+          // =============================
+
           SecurityContextHolder
-              .getContext()
-              .setAuthentication(authentication);
+                  .getContext()
+                  .setAuthentication(
+                          authentication
+                  );
         }
       }
+
     } catch (
-        UsernameNotFoundException e) {
-      // 존재하지 않거나 탈퇴된 회원일 경우 SecurityContext를 비우고 로그 남김
-      logger.warn("인증 실패 - 존재하지 않는 사용자입니다: " + e.getMessage());
+            UsernameNotFoundException e
+    ) {
+
+      logger.warn(
+              "인증 실패 - 존재하지 않는 사용자입니다: "
+                      + e.getMessage()
+      );
+
     } catch (
-        Exception e) {
-      logger.error("JWT 인증 처리 중 오류 발생", e);
+            Exception e
+    ) {
+
+      logger.error(
+              "JWT 인증 처리 중 오류 발생",
+              e
+      );
     }
 
-    // JWT가 없어도 다음 필터로 반드시 진행
-    filterChain.doFilter(request, response);
+
+    // =========================================
+    // 다음 Filter 진행
+    // =========================================
+
+    filterChain.doFilter(
+            request,
+            response
+    );
   }
 
-  /**
-   * Authorization: Bearer {JWT}
-   * 에서 JWT만 추출
-   */
-// Header에서 "Authorization: Bearer <token>" 형태의 토큰 추출
-  private String resolveToken(HttpServletRequest request) {
-    String bearerToken = request.getHeader("Authorization");
-    if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-      return bearerToken.substring(7); //"Bearer " 제거
+
+  // =========================================
+  // Authorization Header에서 JWT 추출
+  //
+  // Authorization: Bearer JWT
+  // =========================================
+
+  private String resolveToken(
+          HttpServletRequest request
+  ) {
+
+    String bearerToken =
+            request.getHeader(
+                    "Authorization"
+            );
+
+
+    if (
+
+            StringUtils.hasText(
+                    bearerToken
+            )
+
+                    && bearerToken.startsWith(
+                    "Bearer "
+            )
+
+    ) {
+
+      return bearerToken.substring(7);
     }
+
+
     return null;
   }
 }
