@@ -42,7 +42,8 @@ type NavIconName =
     | "map"
     | "building"
     | "compass"
-    | "board";
+    | "board"
+    | "wallet";
 
 
 interface NavItem {
@@ -141,6 +142,13 @@ const navItems: NavGroup[] = [
                 icon: "user",
                 label: "마이페이지",
                 to: "/mypage",
+            },
+
+            // [수정] 병합 과정에서 빠졌던 "자산관리" 메뉴 복구 (/assets → AssetDashboardPage)
+            {
+                icon: "wallet",
+                label: "자산관리",
+                to: "/assets",
             },
 
             {
@@ -1023,6 +1031,18 @@ function NavIcon({
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     <path d="M8 9h8" />
                     <path d="M8 13h5" />
+                </svg>
+            );
+
+
+        /* 자산관리 */
+        case "wallet":
+            return (
+                <svg {...commonProps}>
+                    <rect x="3" y="6" width="18" height="14" rx="2" />
+                    <path d="M3 10h18" />
+                    <path d="M16 15h2" />
+                    <path d="M6 6l9-3 1 3" />
                 </svg>
             );
 

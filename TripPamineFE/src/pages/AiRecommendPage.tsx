@@ -30,7 +30,6 @@ export default function AiRecommendPage() {
     const [recommendError, setRecommendError] = useState("");
 
     const [isMapOpen, setIsMapOpen] = useState(false);
-    const [isWeatherOpen, setIsWeatherOpen] = useState(false);
 
     useEffect(() => {
         const loadPlans = async () => {

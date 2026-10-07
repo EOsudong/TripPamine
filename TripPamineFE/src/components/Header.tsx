@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserAccessToken } from "../auth/session";
-
+import { getMyInfoApi } from "../api/auth";
 
 interface HeaderProps {
     sidebarOpen: boolean;
@@ -32,9 +32,9 @@ interface CurrentUser {
  * - Header는 Brand + 전역 사용자 Action만 담당
  */
 export default function Header({
-    sidebarOpen,
-    onToggleSidebar,
-}: HeaderProps) {
+                                   sidebarOpen,
+                                   onToggleSidebar,
+                               }: HeaderProps) {
 
     const navigate = useNavigate();
 
@@ -81,56 +81,17 @@ export default function Header({
                 setUserLoading(true);
 
 
-                const accessToken =
-                    getUserAccessToken();
-
-
-                if (!accessToken) {
-
-                    setCurrentUser(null);
-
-                    return;
-                }
-
-
-                const response =
-                    await fetch(
-                        "http://localhost:8080/users/auth/me",
-                        {
-                            method: "GET",
-
-                            headers: {
-                                Accept: "application/json",
-
-                                Authorization:
-                                    `Bearer ${accessToken}`,
-                            },
-                        }
-                    );
-
-
-                if (!response.ok) {
-
-                    console.error(
-                        "회원정보 조회 실패 =",
-                        response.status
-                    );
+                // [수정] 예전엔 fetch("http://localhost:8080/users/auth/me")로 주소를 하드코딩했다.
+                // 공용 axios 인스턴스(getMyInfoApi)를 쓰면 VITE_API_BASE_URL(터널/배포 주소)과
+                // 토큰 자동 첨부·만료 처리가 그대로 적용된다.
+                if (!getUserAccessToken()) {
 
                     setCurrentUser(null);
 
                     return;
                 }
 
-
-                const data =
-                    await response.json();
-
-
-                console.log(
-                    "현재 로그인 사용자 정보 =",
-                    data
-                );
-
+                const data = await getMyInfoApi();
 
                 setCurrentUser(data);
 
@@ -198,7 +159,7 @@ export default function Header({
 
         switch (
             grade.toUpperCase()
-        ) {
+            ) {
 
             case "GOLD":
 
@@ -303,21 +264,41 @@ export default function Header({
             <div className="ml-auto flex items-center gap-2">
                 {isLoggedIn ? (
                     <>
+                        {/* [수정] 병합 과정에서 빠졌던 사용자명 + 회원등급 배지 표시를 복구 */}
                         <button
                             type="button"
                             onClick={() =>
                                 navigate("/mypage")
                             }
+                            title="마이페이지"
                             className="
-                hidden rounded-xl px-3 py-2
+                hidden items-center gap-2
+                rounded-xl px-3 py-1.5
                 text-sm font-semibold text-slate-600
                 transition
                 hover:bg-slate-100
                 hover:text-slate-950
-                sm:block
+                sm:flex
               "
                         >
-                            마이페이지
+                            <span className="max-w-[120px] truncate">
+                                {userLoading
+                                    ? "불러오는 중..."
+                                    : `${displayUserName}님`}
+                            </span>
+
+                            {!userLoading && (
+                                <span
+                                    className={`
+                    rounded-full border
+                    px-2 py-0.5
+                    text-[10px] font-bold
+                    ${getGradeClass(displayGrade)}
+                  `}
+                                >
+                                    {displayGrade}
+                                </span>
+                            )}
                         </button>
 
                         <button
@@ -356,3 +337,5 @@ export default function Header({
         </header>
     );
 }
+
+
