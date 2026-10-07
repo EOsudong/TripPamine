@@ -31,7 +31,9 @@ public class WeatherSummaryService {
   private static final String MSG_WIND_NOTICE = "바람이 강합니다.";
   private static final String MSG_WIND_HIGH = "강풍주의보 수준입니다. 야외활동 일정을 체크해주세요.";
   // 안내 문구 (openweathermap은 5일 동안의 데이터만 제공함)
-  private static final String MSG_OUT_OF_RANGE = "여행 5일 전부터 데이터를 제공합니다.";
+  private static final String MSG_OUT_OF_RANGE = "# 날씨예보는 여행 5일 전부터 제공됩니다.";
+  private static final String MSG_PAST = "지난 여행의 날씨는 제공하지 않습니다.";
+  private static final String MSG_NO_DATA = "해당 날짜의 날씨 정보를 불러오지 못했습니다.";
 
 
   private final WeatherCacheService weatherCacheService;
@@ -56,18 +58,18 @@ public class WeatherSummaryService {
     return result;
   } ///pickSlots
 
-  // 예보를 받아오지 못하는 날 (5일의 범위 밖)
-  private DailyWeatherSummary unavailable() {
+  // 예보를 받아오지 못하는 날 (이미 지난 여행, 5일보다 미래의 여행, 데이터 없음)
+  private DailyWeatherSummary unavailable(String message) {
     return DailyWeatherSummary.builder()
         .available(false)
-        .notices(List.of(MSG_OUT_OF_RANGE))
+        .notices(List.of(message))
         .build();
   }
 
   public DailyWeatherSummary summarize(String json, LocalDate date) {
     List<JsonNode> slots = pickSlots(json, date);
     if (slots.isEmpty()) {
-      return unavailable();
+      return unavailable(MSG_NO_DATA);
     }
     // 온도가 영하/영상일 경우를 모두 대비하여 최저/최고를 각각 갱신
     double tempMin = Double.MAX_VALUE;
@@ -94,7 +96,7 @@ public class WeatherSummaryService {
 
     double feelsLike = Math.round((feelsSum / slots.size()) * 100) / 100.0; // 체감온도평균 (소숫점 둘째자리까지)
     int humidity = (int) Math.round(humiditySum/slots.size()); // 습도평균(%)
-    int rainProbability = (int) Math.round(popMax * 100);// 0~1 -> 0~100(%)
+    int rainProbability = (int) Math.round(popMax * 100);// 강수량 0~1 -> 0~100(%)
     Double rainMm = popMax >= RAIN_NOTICE ? Math.round(rainSum * 100) / 100.0 : null; // 강수확률 30%이상일 때만 표시 (소숫점 둘째자리까지)
 
     List<String> notices = new ArrayList<>();
@@ -127,8 +129,11 @@ public class WeatherSummaryService {
   // 얻어온 정보 호출
   public DailyWeatherSummary getDailySummary(double latitude, double longitude, LocalDate date) {
     LocalDate today = LocalDate.now(KST);
-    if(date.isBefore(today) || date.isAfter(today.plusDays(4))) {
-      return unavailable();
+    if (date.isBefore(today)) {
+      return unavailable(MSG_PAST);
+    }
+    if (date.isAfter(today.plusDays(4))) {
+      return unavailable(MSG_OUT_OF_RANGE);
     }
 
     String json = weatherCacheService.getWeather(latitude, longitude, date);

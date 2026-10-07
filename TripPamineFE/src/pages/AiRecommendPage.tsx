@@ -11,6 +11,7 @@ import {
 } from "../api/recommendation";
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal, type PlaceItem } from '../components/KakaoMapModal';
+import { getTripWeatherApi, type TripDayWeather } from "../api/weather";
 
 export default function AiRecommendPage() {
     const navigate = useNavigate();
@@ -22,11 +23,14 @@ export default function AiRecommendPage() {
         useState<AiRecommendationResponse | null>(null);
     const [parsedRecommendation, setParsedRecommendation] =
         useState<ParsedRecommendation | null>(null);
+    const [tripWeather, setTripWeather] =
+        useState<TripDayWeather[] | null>(null);
 
     const [recommendLoading, setRecommendLoading] = useState(false);
     const [recommendError, setRecommendError] = useState("");
 
     const [isMapOpen, setIsMapOpen] = useState(false);
+    const [isWeatherOpen, setIsWeatherOpen] = useState(false);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -64,6 +68,7 @@ export default function AiRecommendPage() {
         setParsedRecommendation(null);
         setRecommendError("");
         setRecommendLoading(true);
+        setTripWeather(null);
 
         try {
             const data = await getAiRecommendationApi(plan.planId);
@@ -82,6 +87,15 @@ export default function AiRecommendPage() {
             setRecommendError("AI 여행 추천을 생성하는 중 문제가 발생했습니다.");
         } finally {
             setRecommendLoading(false);
+        }
+
+        // 날씨는 추천과 별개로 불러온다. 실패해도 일정 화면은 그대로 보여준다.
+        try {
+            const weather = await getTripWeatherApi(plan.planId);
+            setTripWeather(weather);
+        } catch (error) {
+            console.error("날씨 조회 실패:", error);
+            setTripWeather(null);
         }
     };
 
@@ -456,6 +470,46 @@ export default function AiRecommendPage() {
                                                                             {day.day}일차 일정
                                                                         </h3>
                                                                     </div>
+
+                                                                    {/*날씨 표시*/}
+                                                                    {(() => {
+                                                                        const w = tripWeather?.find((t) => t.day === day.day);
+                                                                        if (!w) return null;
+
+                                                                        // 날씨를 제공할 수 없는 날(범위 밖 등)은 안내 문구만 보여준다
+                                                                        if (!w.summary.available) {
+                                                                            return (
+                                                                                <p className="mb-3 text-xs text-slate-400">
+                                                                                    {w.summary.notices[0]}
+                                                                                </p>
+                                                                            );
+                                                                        }
+                                                                        return (
+                                                                            <div className="mb-3 rounded-xl bg-sky-50 px-4 py-3 text-sm text-slate-700">
+                                                                                <p className="font-bold">
+                                                                                    최저기온 {w.summary.tempMin}° , 최고기온 {w.summary.tempMax}°
+                                                                                </p>
+                                                                                <p className="mt-1 text-xs text-slate-500">
+                                                                                    체감온도 {w.summary.feelsLike}° · 습도 {w.summary.humidity}% · 풍속 {w.summary.windSpeed}m/s
+                                                                                </p>
+                                                                                {w.summary.rainProbability !== null && w.summary.rainProbability >= 0 && (
+                                                                                    <p className="mt-1 text-xs text-sky-700">
+                                                                                        ☔ 강수확률 약 {w.summary.rainProbability}%
+                                                                                        {w.summary.rainMm !== null && ` · 예상 ${w.summary.rainMm}mm`}
+                                                                                    </p>
+                                                                                )}
+                                                                                {w.summary.notices.length > 0 && (
+                                                                                    <ul className="mt-2 space-y-1">
+                                                                                    {w.summary.notices.map((msg, i) => (
+                                                                                        <li key={i} className="text-xs font-semibold text-amber-600">
+                                                                                        ⚠ {msg}
+                                                                                        </li>
+                                                                                    ))}
+                                                                                    </ul>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
 
                                                                     <div className="space-y-3">
                                                                         {day.places.map((place, index) => (
