@@ -140,3 +140,8 @@ trippamine:
     base-url: ${TRIPPAMINE_AI_BASE_URL:http://127.0.0.1:18001}
     connect-timeout-ms: ${TRIPPAMINE_AI_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${TRIPPAMINE_AI_READ_TIMEOUT_MS:30000}
+
+openweathermap:
+  api:
+    base-url: https://api.openweathermap.org/data/2.5
+    key: ${OPENWEATHERMAP_API_KEY:}
