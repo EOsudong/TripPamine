@@ -121,9 +121,15 @@ interface DashboardData {
   totalAsset: number
   totalIncome: number
   totalExpense: number
-  travelExpense: number
 
-  snapshotDate?: string | null
+  // 이번 달 시작 자산
+  startAsset: number
+
+  // 현재자산 - 시작자산
+  assetChangeAmount: number
+
+  // 자산 증감률 (%)
+  assetChangeRate: number
 
   assetHistory: AssetHistoryInfo[]
   categoryExpenses: CategoryExpenseInfo[]
@@ -615,7 +621,56 @@ export default function AssetDashboardPage() {
     },
   }
 
+  // ===================================================
+  // Asset Change
+  // ===================================================
 
+  const assetChangeRate =
+      dashboard?.assetChangeRate ?? 0
+
+
+  const assetChangeAmount =
+      dashboard?.assetChangeAmount ?? 0
+
+
+  const isAssetIncrease =
+      assetChangeRate > 0
+
+
+  const isAssetDecrease =
+      assetChangeRate < 0
+
+
+  const assetChangeIcon =
+      isAssetIncrease
+          ? "↑"
+          : isAssetDecrease
+              ? "↓"
+              : "−"
+
+
+  const assetChangeColor =
+      isAssetIncrease
+          ? "text-sky-600"
+          : isAssetDecrease
+              ? "text-red-600"
+              : "text-slate-500"
+
+
+  const assetChangeBg =
+      isAssetIncrease
+          ? "bg-sky-50"
+          : isAssetDecrease
+              ? "bg-red-50"
+              : "bg-slate-50"
+
+
+  const assetChangeDescription =
+      isAssetIncrease
+          ? "이번 달 자산이 증가했어요"
+          : isAssetDecrease
+              ? "이번 달 자산이 감소했어요"
+              : "이번 달 자산 변동이 없어요"
   // ===================================================
   // Asset History
   // ===================================================
@@ -1050,75 +1105,184 @@ export default function AssetDashboardPage() {
             </strong>
 
 
-            {dashboard.snapshotDate && (
+            <div className="flex w-full flex-col items-start gap-[3px] rounded-[13px] border border-slate-200 bg-white px-[15px] py-3 shadow-[0_3px_12px_rgba(15,23,42,0.03)] md:w-auto md:min-w-[155px] md:items-end">
 
-                <small className="text-[9px] text-slate-400">
-                  최근 자산 기준{" "}
-                  {dashboard.snapshotDate}
-                </small>
+          <span className="text-[10px] text-slate-400">
+            현재 조회
+          </span>
 
-            )}
+
+          <strong className="text-[13px] text-slate-700">
+            {dashboard.year}년{" "}
+            {dashboard.month}월
+          </strong>
+
+
+          <small className="text-[9px] text-slate-400">
+            월간 자산 현황
+          </small>
+
+        </div>
 
           </div>
 
         </section>
 
 
-        {/* ================================================= */}
+                {/* ================================================= */}
         {/* Summary */}
         {/* ================================================= */}
 
         <section className="mb-[22px] grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
-          {[
-            {
-              label: "총자산",
-              value: dashboard.totalAsset,
-              desc: "현재 연결된 계좌의 총자산",
-              color: "text-slate-900",
-            },
-            {
-              label: "이번 달 수입",
-              value: dashboard.totalIncome,
-              desc: "이번 달 가계부 기준 수입",
-              color: "text-green-600",
-            },
-            {
-              label: "이번 달 지출",
-              value: dashboard.totalExpense,
-              desc: "이번 달 가계부 기준 지출",
-              color: "text-red-600",
-            },
-            {
-              label: "여행 지출",
-              value: dashboard.travelExpense,
-              desc: "여행 관련 누적 지출",
-              color: "text-fuchsia-600",
-            },
-          ].map((card) => (
 
-              <article
-                  key={card.label}
-                  className={`${CARD_BASE} flex min-h-[100px] flex-col justify-center gap-[5px] rounded-[18px] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.07)] md:min-h-[125px]`}
-              >
+          {/* ================================================= */}
+          {/* 총자산 */}
+          {/* ================================================= */}
+
+          <article
+              className={`${CARD_BASE} flex min-h-[125px] flex-col justify-center gap-[5px] rounded-[18px] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.07)]`}
+          >
 
             <span className="text-[11px] font-bold text-slate-500">
-              {card.label}
+              총자산
             </span>
 
 
-                <strong className={`break-words text-lg font-extrabold tracking-[-0.035em] sm:text-[21px] ${card.color}`}>
-                  {formatMoney(card.value)}
-                </strong>
+            <strong className="break-words text-lg font-extrabold tracking-[-0.035em] text-slate-900 sm:text-[21px]">
+              {formatMoney(
+                  dashboard.totalAsset,
+              )}
+            </strong>
 
 
-                <p className="text-[10px] text-slate-400">
-                  {card.desc}
-                </p>
+            <p className="text-[10px] text-slate-400">
+              현재 연결된 계좌의 총자산
+            </p>
 
-              </article>
+          </article>
 
-          ))}
+
+          {/* ================================================= */}
+          {/* 이번 달 수입 */}
+          {/* ================================================= */}
+
+          <article
+              className={`${CARD_BASE} flex min-h-[125px] flex-col justify-center gap-[5px] rounded-[18px] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.07)]`}
+          >
+
+            <span className="text-[11px] font-bold text-slate-500">
+              이번 달 수입
+            </span>
+
+
+            <strong className="break-words text-lg font-extrabold tracking-[-0.035em] text-green-600 sm:text-[21px]">
+              {formatMoney(
+                  dashboard.totalIncome,
+              )}
+            </strong>
+
+
+            <p className="text-[10px] text-slate-400">
+              이번 달 가계부 기준 수입
+            </p>
+
+          </article>
+
+
+          {/* ================================================= */}
+          {/* 이번 달 지출 */}
+          {/* ================================================= */}
+
+          <article
+              className={`${CARD_BASE} flex min-h-[125px] flex-col justify-center gap-[5px] rounded-[18px] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.07)]`}
+          >
+
+            <span className="text-[11px] font-bold text-slate-500">
+              이번 달 지출
+            </span>
+
+
+            <strong className="break-words text-lg font-extrabold tracking-[-0.035em] text-red-600 sm:text-[21px]">
+              {formatMoney(
+                  dashboard.totalExpense,
+              )}
+            </strong>
+
+
+            <p className="text-[10px] text-slate-400">
+              이번 달 가계부 기준 지출
+            </p>
+
+          </article>
+
+
+          {/* ================================================= */}
+          {/* 자산 증감률 */}
+          {/* ================================================= */}
+
+          <article
+              className={`${CARD_BASE} flex min-h-[125px] flex-col justify-center rounded-[18px] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.07)]`}
+          >
+
+            <div className="mb-[7px] flex items-center justify-between">
+
+              <span className="text-[11px] font-bold text-slate-500">
+                자산 증감률
+              </span>
+
+
+              <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${assetChangeBg} ${assetChangeColor}`}
+              >
+                이번 달
+              </span>
+
+            </div>
+
+
+            <div className="flex items-center gap-2">
+
+              <span
+                  className={`text-[25px] font-black leading-none ${assetChangeColor}`}
+              >
+                {assetChangeIcon}
+              </span>
+
+
+              <strong
+                  className={`text-[22px] font-black tracking-[-0.04em] ${assetChangeColor}`}
+              >
+                {assetChangeRate > 0
+                    ? "+"
+                    : ""}
+                {assetChangeRate.toFixed(1)}%
+              </strong>
+
+            </div>
+
+
+            <div className="mt-[6px] flex flex-wrap items-center gap-x-2 gap-y-1">
+
+              <span
+                  className={`text-[11px] font-bold ${assetChangeColor}`}
+              >
+                {assetChangeAmount > 0
+                    ? "+"
+                    : ""}
+                {formatMoney(
+                    assetChangeAmount,
+                )}
+              </span>
+
+
+              <span className="text-[10px] text-slate-400">
+                {assetChangeDescription}
+              </span>
+
+            </div>
+
+          </article>
 
         </section>
 

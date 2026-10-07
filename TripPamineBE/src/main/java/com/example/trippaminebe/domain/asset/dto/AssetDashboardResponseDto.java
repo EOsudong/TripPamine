@@ -1,7 +1,6 @@
 package com.example.trippaminebe.domain.asset.dto;
 
 import com.example.trippaminebe.domain.asset.entity.AssetGoal;
-import com.example.trippaminebe.domain.asset.entity.AssetSnapshot;
 import com.example.trippaminebe.domain.asset.entity.MonthlyBudget;
 
 import lombok.AllArgsConstructor;
@@ -31,19 +30,25 @@ public class AssetDashboardResponseDto {
     // 현재 자산
     // ==========================================
 
-    // USER_ACCOUNTS의 ACTIVE 계좌 BALANCE 합계
     private Long totalAsset;
 
-    // TRANSACTIONS income 합계
     private Long totalIncome;
 
-    // TRANSACTIONS expense 합계
     private Long totalExpense;
 
-    // 현재는 Snapshot 사용
-    private Long travelExpense;
 
-    private LocalDate snapshotDate;
+    // ==========================================
+    // 자산 증감
+    // ==========================================
+
+    // 이번 달 시작 자산
+    private Long startAsset;
+
+    // 현재자산 - 시작자산
+    private Long assetChangeAmount;
+
+    // 자산 증감률 (%)
+    private Double assetChangeRate;
 
 
     // ==========================================
@@ -82,30 +87,13 @@ public class AssetDashboardResponseDto {
     @AllArgsConstructor
     public static class AssetHistoryInfo {
 
-        private LocalDate date;
+        private LocalDate snapshotDate;
 
         private Long totalAsset;
 
         private Long totalIncome;
 
         private Long totalExpense;
-
-
-        public static AssetHistoryInfo from(
-                AssetSnapshot snapshot
-        ) {
-
-            return new AssetHistoryInfo(
-
-                    snapshot.getSnapshotDate(),
-
-                    snapshot.getTotalAsset(),
-
-                    snapshot.getTotalIncome(),
-
-                    snapshot.getTotalExpense()
-            );
-        }
     }
 
 
@@ -145,13 +133,9 @@ public class AssetDashboardResponseDto {
         ) {
 
             return new BudgetInfo(
-
                     budget.getBudgetId(),
-
                     budget.getCategoryId(),
-
                     budget.getCategoryName(),
-
                     budget.getBudgetAmount()
             );
         }
@@ -208,6 +192,14 @@ public class AssetDashboardResponseDto {
             }
 
 
+            // 100% 초과 방지
+            progressRate =
+                    Math.min(
+                            100.0,
+                            progressRate
+                    );
+
+
             progressRate =
                     Math.round(
                             progressRate * 10.0
@@ -216,21 +208,13 @@ public class AssetDashboardResponseDto {
 
 
             return new GoalInfo(
-
                     goal.getGoalId(),
-
                     goal.getGoalName(),
-
                     goal.getTargetAmount(),
-
                     goal.getCurrentAmount(),
-
                     goal.getTargetDate(),
-
                     goal.getGoalType(),
-
                     goal.getStatus(),
-
                     progressRate
             );
         }
@@ -249,15 +233,15 @@ public class AssetDashboardResponseDto {
 
             Integer month,
 
-            // ======================================
-            // USER_ACCOUNTS에서 계산된 현재 총자산
-            // ======================================
-
             Long totalAsset,
 
-            AssetSnapshot latestSnapshot,
+            Long startAsset,
 
-            List<AssetSnapshot> snapshots,
+            Long assetChangeAmount,
+
+            Double assetChangeRate,
+
+            List<AssetHistoryInfo> assetHistory,
 
             List<MonthlyBudget> monthlyBudgets,
 
@@ -272,77 +256,48 @@ public class AssetDashboardResponseDto {
     ) {
 
         // ======================================
-        // 기본값
-        // ======================================
-
-        Long travelExpense = 0L;
-
-        LocalDate snapshotDate = null;
-
-
-        // ======================================
-        // totalAsset null 방어
+        // null 방어
         // ======================================
 
         if (totalAsset == null) {
-
             totalAsset = 0L;
         }
 
-
-        // ======================================
-        // 최신 Snapshot
-        //
-        // 중요:
-        // totalAsset은 Snapshot에서 가져오지 않는다.
-        //
-        // Snapshot은 현재
-        // travelExpense / snapshotDate에만 사용한다.
-        // ======================================
-
-        if (latestSnapshot != null) {
-
-            travelExpense =
-                    latestSnapshot.getTravelExpense();
-
-            snapshotDate =
-                    latestSnapshot.getSnapshotDate();
+        if (startAsset == null) {
+            startAsset = 0L;
         }
 
+        if (assetChangeAmount == null) {
+            assetChangeAmount = 0L;
+        }
 
-        // ======================================
-        // 수입 null 방어
-        // ======================================
+        if (assetChangeRate == null) {
+            assetChangeRate = 0.0;
+        }
 
         if (totalIncome == null) {
-
             totalIncome = 0L;
         }
 
-
-        // ======================================
-        // 지출 null 방어
-        // ======================================
-
         if (totalExpense == null) {
-
             totalExpense = 0L;
         }
 
+        if (assetHistory == null) {
+            assetHistory = List.of();
+        }
 
-        // ======================================
-        // 자산 변화
-        // ======================================
+        if (categoryExpenseMap == null) {
+            categoryExpenseMap = Map.of();
+        }
 
-        List<AssetHistoryInfo> assetHistory =
+        if (monthlyBudgets == null) {
+            monthlyBudgets = List.of();
+        }
 
-                snapshots.stream()
-
-                        .map(
-                                AssetHistoryInfo::from
-                        )
-
-                        .toList();
+        if (assetGoals == null) {
+            assetGoals = List.of();
+        }
 
 
         // ======================================
@@ -372,7 +327,8 @@ public class AssetDashboardResponseDto {
 
         List<BudgetInfo> budgets =
 
-                monthlyBudgets.stream()
+                monthlyBudgets
+                        .stream()
 
                         .map(
                                 BudgetInfo::from
@@ -387,7 +343,8 @@ public class AssetDashboardResponseDto {
 
         List<GoalInfo> goals =
 
-                assetGoals.stream()
+                assetGoals
+                        .stream()
 
                         .map(
                                 GoalInfo::from
@@ -414,9 +371,11 @@ public class AssetDashboardResponseDto {
 
                 totalExpense,
 
-                travelExpense,
+                startAsset,
 
-                snapshotDate,
+                assetChangeAmount,
+
+                assetChangeRate,
 
                 assetHistory,
 
