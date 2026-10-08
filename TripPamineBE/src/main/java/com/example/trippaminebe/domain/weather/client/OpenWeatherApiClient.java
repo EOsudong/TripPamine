@@ -32,4 +32,22 @@ public class OpenWeatherApiClient {
     return restTemplate.getForObject(uri, String.class); //응답 JSON을 문자열로 받기
   } ///fetchForecast
 
+  /**
+   * GPS 좌표를 기준으로 현재 날씨 조회
+   */
+  public String fetchCurrentWeather(double latitude, double longitude) {
+
+    URI uri = UriComponentsBuilder
+        .fromUriString(baseUrl + "/weather")
+        .queryParam("lat", latitude)
+        .queryParam("lon", longitude)
+        .queryParam("appid", apiKey)
+        .queryParam("units", "metric")
+        .queryParam("lang", "kr")
+        .build()
+        .toUri();
+
+    return restTemplate.getForObject(uri, String.class);
+  }
+
 } ///OpenWeatherApiClient
