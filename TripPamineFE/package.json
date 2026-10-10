@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@stomp/stompjs": "^7.3.0",
+    "animejs": "^4.5.0",
     "axios": "^1.19.0",
     "chart.js": "^4.5.1",
     "chartjs-plugin-datalabels": "^2.2.0",

@@ -123,16 +123,18 @@ export default function QuestPage() {
 
   return (
       <AppLayout
-          pageClassName="bg-slate-950 text-white"
+          pageClassName="bg-night-950 text-white"
       >
         <div className="mx-auto max-w-6xl px-4 py-10">
-          <section className="overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950 p-6 shadow-2xl md:p-8">
+          <section className="relative isolate overflow-hidden rounded-[2rem] border border-white/10 p-6 shadow-[0_40px_80px_-40px_rgba(34,211,238,0.45)] md:p-8">
+            <div className="absolute inset-0 -z-10 tp-aurora" />
+            <div className="absolute inset-0 -z-10 tp-dot-grid opacity-40" />
             <p className="text-xs font-black tracking-[0.25em] text-cyan-400">
               TRIPPAMINE ADVENTURE
             </p>
             <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
               <div>
-                <h1 className="text-3xl font-black md:text-4xl flex items-center gap-2">
+                <h1 className="flex items-center gap-2 font-display text-3xl font-bold tracking-tight md:text-5xl">
                   <span className="text-2xl md:text-3xl select-none">🎖️</span>
                   <span>{profile?.userName ?? "여행자"} 님</span>
                 </h1>

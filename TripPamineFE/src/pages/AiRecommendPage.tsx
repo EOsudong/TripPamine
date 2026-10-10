@@ -12,6 +12,7 @@ import {
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal, type PlaceItem } from '../components/KakaoMapModal';
 import { getTripWeatherApi, type TripDayWeather } from "../api/weather";
+import PageHero from "../components/PageHero";
 
 export default function AiRecommendPage() {
     const navigate = useNavigate();
@@ -235,43 +236,28 @@ export default function AiRecommendPage() {
                 backgroundImage: `url(${aiTravelBg})`,
             }}
         >
-            <div className="min-h-screen bg-white/75 backdrop-blur-[1px] p-8">
+            <div className="min-h-screen bg-[#f6f6fb]/85 p-4 backdrop-blur-sm md:p-8">
                 <div className="max-w-7xl mx-auto">
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <p className="text-sky-500 text-xs font-bold tracking-widest uppercase">
-                                AI Travel Planner
-                            </p>
-
-                            <h1 className="mt-2 text-3xl font-bold text-slate-800">
-                                ✨ AI 여행 추천
-                            </h1>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                                등록된 여행을 선택하면 AI가 조건에 맞는 여행 일정을
-                                추천해드립니다.
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => navigate("/")}
-                            className="
-                                px-4 py-2.5
-                                bg-white hover:bg-slate-50
-                                border border-slate-200 hover:border-sky-300
-                                text-slate-700 hover:text-sky-600 text-xs font-bold
-                                rounded-2xl shadow-sm hover:shadow
-                                transition-all duration-200
-                                flex items-center gap-2
-                            "
-                        >
-                            🏠 메인으로 돌아가기
-                        </button>
-                    </div>
+                    <PageHero
+                        className="mb-8"
+                        tone="cyan"
+                        eyebrow="AI Travel Planner"
+                        icon="✨"
+                        title={<>AI가 짜주는 <span className="tp-gradient-text">여행 코스</span></>}
+                        description="등록된 여행을 선택하면 AI가 조건에 맞는 여행 일정을 추천해드립니다."
+                        aside={
+                            <button
+                                type="button"
+                                onClick={() => navigate("/")}
+                                className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/20"
+                            >
+                                🏠 메인으로 돌아가기
+                            </button>
+                        }
+                    />
 
                     <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-                        <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm">
+                        <div className="rounded-3xl border border-white bg-white/85 p-5 shadow-[0_20px_50px_-30px_rgba(60,40,180,0.45)] backdrop-blur-xl">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="font-bold text-slate-800">등록된 여행</h2>
 
@@ -337,7 +323,7 @@ export default function AiRecommendPage() {
                             )}
                         </div>
 
-                        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+                        <div className="rounded-3xl border border-white bg-white/85 p-6 shadow-[0_20px_50px_-30px_rgba(60,40,180,0.45)] backdrop-blur-xl">
                             {!selectedPlan ? (
                                 <div className="min-h-[420px] flex flex-col items-center justify-center text-center">
                                     <div className="text-5xl mb-4">🤖</div>
@@ -410,7 +396,7 @@ export default function AiRecommendPage() {
                                                                     onClick={() => setIsMapOpen(true)}
                                                                     className="
                                                                         px-4 py-2
-                                                                        bg-sky-500 hover:bg-sky-600
+                                                                        tp-gradient-bg hover:brightness-110
                                                                         text-white text-xs font-bold
                                                                         rounded-xl shadow-md shadow-sky-500/20
                                                                         transition-all duration-300
@@ -458,7 +444,7 @@ export default function AiRecommendPage() {
                                                             {parsedRecommendation.days.map((day) => (
                                                                 <div
                                                                     key={day.day}
-                                                                    className="bg-white border border-slate-200 rounded-2xl p-5"
+                                                                    className="tp-card rounded-3xl p-5"
                                                                 >
                                                                     <div className="flex items-center gap-2 mb-4">
                                                                         <span className="w-8 h-8 flex items-center justify-center rounded-xl bg-sky-500 text-white text-sm font-bold">

@@ -405,7 +405,6 @@ export default function AiManagerDashboard() {
         <div
             className="
         min-h-screen
-        bg-[#F7F9FC]
         pb-8
       "
         >
@@ -450,9 +449,9 @@ export default function AiManagerDashboard() {
 
             bg-gradient-to-r
 
-            from-slate-950/95
-            via-slate-950/80
-            to-slate-950/40
+            from-night-950/95
+            via-night-950/80
+            to-sky-950/40
           "
                 />
 
@@ -469,6 +468,11 @@ export default function AiManagerDashboard() {
             to-slate-950/20
           "
                 />
+
+                {/* AI 오로라 + 점 그리드 레이어 */}
+                <div className="absolute inset-0 tp-aurora opacity-60 mix-blend-screen" />
+                <div className="absolute inset-0 tp-dot-grid opacity-40 [mask-image:linear-gradient(90deg,black,transparent_70%)]" />
+                <span className="absolute inset-x-0 bottom-0 h-px tp-gradient-bg opacity-70" />
 
 
                 <div
@@ -545,8 +549,9 @@ export default function AiManagerDashboard() {
                                 className="
                   mt-4
 
+                  font-display
                   text-3xl
-                  font-black
+                  font-bold
                   tracking-[-0.035em]
                   text-white
 
@@ -559,14 +564,7 @@ export default function AiManagerDashboard() {
 
                                 <span
                                     className="
-                    bg-gradient-to-r
-
-                    from-white
-                    via-sky-100
-                    to-sky-300
-
-                    bg-clip-text
-                    text-transparent
+                    tp-gradient-text
                   "
                                 >
                   {profile?.userName ??
@@ -651,18 +649,13 @@ export default function AiManagerDashboard() {
                 <section
                     className="
             -mt-8
-
             overflow-hidden
-
-            rounded-2xl
-
+            rounded-3xl
             border
-            border-slate-200
-
-            bg-white
-
-            shadow-xl
-            shadow-slate-200/40
+            border-white
+            bg-white/90
+            backdrop-blur-xl
+            shadow-[0_30px_70px_-40px_rgba(60,40,180,0.5)]
           "
                 >
 
@@ -828,12 +821,12 @@ export default function AiManagerDashboard() {
 
                     <article
                         className="
-              rounded-2xl
+              rounded-3xl
 
               border
-              border-slate-200
+              border-white
 
-              bg-white
+              bg-white/85 backdrop-blur-xl shadow-[0_20px_50px_-35px_rgba(60,40,180,0.45)]
             "
                     >
 
@@ -1002,12 +995,12 @@ export default function AiManagerDashboard() {
 
                     <aside
                         className="
-              rounded-2xl
+              rounded-3xl
 
               border
-              border-slate-200
+              border-white
 
-              bg-white
+              bg-white/85 backdrop-blur-xl shadow-[0_20px_50px_-35px_rgba(60,40,180,0.45)]
 
               p-5
             "
@@ -1111,7 +1104,7 @@ export default function AiManagerDashboard() {
 
                             <ContextRow
                                 label="자산"
-                                value="연결 준비 중"
+                                value="자산관리에서 확인"
                                 muted
                             />
 
@@ -1223,6 +1216,40 @@ export default function AiManagerDashboard() {
                             onClick={() =>
                                 navigate(
                                     "/quests",
+                                )
+                            }
+                        />
+
+
+                        {/* [자산관리 추가] 초개인화 플랫폼 — 여행 외 자산 · 커뮤니티 워크스페이스 */}
+                        <WorkspaceRow
+                            label="자산관리"
+                            description="총자산 · 소비 패턴 · 예산 · 목표"
+                            onClick={() =>
+                                navigate(
+                                    "/assets",
+                                )
+                            }
+                        />
+
+
+                        <WorkspaceRow
+                            label="가계부 · 계좌"
+                            description="수입·지출 기록과 영수증 인식"
+                            onClick={() =>
+                                navigate(
+                                    "/mypage",
+                                )
+                            }
+                        />
+
+
+                        <WorkspaceRow
+                            label="금융상품"
+                            description="나에게 맞는 예금 · 적금 추천"
+                            onClick={() =>
+                                navigate(
+                                    "/finance",
                                 )
                             }
                         />

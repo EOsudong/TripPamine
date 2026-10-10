@@ -1,1 +1,397 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss";
+
+/* =========================================================
+ * TripPamine Design Tokens
+ * ---------------------------------------------------------
+ * "AI x Travel x Play" 컨셉.
+ *
+ * 기존 코드 전반에서 브랜드 포인트 컬러로 쓰던 sky-* 팔레트를
+ * 일렉트릭 아이리스(보라-파랑) 톤으로 재정의해서,
+ * 개별 페이지 로직을 건드리지 않고도 서비스 전체 분위기를 바꾼다.
+ * ========================================================= */
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-display: "Space Grotesk", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+
+  --color-sky-50: oklch(0.975 0.014 280);
+  --color-sky-100: oklch(0.945 0.032 280);
+  --color-sky-200: oklch(0.89 0.065 280);
+  --color-sky-300: oklch(0.81 0.11 280);
+  --color-sky-400: oklch(0.71 0.17 280);
+  --color-sky-500: oklch(0.61 0.215 280);
+  --color-sky-600: oklch(0.54 0.235 280);
+  --color-sky-700: oklch(0.47 0.215 280);
+  --color-sky-800: oklch(0.4 0.18 280);
+  --color-sky-900: oklch(0.33 0.14 280);
+  --color-sky-950: oklch(0.23 0.1 280);
+
+  /* 다크 서피스 */
+  --color-night-950: #06060c;
+  --color-night-900: #0b0b16;
+  --color-night-800: #13132a;
+  --color-night-700: #1d1d3b;
+
+  --animate-float: tp-float 6s ease-in-out infinite;
+  --animate-shimmer: tp-shimmer 3.2s linear infinite;
+  --animate-pulse-ring: tp-pulse-ring 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+
+@keyframes tp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes tp-shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+
+@keyframes tp-pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* =========================================================
+ * Base
+ * ========================================================= */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #f6f6fb;
+    color: var(--color-slate-900);
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: oklch(0.61 0.215 280 / 0.25);
+  }
+
+  /* 얇은 스크롤바 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.81 0.11 280 / 0.6) transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-sky-500);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* =========================================================
+ * Utilities (페이지 공통)
+ * ========================================================= */
+
+/* AI 그라데이션 텍스트 */
+@utility tp-gradient-text {
+  background-image: linear-gradient(100deg, #7c6cff 0%, #22d3ee 45%, #f472b6 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* AI 그라데이션 배경 (버튼/배지) */
+@utility tp-gradient-bg {
+  background-image: linear-gradient(110deg, #6d5efc 0%, #8b5cf6 35%, #22d3ee 100%);
+}
+
+@utility tp-gradient-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(120deg, #7c6cff, #22d3ee, #f472b6) border-box;
+}
+
+/* 다크 히어로 배경 (오로라) */
+@utility tp-aurora {
+  background-color: #08081a;
+  background-image:
+    radial-gradient(60% 80% at 10% 0%, rgba(124, 108, 255, 0.45) 0%, transparent 60%),
+    radial-gradient(50% 70% at 90% 10%, rgba(34, 211, 238, 0.28) 0%, transparent 60%),
+    radial-gradient(60% 60% at 70% 100%, rgba(244, 114, 182, 0.25) 0%, transparent 60%);
+}
+
+/* 밝은 페이지 배경 (은은한 오로라) */
+@utility tp-aurora-light {
+  background-color: #f6f6fb;
+  background-image:
+    radial-gradient(40% 40% at 0% 0%, rgba(124, 108, 255, 0.10) 0%, transparent 70%),
+    radial-gradient(35% 35% at 100% 10%, rgba(34, 211, 238, 0.10) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+/* 점 그리드 패턴 */
+@utility tp-dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@utility tp-dot-grid-dark {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* 글래스 카드 */
+@utility tp-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+@utility tp-glass-dark {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* 카드 hover 시 살짝 떠오르는 효과 */
+@utility tp-lift {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -20px rgba(80, 60, 200, 0.35);
+  }
+}
+
+@keyframes tp-scroll-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(260%); }
+}
+
+/* =========================================================
+ * Components (공통 UI 조각)
+ * ---------------------------------------------------------
+ * components 레이어라서 같은 요소에 붙인 유틸리티(px-3 등)가
+ * 항상 우선한다. → 크기/여백은 페이지에서 자유롭게 조정 가능.
+ * ========================================================= */
+@layer components {
+  /* 카드 */
+  .tp-card {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 24px 60px -36px rgba(60, 40, 180, 0.35);
+  }
+
+  .tp-card-dark {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0b0b16;
+    color: #fff;
+    box-shadow: 0 40px 80px -50px rgba(60, 40, 180, 0.8);
+  }
+
+  /* 섹션 소제목 */
+  .tp-kicker {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-sky-500);
+  }
+
+  .tp-heading {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--color-slate-900);
+  }
+
+  /* 입력창 */
+  .tp-input {
+    width: 100%;
+    border-radius: 0.875rem;
+    border: 1px solid var(--color-slate-200);
+    background: rgba(255, 255, 255, 0.92);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.8125rem;
+    color: var(--color-slate-800);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .tp-input::placeholder {
+    color: var(--color-slate-400);
+  }
+
+  .tp-input:focus {
+    border-color: var(--color-sky-400);
+    background: #fff;
+    box-shadow: 0 0 0 4px oklch(0.89 0.065 280 / 0.55);
+  }
+
+  /* 버튼 */
+  .tp-btn,
+  .tp-btn-primary,
+  .tp-btn-dark,
+  .tp-btn-ghost,
+  .tp-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 0.875rem;
+    padding: 0.7rem 1.1rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .tp-btn:disabled,
+  .tp-btn-primary:disabled,
+  .tp-btn-dark:disabled,
+  .tp-btn-ghost:disabled,
+  .tp-btn-danger:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .tp-btn-primary {
+    @apply tp-gradient-bg;
+    color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(124, 108, 255, 0.9);
+  }
+
+  .tp-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 14px 30px -12px rgba(124, 108, 255, 1);
+  }
+
+  .tp-btn-dark {
+    background: #0b0b16;
+    color: #fff;
+  }
+
+  .tp-btn-dark:hover:not(:disabled) {
+    background: #1d1d3b;
+  }
+
+  .tp-btn-ghost {
+    border: 1px solid var(--color-slate-200);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--color-slate-600);
+  }
+
+  .tp-btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-sky-300);
+    color: var(--color-sky-600);
+    background: #fff;
+  }
+
+  .tp-btn-danger {
+    border: 1px solid var(--color-rose-200);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--color-rose-500);
+  }
+
+  .tp-btn-danger:hover:not(:disabled) {
+    background: var(--color-rose-50);
+  }
+
+  /* 필터 칩 */
+  .tp-chip,
+  .tp-chip-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.75);
+    padding: 0.45rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-slate-600);
+    backdrop-filter: blur(12px);
+    transition: all 0.2s ease;
+  }
+
+  .tp-chip:hover {
+    color: var(--color-sky-600);
+    border-color: var(--color-sky-200);
+  }
+
+  .tp-chip-active {
+    @apply tp-gradient-bg;
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 8px 20px -10px rgba(124, 108, 255, 0.9);
+  }
+
+  .tp-chip-active:hover {
+    color: #fff;
+  }
+
+  /* 상태 표시 */
+  .tp-empty {
+    border-radius: 1.5rem;
+    border: 1px dashed var(--color-sky-200);
+    background: rgba(255, 255, 255, 0.6);
+    padding: 4rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-slate-400);
+    backdrop-filter: blur(12px);
+  }
+
+  .tp-skeleton {
+    border-radius: 1.5rem;
+    border: 1px solid #fff;
+    background: linear-gradient(110deg, #fff 30%, var(--color-sky-50) 50%, #fff 70%);
+    background-size: 200% 100%;
+    animation: tp-shimmer 1.6s linear infinite;
+  }
+
+  /* 모달 */
+  .tp-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(6, 6, 12, 0.55);
+    backdrop-filter: blur(6px);
+  }
+
+  .tp-modal {
+    width: 100%;
+    border-radius: 1.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background: #fff;
+    padding: 1.5rem;
+    box-shadow: 0 40px 100px -30px rgba(30, 20, 90, 0.55);
+  }
+
+  /* 라벨 */
+  .tp-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-slate-500);
+  }
+}

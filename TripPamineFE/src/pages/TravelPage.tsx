@@ -18,7 +18,7 @@ import AppLayout from "../layout/AppLayout";
 export default function TravelPage() {
     return (
         <AppLayout
-            pageClassName="bg-slate-50"
+            pageClassName="tp-aurora-light"
         >
             <Hero />
 

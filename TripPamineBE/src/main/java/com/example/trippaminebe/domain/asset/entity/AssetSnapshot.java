@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ASSET_SNAPSHOTS")
+// [수정] 사용자당 하루 1개 Snapshot을 DB 차원에서 보장한다.
+// (ddl-auto: validate 는 제약조건을 검사하지 않으므로 실제 제약은
+//  resources/db/asset_snapshot_unique.sql 을 DB에 한 번 실행해서 추가한다)
+@Table(
+        name = "ASSET_SNAPSHOTS",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UK_ASSET_SNAPSHOTS_USER_DATE",
+                columnNames = {"USER_ID", "SNAPSHOT_DATE"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor

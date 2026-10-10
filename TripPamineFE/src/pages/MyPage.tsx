@@ -182,184 +182,236 @@ export default function MyPage() {
 
   const activeBookmarkTab = BOOKMARK_TABS.find((t) => t.key === tab);
 
+  // 왼쪽 메뉴 구성 (가계부 → 관광 북마크 → 금융 북마크)
+  const menuGroups: {
+    title: string;
+    items: { key: Tab; label: string; icon: string; desc: string }[];
+  }[] = [
+    {
+      title: "MONEY",
+      items: [
+        { key: "accountBook", label: "가계부 · 계좌", icon: "💸", desc: "수입·지출 기록과 연동 계좌" },
+        { key: FINANCE_TAB.key, label: "저장한 금융상품", icon: FINANCE_TAB.icon, desc: "관심 예금 · 적금" },
+      ],
+    },
+    {
+      title: "SAVED PLACES",
+      items: BOOKMARK_TABS.map((t) => ({
+        key: t.key,
+        label: t.label.replace("저장된 ", ""),
+        icon: t.icon,
+        desc: "북마크한 관광 정보",
+      })),
+    },
+  ];
+
+  const allMenuItems = menuGroups.flatMap((g) => g.items);
+  const activeMenu = allMenuItems.find((m) => m.key === tab) ?? allMenuItems[0];
+
+  const quickLinks = [
+    { label: "자산 대시보드", icon: "📊", to: "/assets" },
+    { label: "AI 코스 추천", icon: "✨", to: "/ai-recommend" },
+    { label: "퀘스트", icon: "🏆", to: "/quests" },
+    { label: "금융상품 탐색", icon: "🏦", to: "/finance" },
+  ];
+
     return (
         <AppLayout
-            pageClassName="bg-slate-50"
+            pageClassName="tp-aurora-light"
         >
-            <div
-                className="
-        mx-auto
-        max-w-5xl
-        px-4
-        py-10
-      "
-            >
-          <div className="max-w-5xl mx-auto px-4 py-10">
-            {/* ================= 유저 프로필 및 스탯 카드 ================= */}
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex items-center justify-between gap-4 mb-8 flex-wrap">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-500 to-sky-400 flex items-center justify-center shrink-0 shadow-md">
-                  <svg
-                      className="w-8 h-8 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                  >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
+          <div className="mx-auto max-w-6xl px-4 py-8 md:py-10">
+
+            {/* ================= 프로필 히어로 ================= */}
+            <section className="relative isolate mb-6 overflow-hidden rounded-[2rem] bg-night-950 p-6 text-white shadow-[0_40px_80px_-50px_rgba(60,40,180,0.8)] md:p-8">
+              <div className="absolute inset-0 -z-10 tp-aurora" />
+              <div className="absolute inset-0 -z-10 tp-dot-grid opacity-40 [mask-image:linear-gradient(90deg,transparent,black_50%)]" />
+
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-5">
+                  <div className="relative">
+                    <span className="absolute -inset-1.5 rounded-[1.4rem] bg-gradient-to-br from-violet-500 via-cyan-400 to-pink-500 opacity-70 blur-md" />
+                    <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[1.25rem] tp-gradient-bg font-display text-3xl font-bold">
+                      {(userName || "여").slice(0, 1)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-black tracking-[0.22em] text-cyan-300">MY SPACE</p>
+                    <h1 className="mt-1.5 font-display text-2xl font-bold tracking-tight md:text-3xl">
+                      {userName || "여행자"}님의 공간
+                    </h1>
+                    <p className="mt-1.5 text-sm text-white/55">
+                      AI가 여행 · 자산 · 활동 기록을 함께 보고 있어요.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="font-bold text-slate-800 text-lg flex items-center gap-1.5">
-                    {userName || "여행자"}님, 안녕하세요 👋
-                  </h1>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    오늘도 짜릿한 도파민 어드벤처를 떠날 준비가 되셨나요?
-                  </p>
+
+                <div className="grid grid-cols-2 gap-3 sm:flex">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-3.5 backdrop-blur">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white/45">등급</span>
+                    <span className="mt-1 block font-display text-xl font-bold text-amber-300">🏆 {userGrade}</span>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-3.5 backdrop-blur">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white/45">포인트</span>
+                    <span className="mt-1 block font-display text-xl font-bold text-cyan-300">{totalPoints.toLocaleString()} P</span>
+                  </div>
                 </div>
               </div>
 
-              {/* RPG 스탯 정보 */}
-              <div className="flex items-center gap-3">
-                <div className="bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl text-center">
-                <span className="block text-[11px] font-bold text-slate-400 uppercase">
-                  RPG 등급
-                </span>
-                  <span className="block text-sm font-black text-amber-500 mt-0.5">
-                  🏆 {userGrade}
-                </span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl text-center">
-                <span className="block text-[11px] font-bold text-slate-400 uppercase">
-                  보유 포인트
-                </span>
-                  <span className="block text-sm font-black text-sky-500 mt-0.5">
-                  {totalPoints.toLocaleString()} P
-                </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ================= 탭 메뉴 컨트롤러 ================= */}
-            <div className="flex gap-2 mb-6 flex-wrap">
-              {/* 💸 여행 가계부 */}
-              <button
-                  onClick={() => setTab("accountBook")}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      tab === "accountBook"
-                          ? "bg-sky-500 text-white shadow-sm"
-                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                  }`}
-              >
-                💸 여행 가계부
-              </button>
-
-              {/* 저장된 관광정보 북마크 탭들 */}
-              {BOOKMARK_TABS.map((t) => (
+              {/* 빠른 이동 */}
+              <div className="mt-8 grid grid-cols-2 gap-2 border-t border-white/10 pt-6 sm:grid-cols-4">
+                {quickLinks.map((link) => (
                   <button
-                      key={t.key}
-                      onClick={() => setTab(t.key)}
-                      className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                          tab === t.key
-                              ? "bg-sky-500 text-white shadow-sm"
-                              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                      }`}
+                      key={link.to}
+                      type="button"
+                      onClick={() => navigate(link.to)}
+                      className="group flex items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
                   >
-                    {t.icon} {t.label}
+                    <span className="flex items-center gap-2">
+                      <span>{link.icon}</span>
+                      {link.label}
+                    </span>
+                    <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white">→</span>
                   </button>
-              ))}
-
-              {/* 저장된 금융상품 탭 */}
-              <button
-                  onClick={() => setTab(FINANCE_TAB.key)}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      tab === FINANCE_TAB.key
-                          ? "bg-sky-500 text-white shadow-sm"
-                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                  }`}
-              >
-                {FINANCE_TAB.icon} {FINANCE_TAB.label}
-              </button>
-            </div>
-
-            {/* ================= 탭 콘텐츠 분기 처리 ================= */}
-            <section className="min-h-[400px]">
-              {/* 1. 여행 가계부 및 수동 계좌 연동 탭 */}
-              {tab === "accountBook" && (
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
-                      <h3 className="text-base font-bold text-slate-800 mb-4">
-                        💳 내 계좌 정보
-                      </h3>
-                      <ManualAccountSection />
-                    </div>
-
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
-                      <h3 className="text-base font-bold text-slate-800 mb-6">
-                        🧾 가계부 내역
-                      </h3>
-                      <AccountBook username={userName || "여행자"} />
-                    </div>
-                  </div>
-              )}
-
-              {/* 2. 저장된 관광정보 북마크 탭들 */}
-              {(tab === "festivals" || tab === "destinations" || tab === "industry") && (
-                  <div>
-                    {bookmarksLoading ? (
-                        <BookmarkGridSkeleton />
-                    ) : bookmarksError ? (
-                        <EmptyState label={bookmarksError} />
-                    ) : bookmarks.length === 0 ? (
-                        <EmptyState
-                            label={`${
-                                activeBookmarkTab?.label.replace("저장된 ", "") || "항목"
-                            } 중 저장된 항목이 없어요`}
-                        />
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                          {bookmarks.map((b) => (
-                              <BookmarkCard
-                                  key={b.contentId}
-                                  bookmark={b}
-                                  onRemove={() => handleRemoveBookmark(b.contentId)}
-                              />
-                          ))}
-                        </div>
-                    )}
-                  </div>
-              )}
-
-              {/* 3. 저장된 금융상품 탭 */}
-              {tab === "finance" && (
-                  <div>
-                    {financeBookmarksLoading ? (
-                        <BookmarkGridSkeleton />
-                    ) : financeBookmarksError ? (
-                        <EmptyState label={financeBookmarksError} />
-                    ) : financeBookmarks.length === 0 ? (
-                        <EmptyState label="저장된 금융상품이 없어요" />
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                          {financeBookmarks.map((b) => (
-                              <FinanceBookmarkCard
-                                  key={b.bookmarkId}
-                                  bookmark={b}
-                                  onRemove={() => handleRemoveFinanceBookmark(b.bookmarkId)}
-                              />
-                          ))}
-                        </div>
-                    )}
-                  </div>
-              )}
+                ))}
+              </div>
             </section>
-          </div>
 
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+
+              {/* ================= 왼쪽 메뉴 ================= */}
+              <aside className="lg:sticky lg:top-24 lg:self-start">
+                <nav className="tp-card flex gap-2 overflow-x-auto p-2 lg:flex-col lg:gap-0 lg:p-3">
+                  {menuGroups.map((group) => (
+                    <div key={group.title} className="flex gap-2 lg:mb-3 lg:block lg:last:mb-0">
+                      <p className="hidden px-3 pb-2 pt-1 text-[10px] font-black tracking-[0.18em] text-slate-400 lg:block">
+                        {group.title}
+                      </p>
+                      {group.items.map((item) => {
+                        const active = tab === item.key;
+                        return (
+                          <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setTab(item.key)}
+                              className={`flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition lg:w-full ${
+                                  active
+                                      ? "bg-night-950 text-white shadow-[0_12px_24px_-14px_rgba(30,20,90,0.9)]"
+                                      : "text-slate-600 hover:bg-white hover:text-slate-900"
+                              }`}
+                          >
+                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${active ? "bg-white/10" : "bg-slate-100"}`}>
+                              {item.icon}
+                            </span>
+                            <span className="font-semibold">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </nav>
+              </aside>
+
+              {/* ================= 탭 콘텐츠 ================= */}
+              <section className="min-h-[400px] min-w-0">
+                <div className="mb-5 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="tp-kicker">{activeMenu.desc}</p>
+                    <h2 className="tp-heading mt-1 flex items-center gap-2 text-2xl">
+                      <span>{activeMenu.icon}</span>
+                      {activeMenu.label}
+                    </h2>
+                  </div>
+                  {tab === "accountBook" && (
+                    <button
+                        type="button"
+                        onClick={() => navigate("/assets")}
+                        className="tp-btn-ghost hidden sm:inline-flex"
+                    >
+                      📊 자산 리포트 보기
+                    </button>
+                  )}
+                </div>
+
+                {/* 1. 가계부 및 계좌 */}
+                {tab === "accountBook" && (
+                    <div className="space-y-6">
+                      <div className="tp-card p-6 md:p-7">
+                        <div className="mb-5 flex items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-lg">💳</span>
+                          <div>
+                            <h3 className="font-bold text-slate-900">내 계좌</h3>
+                            <p className="text-xs text-slate-400">연동한 계좌의 잔액이 가계부와 함께 반영돼요</p>
+                          </div>
+                        </div>
+                        <ManualAccountSection />
+                      </div>
+
+                      <div className="tp-card p-6 md:p-7">
+                        <div className="mb-6 flex items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-lg">🧾</span>
+                          <div>
+                            <h3 className="font-bold text-slate-900">가계부</h3>
+                            <p className="text-xs text-slate-400">직접 입력하거나 영수증을 찍으면 AI가 내역을 채워요</p>
+                          </div>
+                        </div>
+                        <AccountBook username={userName || "여행자"} />
+                      </div>
+                    </div>
+                )}
+
+                {/* 2. 저장된 관광정보 북마크 탭들 */}
+                {(tab === "festivals" || tab === "destinations" || tab === "industry") && (
+                    <div>
+                      {bookmarksLoading ? (
+                          <BookmarkGridSkeleton />
+                      ) : bookmarksError ? (
+                          <EmptyState label={bookmarksError} />
+                      ) : bookmarks.length === 0 ? (
+                          <EmptyState
+                              label={`${
+                                  activeBookmarkTab?.label.replace("저장된 ", "") || "항목"
+                              } 중 저장된 항목이 없어요`}
+                          />
+                      ) : (
+                          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                            {bookmarks.map((b) => (
+                                <BookmarkCard
+                                    key={b.contentId}
+                                    bookmark={b}
+                                    onRemove={() => handleRemoveBookmark(b.contentId)}
+                                />
+                            ))}
+                          </div>
+                      )}
+                    </div>
+                )}
+
+                {/* 3. 저장된 금융상품 탭 */}
+                {tab === "finance" && (
+                    <div>
+                      {financeBookmarksLoading ? (
+                          <BookmarkGridSkeleton />
+                      ) : financeBookmarksError ? (
+                          <EmptyState label={financeBookmarksError} />
+                      ) : financeBookmarks.length === 0 ? (
+                          <EmptyState label="저장된 금융상품이 없어요" />
+                      ) : (
+                          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                            {financeBookmarks.map((b) => (
+                                <FinanceBookmarkCard
+                                    key={b.bookmarkId}
+                                    bookmark={b}
+                                    onRemove={() => handleRemoveFinanceBookmark(b.bookmarkId)}
+                                />
+                            ))}
+                          </div>
+                      )}
+                    </div>
+                )}
+              </section>
             </div>
+          </div>
         </AppLayout>
     );
 }
@@ -380,7 +432,7 @@ function BookmarkCard({
               : null;
 
   return (
-      <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-100 transition-all duration-300">
+      <div className="group relative tp-card overflow-hidden tp-lift">
         <button
             type="button"
             onClick={(e) => {
@@ -388,7 +440,7 @@ function BookmarkCard({
               onRemove();
             }}
             title="북마크 해제"
-            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white text-xs flex items-center justify-center transition-colors"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-xs text-slate-500 shadow-lg backdrop-blur transition hover:bg-rose-500 hover:text-white"
         >
           ✕
         </button>
@@ -399,11 +451,11 @@ function BookmarkCard({
             }`}
             className="block"
         >
-          <div className="relative h-36 overflow-hidden bg-slate-100">
+          <div className="relative m-2 h-36 overflow-hidden rounded-2xl bg-slate-100">
             <img
                 src={b.imageUrl ?? FALLBACK_IMAGE}
                 alt={b.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                 onError={(e) => {
                   e.currentTarget.src = FALLBACK_IMAGE;
                 }}
@@ -416,7 +468,7 @@ function BookmarkCard({
             </span>
             )}
           </div>
-          <div className="p-4">
+          <div className="px-4 pb-4 pt-2">
             <h3 className="font-bold text-slate-800 text-sm mb-1 line-clamp-1">
               {b.title}
             </h3>
@@ -446,7 +498,7 @@ function FinanceBookmarkCard({
   onRemove: () => void;
 }) {
   return (
-      <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-100 transition-all duration-300">
+      <div className="group relative tp-card overflow-hidden tp-lift">
         <button
             type="button"
             onClick={(e) => {
@@ -454,7 +506,7 @@ function FinanceBookmarkCard({
               onRemove();
             }}
             title="북마크 해제"
-            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white text-xs flex items-center justify-center transition-colors"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-xs text-slate-500 shadow-lg backdrop-blur transition hover:bg-rose-500 hover:text-white"
         >
           ✕
         </button>
@@ -472,7 +524,7 @@ function FinanceBookmarkCard({
             {b.finPrdtNm}
           </h3>
           <p className="text-xs text-slate-400 mb-1">최고우대금리</p>
-          <p className="text-xl font-extrabold text-sky-600">{formatRate(b.maxRate)}</p>
+          <p className="font-display text-3xl font-bold tracking-tight tp-gradient-text">{formatRate(b.maxRate)}</p>
           {b.joinWay && (
               <p className="text-[11px] text-slate-400 mt-2 line-clamp-1">가입방법 {b.joinWay}</p>
           )}
@@ -488,7 +540,7 @@ function BookmarkGridSkeleton() {
         {Array.from({ length: 3 }).map((_, i) => (
             <div
                 key={i}
-                className="h-56 rounded-2xl bg-white border border-slate-100 animate-pulse"
+                className="h-56 rounded-3xl tp-card animate-pulse"
             />
         ))}
       </div>
@@ -498,7 +550,7 @@ function BookmarkGridSkeleton() {
 // 빈 상태 컴포넌트
 function EmptyState({ label }: { label: string }) {
   return (
-      <div className="col-span-full text-center py-16 text-slate-400 text-sm bg-white rounded-2xl border border-dashed border-slate-200">
+      <div className="tp-empty col-span-full text-center py-16 text-slate-400 text-sm">
         {label}
       </div>
   );

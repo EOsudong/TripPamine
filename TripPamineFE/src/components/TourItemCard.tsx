@@ -29,20 +29,23 @@ export default function TourItemCard({ item, categoryKey }: TourItemCardProps) {
     return (
         <Link
             to={`/tour/${categoryKey}/${item.contentId}?contentTypeId=${item.contentTypeId}`}
-            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-100 transition-all duration-300 flex flex-col">
-            <div className="relative overflow-hidden h-44 shrink-0 bg-slate-100">
+            className="group relative flex flex-col overflow-hidden rounded-3xl border border-white bg-white/90 shadow-[0_10px_30px_-20px_rgba(60,40,180,0.35)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_-25px_rgba(80,60,200,0.45)]">
+            <div className="relative m-2 h-44 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
                 <img
                     src={item.imageUrl ?? FALLBACK_IMAGE}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     onError={(e) => {
                         e.currentTarget.src = FALLBACK_IMAGE
                     }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-night-950/70 via-transparent to-transparent" />
+                <span className="absolute right-3 top-3 flex h-8 w-8 translate-y-1 items-center justify-center rounded-full bg-white/90 text-sm text-night-950 opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100">
+                    ↗
+                </span>
 
                 {statusConfig && (
-                    <span className={`absolute top-3 left-3 px-2.5 py-1 ${statusConfig.bg} ${statusConfig.text} text-xs font-bold rounded-full`}>
+                    <span className={`absolute top-3 left-3 px-2.5 py-1 ${statusConfig.bg} ${statusConfig.text} text-xs font-bold rounded-full shadow-lg ring-2 ring-white/30`}>
             {statusConfig.label}
           </span>
                 )}
@@ -63,10 +66,10 @@ export default function TourItemCard({ item, categoryKey }: TourItemCardProps) {
                 )}
             </div>
 
-            <div className="p-4 flex flex-col flex-1">
+            <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{item.title}</h3>
-                    <span className="shrink-0 px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold rounded-full">
+                    <h3 className="line-clamp-2 text-[15px] font-bold leading-snug text-slate-900 transition group-hover:text-sky-600">{item.title}</h3>
+                    <span className="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
             {item.category}
           </span>
                 </div>
@@ -88,6 +91,3 @@ export default function TourItemCard({ item, categoryKey }: TourItemCardProps) {
         </Link>
     )
 }
-
-
-

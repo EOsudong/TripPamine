@@ -96,9 +96,13 @@ function getTourIcon(
 }
 
 
+/*
+ * [메뉴 재구성] "AI 기반 초개인화 맞춤 솔루션 플랫폼" 기준으로
+ * AI 매니저 → 여행 → 자산 → 커뮤니티 → 탐색 순서로 묶는다.
+ */
 const navItems: NavGroup[] = [
     {
-        group: "Workspace",
+        group: "AI Workspace",
         items: [
             {
                 icon: "manager",
@@ -106,6 +110,17 @@ const navItems: NavGroup[] = [
                 to: "/",
             },
 
+            {
+                icon: "user",
+                label: "마이페이지",
+                to: "/mypage",
+            },
+        ],
+    },
+
+    {
+        group: "Travel",
+        items: [
             {
                 icon: "travel",
                 label: "여행 플래너",
@@ -136,14 +151,8 @@ const navItems: NavGroup[] = [
     },
 
     {
-        group: "Personal",
+        group: "Asset",
         items: [
-            {
-                icon: "user",
-                label: "마이페이지",
-                to: "/mypage",
-            },
-
             // [수정] 병합 과정에서 빠졌던 "자산관리" 메뉴 복구 (/assets → AssetDashboardPage)
             {
                 icon: "wallet",
@@ -156,7 +165,12 @@ const navItems: NavGroup[] = [
                 label: "금융상품",
                 to: "/finance",
             },
+        ],
+    },
 
+    {
+        group: "Community",
+        items: [
             // [게시판 추가] /boards/123, /boards/write 같은 하위 경로도 isActive()가 자동으로 active 처리
             {
                 icon: "board",
@@ -307,9 +321,9 @@ export default function Sidebar({
           flex-col
 
           border-r
-          border-slate-200/80
+          border-white/5
 
-          bg-white/95
+          bg-night-900/95
           backdrop-blur-xl
 
           transition-all
@@ -346,7 +360,7 @@ export default function Sidebar({
                         className="
               shrink-0
               border-b
-              border-slate-100
+              border-white/5
               px-3
               py-4
             "
@@ -383,8 +397,8 @@ export default function Sidebar({
                     from-sky-400
                     to-indigo-500
 
-                    shadow-sm
-                    shadow-sky-200
+                    shadow-[0_0_18px_rgba(124,108,255,0.65)]
+                    shadow-violet-500/40
                   "
                                 >
                   <span
@@ -405,7 +419,7 @@ export default function Sidebar({
                       text-xs
                       font-black
                       tracking-[0.13em]
-                      text-slate-900
+                      text-white
                     "
                                     >
                                         AI WORKSPACE
@@ -416,10 +430,10 @@ export default function Sidebar({
                       mt-0.5
                       truncate
                       text-[10px]
-                      text-slate-400
+                      text-white/40
                     "
                                     >
-                                        Personal Command Center
+                                        Hyper-Personal AI
                                     </p>
                                 </div>
                             </div>
@@ -438,11 +452,11 @@ export default function Sidebar({
                   justify-center
                   rounded-lg
 
-                  text-slate-400
+                  text-white/40
 
                   transition
-                  hover:bg-slate-100
-                  hover:text-slate-700
+                  hover:bg-white/10
+                  hover:text-white
 
                   lg:hidden
                 "
@@ -503,7 +517,7 @@ export default function Sidebar({
                         uppercase
                         tracking-[0.16em]
 
-                        text-slate-400
+                        text-white/40
                       "
                                         >
                                             {group.group}
@@ -520,7 +534,7 @@ export default function Sidebar({
                           mb-3
                           h-px
                           w-7
-                          bg-slate-100
+                          bg-white/10
                         "
                                             />
                                         )
@@ -598,13 +612,13 @@ export default function Sidebar({
                                 ${
                                                                 active
                                                                     ? `
-                                      bg-sky-50
-                                      text-sky-700
+                                      bg-gradient-to-r from-violet-500/25 via-violet-500/10 to-transparent
+                                      text-white
                                     `
                                                                     : `
-                                      text-slate-500
-                                      hover:bg-slate-50
-                                      hover:text-slate-900
+                                      text-white/55
+                                      hover:bg-white/5
+                                      hover:text-white
                                     `
                                                             }
                               `}
@@ -623,7 +637,7 @@ export default function Sidebar({
                                     -translate-y-1/2
 
                                     rounded-r-full
-                                    bg-sky-500
+                                    bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]
                                   "
                                                                 />
                                                             )}
@@ -647,13 +661,13 @@ export default function Sidebar({
                                   ${
                                                                     active
                                                                         ? `
-                                        bg-white
-                                        text-sky-600
-                                        shadow-sm
+                                        tp-gradient-bg
+                                        text-white
+                                        shadow-[0_0_18px_rgba(124,108,255,0.65)]
                                       `
                                                                         : `
-                                        text-slate-400
-                                        group-hover:text-slate-700
+                                        text-white/40
+                                        group-hover:text-white
                                       `
                                                                 }
                                 `}
@@ -697,7 +711,7 @@ export default function Sidebar({
                                         w-1.5
                                         shrink-0
                                         rounded-full
-                                        bg-sky-500
+                                        bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]
                                       "
                                                                         />
                                                                     )}
@@ -724,7 +738,7 @@ export default function Sidebar({
                     className={`
             shrink-0
             border-t
-            border-slate-100
+            border-white/5
 
             ${
                         open
@@ -753,7 +767,7 @@ export default function Sidebar({
                 rounded-xl
 
                 transition
-                hover:bg-slate-50
+                hover:bg-white/5
 
                 ${
                                 open
@@ -781,10 +795,10 @@ export default function Sidebar({
                   rounded-full
 
                   bg-gradient-to-br
-                  from-slate-100
-                  to-slate-200
+                  from-violet-500
+                  to-cyan-400
 
-                  text-slate-500
+                  text-white/55
                 "
                             >
                                 <NavIcon
@@ -806,7 +820,7 @@ export default function Sidebar({
                         truncate
                         text-xs
                         font-bold
-                        text-slate-700
+                        text-white/90
                       "
                                         >
                                             내 계정
@@ -816,7 +830,7 @@ export default function Sidebar({
                                             className="
                         mt-0.5
                         text-[10px]
-                        text-slate-400
+                        text-white/40
                       "
                                         >
                                             프로필 및 개인 설정
@@ -826,9 +840,9 @@ export default function Sidebar({
                                     <span
                                         className="
                       text-sm
-                      text-slate-300
+                      text-white/30
                       transition
-                      group-hover:text-sky-500
+                      group-hover:text-cyan-300
                     "
                                     >
                     →
@@ -860,18 +874,18 @@ export default function Sidebar({
                                 open
                                     ? `
                       gap-3
-                      bg-slate-950
+                      tp-gradient-bg
                       px-3
                       py-3
                       text-white
-                      hover:bg-sky-600
+                      hover:brightness-110
                     `
                                     : `
                       h-11
                       justify-center
-                      bg-slate-950
+                      tp-gradient-bg
                       text-white
-                      hover:bg-sky-600
+                      hover:brightness-110
                     `
                             }
               `}
@@ -1121,5 +1135,3 @@ function NavIcon({
             );
     }
 }
-
-

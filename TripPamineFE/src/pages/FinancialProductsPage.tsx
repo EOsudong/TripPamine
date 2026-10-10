@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import Header from "../components/Header"
 import Sidebar from "../components/Sidebar"
 import Footer from "../components/Footer"
+import PageHero from "../components/PageHero"
 import FinancialProductCard from "../components/FinancialProductCard"
 import FinancialRecommendationPanel from "../components/FinancialRecommendationPanel"
 import { getDepositProductsApi, getSavingProductsApi } from "../api/finance"
@@ -54,61 +55,58 @@ export default function FinancialProductsPage() {
     }, [productTab, bankType])
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen tp-aurora-light">
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <Header sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
             <main className={`transition-all duration-300 pt-16 ${sidebarOpen ? "lg:pl-64" : "lg:pl-16"}`}>
-                <section className="py-14 px-4">
+                <section className="px-4 py-8 md:py-10">
                     <div className="max-w-4xl mx-auto">
                         {/* Section header */}
-                        <div className="mb-8">
-                            <p className="text-sky-500 text-xs font-semibold tracking-widest uppercase mb-1">
-                                금융감독원 오픈API · 금융상품 한눈에
-                            </p>
-                            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-                                <span>🏦</span>
-                                금융상품
-                            </h2>
-                            <p className="text-slate-500 text-sm mt-1">
-                                로그인 없이도 볼 수 있는 정기예금·적금 금리 비교 정보예요. 금융감독원이 공시하는 자료를
-                                하루 한 번 받아와서 보여드려요.
-                            </p>
-                        </div>
+                        <PageHero
+                            className="mb-8"
+                            tone="emerald"
+                            eyebrow="금융감독원 오픈API · AI ASSET"
+                            icon="🏦"
+                            title={<>나에게 맞는 <span className="tp-gradient-text">금융상품</span></>}
+                            description="로그인 없이도 볼 수 있는 정기예금·적금 금리 비교 정보예요. 금융감독원이 공시하는 자료를 하루 한 번 받아와서 보여드려요."
+                        >
+                            <div className="flex flex-col gap-3">
+                                {/* 상품 종류 탭 (정기예금 / 적금) */}
+                                <div className="flex w-fit gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+                                    {PRODUCT_TABS.map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => setProductTab(tab.key)}
+                                            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
+                                                productTab === tab.key
+                                                    ? "bg-white text-night-950 shadow-[0_0_24px_rgba(52,211,153,0.45)]"
+                                                    : "text-white/65 hover:text-white"
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
 
-                        {/* 상품 종류 탭 (정기예금 / 적금) */}
-                        <div className="flex gap-2 mb-4">
-                            {PRODUCT_TABS.map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setProductTab(tab.key)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                        productTab === tab.key
-                                            ? "bg-slate-900 text-white shadow-sm"
-                                            : "bg-white text-slate-600 border border-slate-200 hover:border-slate-400"
-                                    }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* 업권 필터 (시중은행 / 저축은행) */}
-                        <div className="flex gap-2 flex-wrap mb-7">
-                            {BANK_TYPE_TABS.map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setBankType(tab.key)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                        bankType === tab.key
-                                            ? "bg-sky-500 text-white shadow-sm"
-                                            : "bg-white text-slate-600 border border-slate-200 hover:border-sky-300 hover:text-sky-500"
-                                    }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
+                                {/* 업권 필터 (시중은행 / 저축은행) */}
+                                <div className="flex flex-wrap gap-2">
+                                    {BANK_TYPE_TABS.map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => setBankType(tab.key)}
+                                            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                                                bankType === tab.key
+                                                    ? "bg-emerald-300 text-night-950"
+                                                    : "border border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </PageHero>
 
                         {/* 맞춤 추천 (규칙 기반 — 예치금액/기간을 넣으면 최고우대금리 상위 5개를 골라줌) */}
                         <FinancialRecommendationPanel productType={productTab} bankType={bankType} />
@@ -145,7 +143,7 @@ function LoadingList() {
     return (
         <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 rounded-2xl bg-white border border-slate-100 animate-pulse" />
+                <div key={i} className="h-20 animate-pulse rounded-2xl border border-white bg-gradient-to-r from-white to-emerald-50" />
             ))}
         </div>
     )
@@ -153,7 +151,7 @@ function LoadingList() {
 
 function StateMessage({ label }: { label: string }) {
     return (
-        <div className="text-center py-16 text-slate-400 text-sm bg-white rounded-2xl border border-dashed border-slate-200">
+        <div className="rounded-3xl border border-dashed border-sky-200 bg-white/70 py-16 text-center text-sm text-slate-400 backdrop-blur">
             {label}
         </div>
     )

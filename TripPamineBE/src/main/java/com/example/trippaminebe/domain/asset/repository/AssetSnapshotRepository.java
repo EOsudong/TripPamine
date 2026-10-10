@@ -66,4 +66,29 @@ public interface AssetSnapshotRepository
             LocalDate startDate,
             LocalDate endDate
     );
+
+
+    // =========================================
+    // [수정] 같은 날짜 Snapshot 전체 조회 (중복 방어용)
+    // =========================================
+    //
+    // 예전 findByUserIdAndSnapshotDate(Optional)는 같은 날짜에 행이 2개 이상
+    // 생기면 IncorrectResultSizeDataAccessException(500)을 던졌다.
+    // List로 받아서 첫 행만 사용하고 나머지는 정리한다.
+    // =========================================
+
+    List<AssetSnapshot>
+    findByUserIdAndSnapshotDateOrderBySnapshotIdAsc(
+            Long userId,
+            LocalDate snapshotDate
+    );
+
+
+    // [보안 수정] 본인 Snapshot만 단건 조회
+    Optional<AssetSnapshot>
+    findBySnapshotIdAndUserId(
+            Long snapshotId,
+            Long userId
+    );
+
 }

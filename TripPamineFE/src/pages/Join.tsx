@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SocialLoginButtons from "../components/SocialLoginButtons";
+import AuthShell from "../components/AuthShell";
 import { signupApi, checkEmailApi } from "../api/auth";
 
 export default function Join() {
@@ -121,36 +122,21 @@ export default function Join() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
-        {/* 상단 그라데이션 헤더 */}
-        <div className="bg-gradient-to-br from-sky-500 to-sky-600 px-6 pt-8 pb-10">
-          <Link
-            to="/"
-            className="inline-flex w-10 h-10 rounded-2xl bg-white/20 items-center justify-center mb-3"
-          >
-            <span className="text-white text-lg">✈️</span>
-          </Link>
-          <h2 className="text-white font-bold text-xl">TripPamine</h2>
-          <p className="text-sky-100 text-sm mt-0.5">
-            AI와 함께 떠나는 국내 여행
-          </p>
-        </div>
-
-        {/* 탭 전환 UI: "회원가입"이 현재 페이지(비활성 버튼), "로그인"은 /login으로 이동하는 Link */}
-        <div className="mx-6 -mt-5 bg-white rounded-2xl shadow-lg flex p-1 gap-1 mb-6">
+    <AuthShell title="여행을 플레이할 준비" subtitle="1분이면 나만의 AI 여행 매니저가 생겨요">
+          {/* 탭 전환 UI: "회원가입"이 현재 페이지(비활성 버튼), "로그인"은 /login으로 이동하는 Link */}
+        <div className="mb-6 flex gap-1 rounded-2xl bg-slate-100/80 p-1">
           <Link
             to="/login"
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 text-center transition-colors"
+            className="flex-1 rounded-xl py-2.5 text-center text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800"
           >
             로그인
           </Link>
-          <button className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-sky-500 text-white shadow-sm">
+          <button className="flex-1 rounded-xl bg-white py-2.5 text-sm font-bold text-slate-950 shadow-sm">
             회원가입
           </button>
         </div>
 
-        <div className="px-6 pb-6">
+        <div>
           {/* 소셜 로그인 버튼 */}
           <div className="mb-5">
             <SocialLoginButtons />
@@ -225,8 +211,7 @@ export default function Join() {
             </p>
           </form>
         </div>
-      </div>
-    </div>
+      </AuthShell>
   );
 }
 
@@ -273,13 +258,13 @@ function FormInput({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-sm text-slate-700 placeholder-slate-400 transition-colors"
+          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-sky-400 focus:ring-4 focus:ring-sky-100 outline-none text-sm text-slate-700 placeholder-slate-400 transition-colors"
         />
         {buttonText && onButtonClick && (
           <button
             type="button"
             onClick={onButtonClick}
-            className="shrink-0 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-xl transition-colors"
+            className="shrink-0 px-4 py-2.5 tp-gradient-bg hover:brightness-110 text-white text-sm font-semibold rounded-xl transition-colors"
           >
             {buttonText}
           </button>
@@ -293,7 +278,7 @@ function SubmitBtn({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-sky-200 mt-1"
+      className="w-full py-3 tp-gradient-bg text-white font-bold text-sm rounded-xl transition hover:brightness-110 shadow-[0_10px_24px_-10px_rgba(124,108,255,0.9)] mt-1"
     >
       {label}
     </button>

@@ -86,16 +86,19 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="w-full flex items-center gap-2 p-4">
+        <div className="tp-card overflow-hidden transition duration-300 hover:border-sky-100 hover:shadow-[0_24px_50px_-30px_rgba(80,60,200,0.55)]">
+            <div className="flex w-full items-center gap-3 p-4 md:p-5">
                 <button
                     type="button"
                     onClick={() => setOpen((v) => !v)}
                     className="flex-1 min-w-0 flex items-center justify-between gap-3 text-left"
                 >
-                    <div className="min-w-0">
+                    <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-sky-50 font-display text-base font-bold text-emerald-700 sm:flex">
+                        {product.korCoNm.slice(0, 1)}
+                    </span>
+                    <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="shrink-0 px-2 py-0.5 bg-sky-50 text-sky-600 text-[11px] font-bold rounded-full">
+                            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                                 {product.korCoNm}
                             </span>
                             {product.joinDenyLabel && product.joinDenyLabel !== "제한없음" && (
@@ -104,7 +107,7 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
                                 </span>
                             )}
                         </div>
-                        <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-1">
+                        <h3 className="line-clamp-1 text-[15px] font-bold leading-snug text-slate-900">
                             {product.finPrdtNm}
                         </h3>
                         {product.dclsMonth && (
@@ -114,8 +117,8 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
 
                     <div className="shrink-0 flex items-center gap-3">
                         <div className="text-right">
-                            <p className="text-[11px] text-slate-400">최고우대금리</p>
-                            <p className="text-lg font-extrabold text-sky-600 leading-tight">
+                            <p className="text-[10px] font-bold tracking-wider text-slate-400">최고우대</p>
+                            <p className="font-display text-2xl font-bold leading-tight tracking-tight tp-gradient-text">
                                 {formatRate(product.maxRate)}
                             </p>
                             {baseRate !== null && (
@@ -138,8 +141,8 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
                     onClick={handleToggleBookmark}
                     disabled={bookmarkBusy}
                     title={bookmarked ? "북마크 해제" : "북마크 저장"}
-                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors disabled:opacity-60 ${
-                        bookmarked ? "bg-amber-100 text-amber-600" : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                    className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-colors disabled:opacity-60 ${
+                        bookmarked ? "bg-amber-100 text-amber-600 ring-2 ring-amber-200" : "bg-slate-50 text-slate-400 hover:bg-sky-50"
                     }`}
                 >
                     🔖
@@ -147,33 +150,33 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
             </div>
 
             {open && (
-                <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-3">
+                <div className="space-y-4 border-t border-slate-100 bg-slate-50/50 px-4 pb-5 pt-4 md:px-5">
                     {product.options.length > 0 && (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="w-full overflow-hidden rounded-2xl bg-white text-xs">
                                 <thead>
-                                <tr className="text-slate-400 border-b border-slate-100">
-                                    <th className="text-left font-medium py-1.5 pr-3">기간</th>
-                                    <th className="text-left font-medium py-1.5 pr-3">이자 방식</th>
+                                <tr className="border-b border-slate-100 bg-slate-50 text-slate-400">
+                                    <th className="text-left font-semibold py-2 px-2 pr-3">기간</th>
+                                    <th className="text-left font-semibold py-2 px-2 pr-3">이자 방식</th>
                                     {product.productType === "saving" && (
-                                        <th className="text-left font-medium py-1.5 pr-3">적립유형</th>
+                                        <th className="text-left font-semibold py-2 px-2 pr-3">적립유형</th>
                                     )}
-                                    <th className="text-right font-medium py-1.5 pr-3">기본금리</th>
-                                    <th className="text-right font-medium py-1.5">최고우대금리</th>
+                                    <th className="text-right font-semibold py-2 px-2 pr-3">기본금리</th>
+                                    <th className="text-right font-semibold py-2 px-2">최고우대금리</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 {product.options.map((option, idx) => (
                                     <tr key={idx} className="border-b border-slate-50 last:border-0">
-                                        <td className="py-1.5 pr-3 text-slate-700">
+                                        <td className="py-2 px-2 text-slate-700">
                                             {option.saveTrm ? `${option.saveTrm}개월` : "-"}
                                         </td>
-                                        <td className="py-1.5 pr-3 text-slate-500">{option.intrRateTypeNm ?? "-"}</td>
+                                        <td className="py-2 px-2 text-slate-500">{option.intrRateTypeNm ?? "-"}</td>
                                         {product.productType === "saving" && (
-                                            <td className="py-1.5 pr-3 text-slate-500">{option.rsrvTypeNm ?? "-"}</td>
+                                            <td className="py-2 px-2 text-slate-500">{option.rsrvTypeNm ?? "-"}</td>
                                         )}
-                                        <td className="py-1.5 pr-3 text-right text-slate-600">{formatRate(option.intrRate)}</td>
-                                        <td className="py-1.5 text-right font-semibold text-sky-600">
+                                        <td className="py-2 px-2 text-right text-slate-600">{formatRate(option.intrRate)}</td>
+                                        <td className="py-1.5 pr-2 text-right font-bold text-sky-600">
                                             {formatRate(option.intrRate2)}
                                         </td>
                                     </tr>

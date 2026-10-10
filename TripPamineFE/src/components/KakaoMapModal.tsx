@@ -633,7 +633,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-sky-200"
+                  className="px-4 py-2 tp-gradient-bg hover:brightness-110 text-white text-sm font-bold rounded-xl transition-all shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]"
                 >
                   ✏️ 여행 경로 편집하기
                 </button>
@@ -750,7 +750,7 @@ export const KakaoMapModal: React.FC<KakaoMapModalProps> = ({
                 const isCollapsed = collapsedDays[dayNum];
 
                 return (
-                  <div key={`day-group-${dayNum}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div key={`day-group-${dayNum}`} className="tp-card rounded-3xl overflow-hidden">
                     {/* Day 헤더 */}
                     <div className="p-3 bg-slate-100/70 border-b border-slate-200/60 flex items-center justify-between select-none">
                       <div className="flex items-center gap-2.5 font-bold text-sm text-slate-800">

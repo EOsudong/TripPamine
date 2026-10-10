@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import BoardLayout from "../components/board/BoardLayout"
+import PageHero from "../components/PageHero"
 import {
     BOARD_ALLOWED_IMAGE_TYPES,
     BOARD_CATEGORY_LABEL,
@@ -145,18 +146,22 @@ export default function BoardWritePage() {
 
     return (
         <BoardLayout>
-            <div className="mb-6">
-                <p className="text-sky-500 text-xs font-semibold tracking-widest uppercase mb-1">Community</p>
-                <h2 className="text-2xl font-bold text-slate-900">{isEdit ? "글 수정" : "글쓰기"}</h2>
-            </div>
+            <PageHero
+                className="mb-6"
+                tone="pink"
+                eyebrow="Travelers Lounge"
+                icon="✍️"
+                title={isEdit ? "글 수정" : <>나의 이야기를 <span className="tp-gradient-text">공유해요</span></>}
+                description="여행 후기, 자산 관리 팁, 궁금한 점까지 자유롭게 남겨주세요."
+            />
 
             {loading ? (
-                <div className="h-96 rounded-2xl bg-white border border-slate-100 animate-pulse" />
+                <div className="tp-skeleton h-96" />
             ) : (
-                <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 p-5 md:p-7 space-y-5">
+                <form onSubmit={handleSubmit} className="tp-card rounded-3xl p-5 md:p-7 space-y-5">
                     {/* 카테고리 */}
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">카테고리</label>
+                        <label className="mb-2 block text-sm font-bold text-slate-800">카테고리</label>
                         <div className="flex gap-2 flex-wrap">
                             {USER_WRITABLE_CATEGORIES.map((key) => (
                                 <button
@@ -165,8 +170,8 @@ export default function BoardWritePage() {
                                     onClick={() => setCategory(key)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                                         category === key
-                                            ? "bg-sky-500 text-white shadow-sm"
-                                            : "bg-white text-slate-600 border border-slate-200 hover:border-sky-300 hover:text-sky-500"
+                                            ? "tp-gradient-bg text-white shadow-[0_8px_20px_-10px_rgba(124,108,255,0.9)]"
+                                            : "bg-slate-100/80 text-slate-600 hover:text-sky-600"
                                     }`}
                                 >
                                     {BOARD_CATEGORY_LABEL[key]}
@@ -177,7 +182,7 @@ export default function BoardWritePage() {
 
                     {/* 제목 */}
                     <div>
-                        <label htmlFor="board-title" className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label htmlFor="board-title" className="mb-2 block text-sm font-bold text-slate-800">
                             제목
                         </label>
                         <input
@@ -185,13 +190,13 @@ export default function BoardWritePage() {
                             value={title}
                             onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
                             placeholder="제목을 입력하세요"
-                            className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-sky-400"
+                            className="tp-input h-12 text-[15px] font-semibold"
                         />
                     </div>
 
                     {/* 내용 */}
                     <div>
-                        <label htmlFor="board-content" className="block text-sm font-semibold text-slate-700 mb-2">
+                        <label htmlFor="board-content" className="mb-2 block text-sm font-bold text-slate-800">
                             내용
                         </label>
                         <textarea
@@ -200,7 +205,7 @@ export default function BoardWritePage() {
                             onChange={(e) => setContent(e.target.value.slice(0, CONTENT_MAX))}
                             placeholder="여행 이야기를 자유롭게 들려주세요"
                             rows={14}
-                            className="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm leading-6 resize-y focus:outline-none focus:border-sky-400"
+                            className="tp-input resize-y py-3 text-sm leading-7"
                         />
                         <p className="text-right text-xs text-slate-400 mt-1">
                             {content.length.toLocaleString()}/{CONTENT_MAX.toLocaleString()}
@@ -227,7 +232,7 @@ export default function BoardWritePage() {
                                 <Thumb key={img.key} src={img.previewUrl} isNew onRemove={() => removeNewImage(img.key)} />
                             ))}
                             {remainingSlots > 0 && (
-                                <label className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 text-xs cursor-pointer hover:border-sky-300 hover:text-sky-500 transition-colors">
+                                <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-200 bg-sky-50/40 text-xs text-sky-400 transition hover:border-sky-400 hover:bg-sky-50 hover:text-sky-600">
                                     <span className="text-xl leading-none mb-1">+</span>
                                     사진 추가
                                     <input
@@ -250,14 +255,14 @@ export default function BoardWritePage() {
                         <button
                             type="button"
                             onClick={() => navigate(-1)}
-                            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-slate-400"
+                            className="tp-btn-ghost px-5"
                         >
                             취소
                         </button>
                         <button
                             type="submit"
                             disabled={!canSubmit}
-                            className="px-5 py-2.5 rounded-xl bg-sky-500 text-white text-sm font-semibold hover:bg-sky-600 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+                            className="tp-btn-primary px-6"
                         >
                             {submitting ? "저장 중..." : isEdit ? "수정 완료" : "등록"}
                         </button>
@@ -270,10 +275,10 @@ export default function BoardWritePage() {
 
 function Thumb({ src, onRemove, isNew = false }: { src: string; onRemove: () => void; isNew?: boolean }) {
     return (
-        <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-100">
+        <div className="relative aspect-square overflow-hidden rounded-2xl border border-white bg-slate-100 shadow-sm">
             <img src={src} alt="" className="w-full h-full object-cover" />
             {isNew && (
-                <span className="absolute left-1 top-1 px-1.5 py-0.5 rounded bg-sky-500 text-white text-[10px] font-semibold">NEW</span>
+                <span className="absolute left-1 top-1 px-1.5 py-0.5 rounded-full tp-gradient-bg text-white text-[10px] font-semibold">NEW</span>
             )}
             <button
                 type="button"

@@ -142,17 +142,20 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
   };
 
   return (
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 mb-8">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <div>
-            <h2 className="font-bold text-slate-800 text-lg">계좌 정보</h2>
-          </div>
+      <div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            연동 계좌 <b className="text-slate-900">{accounts.length}</b>개 · 총{" "}
+            <b className="text-slate-900">
+              {accounts.reduce((sum, a) => sum + a.balance, 0).toLocaleString()}원
+            </b>
+          </p>
           <button
               onClick={() => {
                 setFormOpen((v) => !v);
                 setFormError(null);
               }}
-              className="px-4 py-2 rounded-full text-sm font-semibold bg-slate-800 text-white hover:bg-slate-700 transition-colors"
+              className="tp-btn-dark rounded-full px-4 py-2 text-xs"
           >
             {formOpen ? "닫기" : "+ 계좌 연동하기"}
           </button>
@@ -161,10 +164,10 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
         {formOpen && (
             <form
                 onSubmit={handleSubmit}
-                className="mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3"
+                className="mb-6 grid grid-cols-1 gap-3 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50/80 to-white p-5 sm:grid-cols-2"
             >
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                <label className="tp-label">
                   은행명 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -174,11 +177,11 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
                         setForm((f) => ({ ...f, bankName: e.target.value }))
                     }
                     placeholder="예: 국민은행"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="tp-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                <label className="tp-label">
                   계좌번호 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -188,11 +191,11 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
                         setForm((f) => ({ ...f, accountNumber: e.target.value }))
                     }
                     placeholder="'-' 없이 숫자만 입력"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="tp-input"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                <label className="tp-label">
                   별칭 (선택)
                 </label>
                 <input
@@ -202,7 +205,7 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
                         setForm((f) => ({ ...f, accountAlias: e.target.value }))
                     }
                     placeholder="예: 여행 경비 통장"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="tp-input"
                 />
               </div>
 
@@ -214,7 +217,7 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2 rounded-full text-sm font-semibold bg-sky-500 text-white hover:bg-sky-600 transition-colors disabled:opacity-60"
+                    className="tp-btn-primary rounded-full px-5 py-2"
                 >
                   {submitting ? "연동 중..." : "연동하기"}
                 </button>
@@ -229,38 +232,39 @@ export default function ManualAccountSection({ refreshSignal, onAccountsChanged 
               불러오는 중...
             </p>
         ) : accounts.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div className="tp-empty py-10">
               연동된 계좌가 없어요. 위 버튼으로 계좌를 연동해보세요.
             </div>
         ) : (
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {accounts.map((a) => (
                   <li
                       key={a.accountId}
-                      className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"
+                      className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-3xl bg-night-950 p-5 text-white shadow-[0_20px_40px_-24px_rgba(30,20,90,0.9)]"
                   >
-                    <div className="min-w-0">
+                    <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-gradient-to-br from-violet-500/60 to-cyan-400/30 blur-2xl" />
+                    <div className="relative min-w-0">
                       {/* 별칭(등록한 계좌 이름)이 있으면 별칭을 메인 강조 제목으로, 없으면 은행명을 제목으로 표시 */}
-                      <p className="font-semibold text-slate-800 text-sm truncate">
+                      <p className="truncate text-sm font-bold">
                         {a.accountAlias ? a.accountAlias : a.bankName}
                       </p>
 
                       {/* 하단 서브 텍스트: 별칭이 있을 때는 (은행명 · 계좌번호), 없을 때는 (계좌번호)만 표시 */}
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="mt-0.5 text-[11px] tracking-wider text-white/45">
                         {a.accountAlias
                             ? `${a.bankName} · ${a.maskedAccountNumber}`
                             : a.maskedAccountNumber}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                <span className="font-bold text-slate-800 text-sm">
+                    <div className="relative flex items-end justify-between gap-3">
+                <span className="font-display text-xl font-bold tracking-tight">
                   {a.balance.toLocaleString()}원
                 </span>
                       <button
                           onClick={() => handleDelete(a.accountId)}
                           disabled={deletingId === a.accountId}
-                          className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-60"
+                          className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-white/40 transition hover:bg-white/10 hover:text-rose-300 disabled:opacity-60"
                       >
                         {deletingId === a.accountId ? "삭제 중..." : "삭제"}
                       </button>

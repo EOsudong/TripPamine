@@ -46,34 +46,38 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
     }
 
     return (
-        <div className="bg-gradient-to-br from-sky-50 to-white border border-sky-100 rounded-2xl p-5 mb-8">
-            <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🎯</span>
-                <h3 className="font-bold text-slate-800 text-sm">나에게 맞는 {productType === "saving" ? "적금" : "예금"} 추천받기</h3>
+        <div className="relative mb-8 overflow-hidden rounded-[2rem] border border-white bg-white/80 p-6 shadow-[0_30px_70px_-40px_rgba(60,40,180,0.5)] backdrop-blur-xl md:p-7">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-gradient-to-br from-emerald-200/50 via-sky-200/40 to-transparent blur-3xl" />
+            <div className="relative mb-3 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl tp-gradient-bg text-sm font-black text-white shadow-[0_8px_20px_-8px_rgba(124,108,255,0.9)]">AI</span>
+                <div>
+                    <p className="tp-kicker">Personal Match</p>
+                    <h3 className="text-base font-bold text-slate-900">나에게 맞는 {productType === "saving" ? "적금" : "예금"} 추천받기</h3>
+                </div>
             </div>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="relative mb-5 max-w-2xl text-xs leading-relaxed text-slate-500">
                 예치금액과 기간을 넣으면, 그 조건에서 최고우대금리가 가장 높은 상품 5개를 골라드려요.
                 (외부 AI 없이 공시 데이터만으로 계산하는 단순 비교이며, 예상이자는 세금·우대조건 충족 여부를 반영하지 않은 참고용 수치예요.)
             </p>
 
-            <div className="flex flex-wrap items-end gap-3 mb-4">
+            <div className="relative mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50/80 p-3">
                 <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">예치금액(원)</label>
+                    <label className="tp-label">예치금액(원)</label>
                     <input
                         type="text"
                         inputMode="numeric"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="예: 10,000,000원"
-                        className="w-40 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+                        className="tp-input w-44"
                     />
                 </div>
                 <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">기간</label>
+                    <label className="tp-label">기간</label>
                     <select
                         value={months}
                         onChange={(e) => setMonths(Number(e.target.value))}
-                        className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+                        className="tp-input w-auto cursor-pointer pr-8"
                     >
                         {TERM_OPTIONS.map((m) => (
                             <option key={m} value={m}>
@@ -85,7 +89,7 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
                 <button
                     onClick={handleRecommend}
                     disabled={loading}
-                    className="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-sm shadow-sky-200 transition-colors disabled:opacity-60"
+                    className="tp-btn-primary"
                 >
                     {loading ? "찾는 중..." : "추천받기"}
                 </button>
@@ -101,7 +105,7 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
                         {results.map((rec, idx) => (
                             <div key={`${rec.product.finCoNo ?? "co"}-${rec.product.finPrdtCd ?? idx}`}>
                                 <div className="flex items-center gap-2 mb-1 px-1">
-                                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-night-950 font-display text-[11px] font-bold text-white">
                                         {idx + 1}
                                     </span>
                                     <p className="text-[11px] text-slate-500">{rec.reason}</p>

@@ -2,6 +2,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { Link } from "react-router-dom"
+import AuthShell from "../components/AuthShell"
 
 export default function FindPw() {
   const [email, setEmail] = useState("")
@@ -15,8 +16,7 @@ export default function FindPw() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden p-6">
+    <AuthShell>
         <Link to="/login" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-sky-500 mb-5 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -44,18 +44,17 @@ export default function FindPw() {
                 placeholder="example@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-sm text-slate-700 placeholder-slate-400 transition-colors"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-sky-400 focus:ring-4 focus:ring-sky-100 outline-none text-sm text-slate-700 placeholder-slate-400 transition-colors"
               />
             </div>
             <button
               type="submit"
-              className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-sky-200 mt-1"
+              className="w-full py-3 tp-gradient-bg hover:brightness-110 text-white font-bold text-sm rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)] mt-1"
             >
               재설정 링크 발송
             </button>
           </form>
         )}
-      </div>
-    </div>
+    </AuthShell>
   )
 }

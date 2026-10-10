@@ -68,14 +68,14 @@ function DestinationDetail({ destination: d }: { destination: Destination }) {
           <p className="text-slate-600 text-sm leading-relaxed">{d.description}</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit">
+        <div className="tp-card rounded-3xl p-5 h-fit">
           <p className="text-xs text-slate-400 mb-1.5">AI 매칭 테마</p>
           <span className="inline-block px-2.5 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full mb-4">
             {d.theme}
           </span>
           <p className="text-xs text-slate-400 mb-1.5">AI 추천 이유</p>
           <p className="text-sm text-slate-700 leading-relaxed mb-4">{d.reason}</p>
-          <button className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-sky-200">
+          <button className="w-full py-3 tp-gradient-bg hover:brightness-110 text-white font-bold text-sm rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]">
             이 코스로 AI 플랜 만들기
           </button>
         </div>
@@ -113,12 +113,12 @@ function FestivalDetail({ festival: f }: { festival: Festival }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit">
+        <div className="tp-card rounded-3xl p-5 h-fit">
           <p className="text-xs text-slate-400 mb-1">행사 기간</p>
           <p className="font-bold text-slate-800 text-sm mb-4">
             {f.startDate} ~ {f.endDate}
           </p>
-          <button className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-sky-200">
+          <button className="w-full py-3 tp-gradient-bg hover:brightness-110 text-white font-bold text-sm rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]">
             🔖 축제 저장하기
           </button>
         </div>

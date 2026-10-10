@@ -93,37 +93,38 @@ export default function BoardDetailPage() {
 
     return (
         <BoardLayout>
-            <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-4">
+            <Link to={backTo} className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-sm font-semibold text-slate-500 backdrop-blur transition hover:bg-white hover:text-slate-900">
                 ← 목록으로
             </Link>
 
             {loading ? (
-                <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-3">
-                    <div className="h-6 w-2/3 rounded bg-slate-100 animate-pulse" />
+                <div className="tp-card rounded-3xl p-6 space-y-3">
+                    <div className="h-6 w-2/3 rounded-full bg-slate-100 animate-pulse" />
                     <div className="h-4 w-1/3 rounded bg-slate-100 animate-pulse" />
                     <div className="h-40 rounded bg-slate-100 animate-pulse mt-6" />
                 </div>
             ) : error || !post ? (
-                <div className="text-center py-16 text-slate-400 text-sm bg-white rounded-2xl border border-dashed border-slate-200">
+                <div className="tp-empty text-center py-16 text-slate-400 text-sm">
                     {error ?? "게시글을 찾을 수 없어요."}
                 </div>
             ) : (
                 <>
-                    <article className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <article className="tp-card rounded-3xl overflow-hidden">
                         {/* 제목 영역 */}
-                        <header className="px-5 md:px-7 pt-6 pb-5 border-b border-slate-100">
+                        <header className="relative overflow-hidden border-b border-slate-100 px-5 pb-6 pt-7 md:px-8">
+                            <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-gradient-to-br from-violet-300/30 via-cyan-200/20 to-transparent blur-3xl" />
                             <div className="flex items-center gap-2 mb-2">
                                 {post.pinned && <span className="text-xs">📌</span>}
                                 <CategoryBadge category={post.category} />
                             </div>
-                            <h1 className="text-xl md:text-2xl font-bold text-slate-900 break-words">{post.title}</h1>
-                            <div className="flex items-center justify-between gap-3 mt-4 flex-wrap">
+                            <h1 className="relative break-words font-display text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{post.title}</h1>
+                            <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5">
                                     {post.writerProfileImageUrl ? (
-                                        <img src={post.writerProfileImageUrl} alt="" className="w-9 h-9 rounded-full object-cover bg-slate-100" />
+                                        <img src={post.writerProfileImageUrl} alt="" className="h-10 w-10 rounded-2xl bg-slate-100 object-cover" />
                                     ) : (
                                         <span
-                                            className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
+                                            className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold ${
                                                 post.writerType === "ADMIN" ? "bg-rose-100 text-rose-600" : "bg-sky-100 text-sky-600"
                                             }`}
                                         >
@@ -138,15 +139,15 @@ export default function BoardDetailPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-slate-400">
-                                    <span>조회 {post.viewCount.toLocaleString()}</span>
-                                    <span>댓글 {post.commentCount.toLocaleString()}</span>
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                    <span className="rounded-full bg-slate-100 px-2.5 py-1">👁 {post.viewCount.toLocaleString()}</span>
+                                    <span className="rounded-full bg-slate-100 px-2.5 py-1">💬 {post.commentCount.toLocaleString()}</span>
                                 </div>
                             </div>
                         </header>
 
                         {/* 본문 */}
-                        <div className="px-5 md:px-7 py-6">
+                        <div className="px-5 py-7 md:px-8">
                             <p className="text-[15px] leading-7 text-slate-700 whitespace-pre-wrap break-words">{post.content}</p>
 
                             {post.images.length > 0 && (
@@ -155,7 +156,7 @@ export default function BoardDetailPage() {
                                         <button
                                             key={image.imageId}
                                             onClick={() => setViewerImage(boardImageSrc(image.imageUrl))}
-                                            className="block rounded-xl overflow-hidden bg-slate-100 border border-slate-100"
+                                            className="block overflow-hidden rounded-2xl border border-white bg-slate-100 shadow-sm"
                                         >
                                             <img
                                                 src={boardImageSrc(image.imageUrl)}
@@ -175,10 +176,10 @@ export default function BoardDetailPage() {
                                 onClick={handleLike}
                                 disabled={liking}
                                 aria-pressed={post.liked}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-semibold transition-colors ${
+                                className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition ${
                                     post.liked
-                                        ? "bg-rose-50 border-rose-200 text-rose-500"
-                                        : "bg-white border-slate-200 text-slate-500 hover:border-rose-200 hover:text-rose-500"
+                                        ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-[0_10px_24px_-10px_rgba(244,63,94,0.8)]"
+                                        : "border border-slate-200 bg-white text-slate-500 hover:border-rose-200 hover:text-rose-500"
                                 }`}
                             >
                                 <span className="text-base">{post.liked ? "♥" : "♡"}</span>
@@ -192,13 +193,13 @@ export default function BoardDetailPage() {
                         <div className="flex justify-end gap-2 mt-3">
                             <button
                                 onClick={() => navigate(`/boards/${post.postId}/edit`, { state: { backTo } })}
-                                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 hover:border-slate-400"
+                                className="tp-btn-ghost"
                             >
                                 수정
                             </button>
                             <button
                                 onClick={handleDelete}
-                                className="px-4 py-2 rounded-xl border border-rose-200 bg-white text-sm text-rose-500 hover:bg-rose-50"
+                                className="tp-btn-danger"
                             >
                                 삭제
                             </button>
@@ -241,17 +242,14 @@ export default function BoardDetailPage() {
             {/* 이미지 크게 보기 */}
             {viewerImage && (
                 <div
-                    className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-night-950/90 p-4 backdrop-blur"
                     onClick={() => setViewerImage(null)}
                     role="dialog"
                     aria-label="이미지 크게 보기"
                 >
-                    <img src={viewerImage} alt="" className="max-w-full max-h-full rounded-lg" />
+                    <img src={viewerImage} alt="" className="max-h-full max-w-full rounded-2xl" />
                 </div>
             )}
         </BoardLayout>
     )
 }
-
-
-

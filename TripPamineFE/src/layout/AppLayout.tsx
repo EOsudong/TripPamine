@@ -61,7 +61,7 @@ interface AppLayoutProps {
  */
 export default function AppLayout({
                                       children,
-                                      pageClassName = "bg-slate-50",
+                                      pageClassName = "tp-aurora-light",
                                       mainClassName = "",
                                       showFooter = true,
                                   }: AppLayoutProps) {

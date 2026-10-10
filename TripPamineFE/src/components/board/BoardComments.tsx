@@ -189,8 +189,8 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
     }
 
     return (
-        <section className="mt-6 bg-white rounded-2xl border border-slate-100 p-5 md:p-6">
-            <h3 className="font-bold text-slate-800 text-sm mb-4">댓글</h3>
+        <section className="mt-6 tp-card rounded-3xl p-5 md:p-6">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-900"><span className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky-50 text-xs">💬</span>댓글</h3>
 
             {/* 작성 폼 */}
             <form onSubmit={handleSubmit} className="mb-5">
@@ -200,7 +200,7 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
                     onFocus={() => !isLoggedIn && requireLogin()}
                     placeholder={isLoggedIn ? "댓글을 남겨주세요" : "로그인 후 댓글을 작성할 수 있어요"}
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-sky-400"
+                    className="tp-input resize-none text-sm"
                 />
                 <div className="flex items-center justify-between mt-2">
                     <span className="text-xs text-slate-400">
@@ -209,7 +209,7 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
                     <button
                         type="submit"
                         disabled={submitting || !content.trim()}
-                        className="px-4 py-2 rounded-xl bg-sky-500 text-white text-sm font-semibold hover:bg-sky-600 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+                        className="tp-btn-primary px-5 py-2"
                     >
                         {submitting ? "등록 중..." : "등록"}
                     </button>
@@ -229,7 +229,7 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
                             {comment.replies.length > 0 && (
                                 <ul className="mt-3 ml-9 space-y-2">
                                     {comment.replies.map((reply) => (
-                                        <li key={reply.commentId} className="rounded-xl bg-slate-50 px-3 py-2.5">
+                                        <li key={reply.commentId} className="rounded-2xl border border-sky-50 bg-sky-50/50 px-3.5 py-3">
                                             {renderComment(reply)}
                                         </li>
                                     ))}
@@ -244,7 +244,7 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
                 <button
                     onClick={() => load(page + 1)}
                     disabled={loading}
-                    className="w-full mt-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 disabled:text-slate-300"
+                    className="tp-btn-ghost mt-3 w-full"
                 >
                     {loading ? "불러오는 중..." : "댓글 더보기"}
                 </button>
@@ -255,11 +255,11 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
 
 function Avatar({ url, name, admin = false }: { url: string | null; name: string; admin?: boolean }) {
     if (url) {
-        return <img src={url} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-100 shrink-0" />
+        return <img src={url} alt="" className="h-8 w-8 shrink-0 rounded-xl bg-slate-100 object-cover" />
     }
     return (
         <span
-            className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
                 admin ? "bg-rose-100 text-rose-600" : "bg-sky-100 text-sky-600"
             }`}
         >
@@ -267,6 +267,3 @@ function Avatar({ url, name, admin = false }: { url: string | null; name: string
         </span>
     )
 }
-
-
-

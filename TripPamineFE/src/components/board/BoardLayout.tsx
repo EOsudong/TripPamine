@@ -9,13 +9,15 @@ export default function BoardLayout({ children }: { children: ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen tp-aurora-light">
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <Header sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
             <main className={`transition-all duration-300 pt-16 ${sidebarOpen ? "lg:pl-64" : "lg:pl-16"}`}>
-                <section className="py-10 md:py-14 px-4">
-                    <div className="max-w-4xl mx-auto">{children}</div>
+                <section className="px-4 py-8 md:py-10">
+                    <div className="mx-auto max-w-4xl">
+                        {children}
+                    </div>
                 </section>
                 <Footer />
             </main>

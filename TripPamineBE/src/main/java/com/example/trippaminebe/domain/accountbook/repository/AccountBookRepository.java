@@ -8,7 +8,7 @@ import java.util.List;
 
 
 public interface AccountBookRepository
-        extends JpaRepository<TransactionEntity, Long> {
+    extends JpaRepository<TransactionEntity, Long> {
 
 
    // =========================================
@@ -19,7 +19,7 @@ public interface AccountBookRepository
 
    List<TransactionEntity>
    findByUsernameOrderByTransactionDateDesc(
-           String username
+       String username
    );
 
 
@@ -36,9 +36,20 @@ public interface AccountBookRepository
 
    List<TransactionEntity>
    findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-           String username,
-           LocalDateTime startDate,
-           LocalDateTime endDate
+       String username,
+       LocalDateTime startDate,
+       LocalDateTime endDate
+   );
+
+
+
+   // [자산관리 수정] 특정 시점 이후의 거래 전체.
+   // 자산 대시보드가 "그 시점의 계좌 잔액"을 거꾸로 계산할 때 사용한다.
+   // (현재 잔액 − 그 이후 계좌에 반영된 수입 + 그 이후 계좌에 반영된 지출)
+   List<TransactionEntity>
+   findByUsernameAndTransactionDateGreaterThanEqual(
+       String username,
+       LocalDateTime startDate
    );
 
 }

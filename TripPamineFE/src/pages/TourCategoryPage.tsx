@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import Footer from "../components/Footer";
 import TourItemCard from "../components/TourItemCard";
+import PageHero from "../components/PageHero";
 import { findTourMainCategory } from "../data/tourCategories";
 import { getTourItemsApi } from "../api/tour";
 import type { TourItem } from "../types";
@@ -61,7 +62,7 @@ export default function TourCategoryPage() {
   }, [category, activeSub]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen tp-aurora-light">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Header
         sidebarOpen={sidebarOpen}
@@ -81,38 +82,34 @@ export default function TourCategoryPage() {
             </Link>
           </div>
         ) : (
-          <section className="py-14 px-4">
+          <section className="px-4 py-8 md:py-10">
             <div className="max-w-6xl mx-auto">
               {/* Section header */}
-              <div className="mb-8">
-                <p className="text-sky-500 text-xs font-semibold tracking-widest uppercase mb-1">
-                  한국관광공사 오픈API
-                </p>
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-                  <span>{category.icon}</span>
-                  {category.label}
-                </h2>
-                <p className="text-slate-500 text-sm mt-1">
-                  {category.description}
-                </p>
-              </div>
-
-              {/* 소분류 필터 탭 */}
-              <div className="flex gap-2 flex-wrap mb-7">
-                {category.subCategories.map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => setActiveSub(sub)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      activeSub === sub
-                        ? "bg-sky-500 text-white shadow-sm"
-                        : "bg-white text-slate-600 border border-slate-200 hover:border-sky-300 hover:text-sky-500"
-                    }`}
-                  >
-                    {sub}
-                  </button>
-                ))}
-              </div>
+              <PageHero
+                className="mb-8"
+                tone={category.key === "festivals" ? "pink" : category.key === "destinations" ? "cyan" : "violet"}
+                eyebrow="한국관광공사 오픈API · AI CURATED"
+                icon={category.icon}
+                title={category.label}
+                description={category.description}
+              >
+                {/* 소분류 필터 탭 */}
+                <div className="flex flex-wrap gap-2">
+                  {category.subCategories.map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => setActiveSub(sub)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                        activeSub === sub
+                          ? "bg-white text-night-950 shadow-[0_0_24px_rgba(167,139,250,0.55)]"
+                          : "border border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </PageHero>
 
               {/* 목록 상태별 렌더링 */}
               {loading ? (
@@ -148,7 +145,7 @@ function LoadingGrid() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="h-64 rounded-2xl bg-white border border-slate-100 animate-pulse"
+          className="h-64 animate-pulse rounded-3xl border border-white bg-gradient-to-br from-white to-sky-50"
         />
       ))}
     </div>
@@ -157,7 +154,7 @@ function LoadingGrid() {
 
 function StateMessage({ label }: { label: string }) {
   return (
-    <div className="text-center py-16 text-slate-400 text-sm bg-white rounded-2xl border border-dashed border-slate-200">
+    <div className="rounded-3xl border border-dashed border-sky-200 bg-white/70 py-16 text-center text-sm text-slate-400 backdrop-blur">
       {label}
     </div>
   );

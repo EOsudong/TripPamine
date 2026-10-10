@@ -3,10 +3,8 @@ package com.example.trippaminebe.domain.asset.service;
 import com.example.trippaminebe.domain.account.entity.Account;
 import com.example.trippaminebe.domain.account.entity.LinkStatus;
 import com.example.trippaminebe.domain.account.repository.AccountRepository;
-
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
-
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
 import com.example.trippaminebe.domain.asset.entity.AssetGoal;
 import com.example.trippaminebe.domain.asset.entity.AssetSnapshot;
@@ -14,12 +12,11 @@ import com.example.trippaminebe.domain.asset.entity.MonthlyBudget;
 import com.example.trippaminebe.domain.asset.repository.AssetGoalRepository;
 import com.example.trippaminebe.domain.asset.repository.AssetSnapshotRepository;
 import com.example.trippaminebe.domain.asset.repository.MonthlyBudgetRepository;
-
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
-
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,24 +28,48 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
+/**
+ * =========================================================
+ * 자산 Dashboard
+ * =========================================================
+ *
+ * [수정 내역]
+ *
+ * 1. 자산 증감 계산 기준 변경
+ *    - 예전: 시작자산 = 현재 잔액 − 이번 달 "모든" 수입 + 이번 달 "모든" 지출
+ *      → 계좌를 지정하지 않은 가계부 내역은 잔액을 바꾸지 않는데도
+ *        계산에 들어가서, 증감률이 실제와 다르게 나왔다.
+ *    - 지금: 계좌 잔액에 "실제로 반영된" 거래(ACCOUNT_ID 가 연동 중인 계좌인 거래)만
+ *      거꾸로 빼서 그 시점의 잔액을 구한다.
+ *      잔액(T) = 현재 잔액 − T 이후 반영된 수입 + T 이후 반영된 지출
+ *
+ * 2. 과거 월 조회 시 "현재 잔액" 대신 "그 달 말일 잔액" 을 총자산으로 사용
+ *
+ * 3. Snapshot 저장을 AssetSnapshotWriter(별도 트랜잭션)로 분리
+ *    → 동시 요청에도 같은 날짜 Snapshot 이 중복되지 않음
+ *
+ * 4. Dashboard 조회 자체는 readOnly 트랜잭션
+ *
+ * 수입/지출/카테고리 통계는 예전처럼 "가계부 전체 내역" 기준이다.
+ * Snapshot 의 totalIncome / totalExpense 는 "그 달 1일부터 그날까지의 누적값" 이다.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class AssetDashboardService {
 
     private final AssetSnapshotRepository assetSnapshotRepository;
-
     private final MonthlyBudgetRepository monthlyBudgetRepository;
-
     private final AssetGoalRepository assetGoalRepository;
-
     private final AccountBookRepository accountBookRepository;
-
     private final UserRepository userRepository;
-
     private final AccountRepository accountRepository;
+    private final AssetSnapshotWriter assetSnapshotWriter;
 
 
     // =====================================================
@@ -61,928 +82,247 @@ public class AssetDashboardService {
             Integer month
     ) {
 
-        // =========================================
-        // 1. 사용자
-        // =========================================
-
-        User user =
-                userRepository
-                        .findById(userId)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "사용자를 찾을 수 없습니다. userId="
-                                                        + userId
-                                        )
-                        );
-
-
         String username =
-                user.getUserName();
+                findUsername(userId);
 
 
-        // =========================================
-        // 2. 조회 년월
-        // =========================================
-
+        // 1. 조회 년월
         YearMonth targetYearMonth;
 
         try {
-
             targetYearMonth =
-                    YearMonth.of(
-                            year,
-                            month
-                    );
-
+                    YearMonth.of(year, month);
         } catch (Exception e) {
-
             throw new IllegalArgumentException(
                     "조회 년월이 올바르지 않습니다."
             );
         }
 
+        LocalDateTime monthStart =
+                targetYearMonth.atDay(1).atStartOfDay();
 
-        LocalDate monthStart =
-                targetYearMonth.atDay(1);
-
-
-        LocalDate monthEnd =
-                targetYearMonth.atEndOfMonth();
-
-
-        LocalDateTime startDate =
-                monthStart.atStartOfDay();
-
-
-        LocalDateTime endDate =
-                targetYearMonth
-                        .plusMonths(1)
-                        .atDay(1)
-                        .atStartOfDay();
-
-
-        // =========================================
-        // 3. 월 거래 조회
-        // =========================================
-
-        List<TransactionEntity> transactions =
-                accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
-                                startDate,
-                                endDate
-                        );
-
-
-        // =========================================
-        // 4. 총 수입
-        // =========================================
-
-        long totalIncome =
-                transactions.stream()
-
-                        .filter(
-                                transaction ->
-                                        "income".equalsIgnoreCase(
-                                                transaction.getType()
-                                        )
-                        )
-
-                        .mapToLong(
-                                transaction ->
-                                        safeAmount(
-                                                transaction.getAmount()
-                                        )
-                        )
-
-                        .sum();
-
-
-        // =========================================
-        // 5. 총 지출
-        // =========================================
-
-        long totalExpense =
-                transactions.stream()
-
-                        .filter(
-                                transaction ->
-                                        "expense".equalsIgnoreCase(
-                                                transaction.getType()
-                                        )
-                        )
-
-                        .mapToLong(
-                                transaction ->
-                                        safeAmount(
-                                                transaction.getAmount()
-                                        )
-                        )
-
-                        .sum();
-
-
-        // =========================================
-        // 6. 카테고리별 지출
-        // =========================================
-
-        Map<String, Long> categoryExpenseMap =
-                new LinkedHashMap<>();
-
-
-        transactions.stream()
-
-                .filter(
-                        transaction ->
-                                "expense".equalsIgnoreCase(
-                                        transaction.getType()
-                                )
-                )
-
-                .forEach(transaction -> {
-
-                    String category =
-                            transaction.getCategory();
-
-
-                    if (
-                            category == null
-                                    ||
-                                    category.isBlank()
-                    ) {
-
-                        category = "ETC";
-                    }
-
-
-                    category =
-                            category.toUpperCase();
-
-
-                    long amount =
-                            safeAmount(
-                                    transaction.getAmount()
-                            );
-
-
-                    categoryExpenseMap.merge(
-                            category,
-                            amount,
-                            Long::sum
-                    );
-                });
-
-
-        // =========================================
-        // 7. ACTIVE 계좌
-        // =========================================
-
-        List<Account> activeAccounts =
-                accountRepository
-                        .findByUser_IdAndLinkStatus(
-                                userId,
-                                LinkStatus.ACTIVE
-                        );
-
-
-        // =========================================
-        // 8. 현재 총자산
-        // =========================================
-
-        BigDecimal totalAssetDecimal =
-                activeAccounts.stream()
-
-                        .map(
-                                Account::getBalance
-                        )
-
-                        .filter(
-                                balance ->
-                                        balance != null
-                        )
-
-                        .reduce(
-                                BigDecimal.ZERO,
-                                BigDecimal::add
-                        );
-
-
-        long totalAsset =
-                totalAssetDecimal.longValue();
-
-
-        // =========================================
-        // 9. 오늘
-        // =========================================
+        LocalDateTime nextMonthStart =
+                targetYearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
         LocalDate today =
                 LocalDate.now();
 
+        boolean isCurrentMonth =
+                targetYearMonth.equals(YearMonth.from(today));
 
-        YearMonth currentYearMonth =
-                YearMonth.from(today);
+
+        // 2. 그 달 거래 (수입/지출/카테고리 통계용 — 가계부 전체)
+        List<TransactionEntity> monthTransactions =
+                accountBookRepository
+                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                username,
+                                monthStart,
+                                nextMonthStart
+                        );
+
+        long totalIncome =
+                sumByType(monthTransactions, "income");
+
+        long totalExpense =
+                sumByType(monthTransactions, "expense");
+
+        Map<String, Long> categoryExpenseMap =
+                buildCategoryExpenseMap(monthTransactions);
 
 
-        // =========================================
-        // 10. 현재 월일 경우 Snapshot 저장
-        // =========================================
+        // 3. 잔액 역산 준비
+        BalanceCalculator balance =
+                createBalanceCalculator(
+                        userId,
+                        username,
+                        monthStart
+                );
 
-        if (
-                targetYearMonth.equals(
-                        currentYearMonth
-                )
-        ) {
 
-            saveOrUpdateTodaySnapshot(
+        // 4. 총자산 / 시작자산
+        //    - 현재 월: 지금 잔액 합계
+        //    - 과거 월: 그 달 말일 잔액
+        long totalAsset =
+                isCurrentMonth
+                        ? balance.currentTotal()
+                        : balance.assetAt(nextMonthStart);
 
+        long startAsset =
+                balance.assetAt(monthStart);
+
+        long assetChangeAmount =
+                totalAsset - startAsset;
+
+        double assetChangeRate =
+                calculateAssetChangeRate(
+                        startAsset,
+                        totalAsset
+                );
+
+
+        // 5. 현재 월이면 오늘 Snapshot 저장 (별도 트랜잭션)
+        if (isCurrentMonth) {
+            saveTodaySnapshotSafely(
                     userId,
-
                     today,
-
                     totalAsset,
-
                     totalIncome,
-
                     totalExpense
             );
         }
 
 
-        // =========================================
-        // 11. 날짜별 수입 / 지출
-        // =========================================
-
-        Map<LocalDate, Long> dailyIncomeMap =
-                new LinkedHashMap<>();
-
-
-        Map<LocalDate, Long> dailyExpenseMap =
-                new LinkedHashMap<>();
-
-
-        for (
-                TransactionEntity transaction
-                : transactions
-        ) {
-
-            if (
-                    transaction.getTransactionDate()
-                            == null
-            ) {
-
-                continue;
-            }
-
-
-            LocalDate transactionDate =
-                    transaction
-                            .getTransactionDate()
-                            .toLocalDate();
-
-
-            long amount =
-                    safeAmount(
-                            transaction.getAmount()
-                    );
-
-
-            if (
-                    "income".equalsIgnoreCase(
-                            transaction.getType()
-                    )
-            ) {
-
-                dailyIncomeMap.merge(
-                        transactionDate,
-                        amount,
-                        Long::sum
-                );
-
-            } else if (
-                    "expense".equalsIgnoreCase(
-                            transaction.getType()
-                    )
-            ) {
-
-                dailyExpenseMap.merge(
-                        transactionDate,
-                        amount,
-                        Long::sum
-                );
-            }
-        }
-
-
-        // =========================================
-        // 12. 자산 흐름 생성
-        // =========================================
-
-        List<AssetDashboardResponseDto.AssetHistoryInfo>
-                assetHistory =
+        // 6. 그 달의 일별 흐름 (응답 호환용)
+        List<AssetDashboardResponseDto.AssetHistoryInfo> assetHistory =
                 buildMonthlyAssetHistory(
-
                         targetYearMonth,
-
                         today,
-
-                        totalAsset,
-
-                        dailyIncomeMap,
-
-                        dailyExpenseMap
+                        monthTransactions,
+                        balance
                 );
 
 
-        // =========================================
-        // 13. 시작 자산 계산
-        // =========================================
-        //
-        // 현재자산
-        // - 이번 달 수입
-        // + 이번 달 지출
-        //
-        // =========================================
-
-        long startAsset =
-                totalAsset
-                        - totalIncome
-                        + totalExpense;
-
-
-        // =========================================
-        // 14. 자산 증감액
-        // =========================================
-
-        long assetChangeAmount =
-                totalAsset
-                        - startAsset;
-
-
-        // =========================================
-        // 15. 자산 증감률
-        // =========================================
-
-        double assetChangeRate =
-                calculateAssetChangeRate(
-
-                        startAsset,
-
-                        totalAsset
-                );
-
-
-        // =========================================
-        // 16. 월 예산
-        // =========================================
-
+        // 7. 예산 / 목표
         List<MonthlyBudget> monthlyBudgets =
                 monthlyBudgetRepository
                         .findByUserIdAndBudgetYearAndBudgetMonth(
-
                                 userId,
-
                                 year,
-
                                 month
                         );
 
-
-        // =========================================
-        // 17. 자산 목표
-        // =========================================
-
         List<AssetGoal> assetGoals =
-                assetGoalRepository
-                        .findByUserId(
-                                userId
-                        );
+                assetGoalRepository.findByUserId(userId);
 
 
-        // =========================================
-        // 로그
-        // =========================================
-
-        System.out.println(
-                "================================="
+        log.info(
+                "[Asset Dashboard] userId={} {}-{} 총자산={} 시작자산={} 수입={} 지출={} 증감률={}%",
+                userId, year, month,
+                totalAsset, startAsset,
+                totalIncome, totalExpense,
+                assetChangeRate
         );
 
-        System.out.println(
-                "[Asset Dashboard]"
-        );
-
-        System.out.println(
-                "userId = " + userId
-        );
-
-        System.out.println(
-                "조회 년월 = "
-                        + year
-                        + "-"
-                        + month
-        );
-
-        System.out.println(
-                "현재 총자산 = "
-                        + totalAsset
-        );
-
-        System.out.println(
-                "월 시작자산 = "
-                        + startAsset
-        );
-
-        System.out.println(
-                "월 수입 = "
-                        + totalIncome
-        );
-
-        System.out.println(
-                "월 지출 = "
-                        + totalExpense
-        );
-
-        System.out.println(
-                "자산 증감액 = "
-                        + assetChangeAmount
-        );
-
-        System.out.println(
-                "자산 증감률 = "
-                        + assetChangeRate
-                        + "%"
-        );
-
-        System.out.println(
-                "그래프 데이터 수 = "
-                        + assetHistory.size()
-        );
-
-        System.out.println(
-                "================================="
-        );
-
-
-        // =========================================
-        // 18. 반환
-        // =========================================
 
         return AssetDashboardResponseDto.of(
-
                 userId,
-
                 year,
-
                 month,
-
                 totalAsset,
-
                 startAsset,
-
                 assetChangeAmount,
-
                 assetChangeRate,
-
                 assetHistory,
-
                 monthlyBudgets,
-
                 assetGoals,
-
                 totalIncome,
-
                 totalExpense,
-
                 categoryExpenseMap
         );
     }
 
 
     // =====================================================
-    // Snapshot
+    // 오늘 Snapshot 갱신 (스케줄러용)
+    // =====================================================
+    //
+    // AssetSnapshotScheduler 가 매일 밤 호출한다.
+    // 사용자가 Dashboard 를 열지 않은 날에도 자산 흐름 그래프에 점이 생긴다.
+    //
+    // 연동 계좌도 없고 이번 달 가계부 기록도 없으면 저장하지 않는다.
     // =====================================================
 
-    private void saveOrUpdateTodaySnapshot(
-
-            Long userId,
-
-            LocalDate today,
-
-            Long totalAsset,
-
-            Long totalIncome,
-
-            Long totalExpense
+    public boolean refreshTodaySnapshot(
+            Long userId
     ) {
 
-        AssetSnapshot todaySnapshot =
-                assetSnapshotRepository
-                        .findByUserIdAndSnapshotDate(
+        String username =
+                findUsername(userId);
 
-                                userId,
+        LocalDate today =
+                LocalDate.now();
 
-                                today
-                        )
-
-                        .orElse(null);
-
-
-        if (todaySnapshot == null) {
-
-            todaySnapshot =
-                    AssetSnapshot.builder()
-
-                            .userId(userId)
-
-                            .snapshotDate(today)
-
-                            .totalAsset(totalAsset)
-
-                            .totalIncome(totalIncome)
-
-                            .totalExpense(totalExpense)
-
-                            // 기존 DB 구조와 호환을 위해 유지
-                            // Dashboard에서는 사용하지 않음
-                            .travelExpense(0L)
-
-                            .build();
-
-
-            assetSnapshotRepository.save(
-                    todaySnapshot
-            );
-
-
-            return;
-        }
-
-
-        todaySnapshot.setTotalAsset(
-                totalAsset
-        );
-
-
-        todaySnapshot.setTotalIncome(
-                totalIncome
-        );
-
-
-        todaySnapshot.setTotalExpense(
-                totalExpense
-        );
-
-
-        assetSnapshotRepository.save(
-                todaySnapshot
-        );
-    }
-
-
-    // =====================================================
-    // 월간 자산 History
-    // =====================================================
-
-    private List<AssetDashboardResponseDto.AssetHistoryInfo>
-    buildMonthlyAssetHistory(
-
-            YearMonth targetYearMonth,
-
-            LocalDate today,
-
-            Long currentTotalAsset,
-
-            Map<LocalDate, Long> dailyIncomeMap,
-
-            Map<LocalDate, Long> dailyExpenseMap
-    ) {
-
-        List<AssetDashboardResponseDto.AssetHistoryInfo>
-                history =
-                new ArrayList<>();
-
-
-        LocalDate monthStart =
-                targetYearMonth.atDay(1);
-
-
-        LocalDate monthEnd =
-                targetYearMonth.atEndOfMonth();
-
-
-        YearMonth currentYearMonth =
+        YearMonth currentMonth =
                 YearMonth.from(today);
 
+        LocalDateTime monthStart =
+                currentMonth.atDay(1).atStartOfDay();
 
-        LocalDate graphEndDate;
+        LocalDateTime nextMonthStart =
+                currentMonth.plusMonths(1).atDay(1).atStartOfDay();
 
+        List<TransactionEntity> monthTransactions =
+                accountBookRepository
+                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                username,
+                                monthStart,
+                                nextMonthStart
+                        );
 
-        // =========================================
-        // 현재 월
-        // =========================================
+        List<Account> activeAccounts =
+                accountRepository.findByUser_IdAndLinkStatus(
+                        userId,
+                        LinkStatus.ACTIVE
+                );
 
-        if (
-                targetYearMonth.equals(
-                        currentYearMonth
-                )
-        ) {
-
-            graphEndDate =
-                    today.isBefore(monthEnd)
-                            ? today
-                            : monthEnd;
-
-
-            // =========================================
-            // 과거 월
-            // =========================================
-
-        } else if (
-                targetYearMonth.isBefore(
-                        currentYearMonth
-                )
-        ) {
-
-            graphEndDate =
-                    monthEnd;
-
-
-            // =========================================
-            // 미래 월
-            // =========================================
-
-        } else {
-
-            return history;
+        if (activeAccounts.isEmpty() && monthTransactions.isEmpty()) {
+            return false;
         }
 
+        long totalAsset =
+                activeAccounts.stream()
+                        .map(Account::getBalance)
+                        .filter(value -> value != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .longValue();
 
-        // =========================================
-        // 그래프 종료일까지 누적 거래
-        // =========================================
+        saveTodaySnapshotSafely(
+                userId,
+                today,
+                totalAsset,
+                sumByType(monthTransactions, "income"),
+                sumByType(monthTransactions, "expense")
+        );
 
-        long incomeUntilGraphEnd =
-                0L;
-
-
-        long expenseUntilGraphEnd =
-                0L;
-
-
-        LocalDate calculateDate =
-                monthStart;
-
-
-        while (
-                !calculateDate.isAfter(
-                        graphEndDate
-                )
-        ) {
-
-            incomeUntilGraphEnd +=
-
-                    dailyIncomeMap
-                            .getOrDefault(
-                                    calculateDate,
-                                    0L
-                            );
-
-
-            expenseUntilGraphEnd +=
-
-                    dailyExpenseMap
-                            .getOrDefault(
-                                    calculateDate,
-                                    0L
-                            );
-
-
-            calculateDate =
-                    calculateDate.plusDays(1);
-        }
-
-
-        // =========================================
-        // 월 시작 직전 자산
-        // =========================================
-
-        long runningAsset =
-                currentTotalAsset
-                        - incomeUntilGraphEnd
-                        + expenseUntilGraphEnd;
-
-
-        long cumulativeIncome =
-                0L;
-
-
-        long cumulativeExpense =
-                0L;
-
-
-        LocalDate currentDate =
-                monthStart;
-
-
-        // =========================================
-        // 날짜별 자산 생성
-        // =========================================
-
-        while (
-                !currentDate.isAfter(
-                        graphEndDate
-                )
-        ) {
-
-            long dailyIncome =
-                    dailyIncomeMap
-                            .getOrDefault(
-                                    currentDate,
-                                    0L
-                            );
-
-
-            long dailyExpense =
-                    dailyExpenseMap
-                            .getOrDefault(
-                                    currentDate,
-                                    0L
-                            );
-
-
-            cumulativeIncome +=
-                    dailyIncome;
-
-
-            cumulativeExpense +=
-                    dailyExpense;
-
-
-            runningAsset +=
-                    dailyIncome;
-
-
-            runningAsset -=
-                    dailyExpense;
-
-
-            history.add(
-
-                    new AssetDashboardResponseDto.AssetHistoryInfo(
-
-                            currentDate,
-
-                            runningAsset,
-
-                            cumulativeIncome,
-
-                            cumulativeExpense
-                    )
-            );
-
-
-            currentDate =
-                    currentDate.plusDays(1);
-        }
-
-
-        return history;
+        return true;
     }
 
 
     // =====================================================
-    // 자산 증감률
+    // 기간별 자산 흐름
+    // =====================================================
+    //
+    // WEEK : 최근 7일 / MONTH : 최근 1개월 / QUARTER : 최근 3개월 / YEAR : 최근 1년
+    //
+    // [수정] 예전에 생긴 같은 날짜 중복 Snapshot 이 있어도
+    //        날짜당 1개(가장 마지막에 저장된 값)만 내려준다.
     // =====================================================
 
-    private double calculateAssetChangeRate(
-
-            long startAsset,
-
-            long currentAsset
-    ) {
-
-        if (startAsset == 0L) {
-
-            return 0.0;
-        }
-
-
-        double changeRate =
-
-                (
-                        (double)
-                                (
-                                        currentAsset
-                                                - startAsset
-                                )
-
-                                / startAsset
-                )
-
-                        * 100.0;
-
-
-        // 소수점 첫째 자리
-        return Math.round(
-                changeRate * 10.0
-        )
-                / 10.0;
-    }
-
-
-    // =====================================================
-    // null 금액 방어
-    // =====================================================
-
-    private long safeAmount(
-            Long amount
-    ) {
-
-        return amount != null
-                ? amount
-                : 0L;
-    }
-// =====================================================
-// 기간별 자산 흐름 조회
-//
-// WEEK    : 최근 7일
-// MONTH   : 최근 1개월
-// QUARTER : 최근 3개월
-// YEAR    : 최근 1년
-// =====================================================
-
-    @Transactional(readOnly = true)
     public List<AssetDashboardResponseDto.AssetHistoryInfo>
     getAssetHistoryByPeriod(
             Long userId,
             String period
     ) {
 
-        // =========================================
-        // 1. 기간 기본값
-        // =========================================
-
         String normalizedPeriod =
                 period == null || period.isBlank()
                         ? "MONTH"
                         : period.trim().toUpperCase();
 
-
-        // =========================================
-        // 2. 종료 날짜
-        // =========================================
-
         LocalDate endDate =
                 LocalDate.now();
 
-
-        // =========================================
-        // 3. 시작 날짜 계산
-        // =========================================
-
-        LocalDate startDate;
-
-        switch (normalizedPeriod) {
-
-            case "WEEK" ->
-
-                    startDate =
-                            endDate.minusDays(6);
-
-
-            case "MONTH" ->
-
-                    startDate =
-                            endDate.minusMonths(1)
-                                    .plusDays(1);
-
-
-            case "QUARTER" ->
-
-                    startDate =
-                            endDate.minusMonths(3)
-                                    .plusDays(1);
-
-
-            case "YEAR" ->
-
-                    startDate =
-                            endDate.minusYears(1)
-                                    .plusDays(1);
-
-
-            default ->
-
-                    throw new IllegalArgumentException(
+        LocalDate startDate =
+                switch (normalizedPeriod) {
+                    case "WEEK" -> endDate.minusDays(6);
+                    case "MONTH" -> endDate.minusMonths(1).plusDays(1);
+                    case "QUARTER" -> endDate.minusMonths(3).plusDays(1);
+                    case "YEAR" -> endDate.minusYears(1).plusDays(1);
+                    default -> throw new IllegalArgumentException(
                             "지원하지 않는 조회 기간입니다. "
                                     + "WEEK, MONTH, QUARTER, YEAR 중 하나를 사용해주세요."
                     );
-        }
-
-
-        // =========================================
-        // 4. 기간 내 Snapshot 조회
-        // =========================================
+                };
 
         List<AssetSnapshot> snapshots =
                 assetSnapshotRepository
@@ -992,80 +332,322 @@ public class AssetDashboardService {
                                 endDate
                         );
 
+        // 날짜당 1개 (같은 날짜면 snapshotId 가 큰 = 나중에 저장된 값)
+        Map<LocalDate, AssetSnapshot> latestByDate =
+                new LinkedHashMap<>();
 
-        // =========================================
-        // 5. Snapshot -> AssetHistoryInfo 변환
-        // =========================================
+        for (AssetSnapshot snapshot : snapshots) {
+            latestByDate.merge(
+                    snapshot.getSnapshotDate(),
+                    snapshot,
+                    (prev, next) ->
+                            safeId(next) >= safeId(prev) ? next : prev
+            );
+        }
 
-        List<AssetDashboardResponseDto.AssetHistoryInfo>
-                history =
-                snapshots
-                        .stream()
-
-                        .map(
-                                snapshot ->
-                                        new AssetDashboardResponseDto.AssetHistoryInfo(
-
-                                                snapshot.getSnapshotDate(),
-
-                                                snapshot.getTotalAsset() != null
-                                                        ? snapshot.getTotalAsset()
-                                                        : 0L,
-
-                                                snapshot.getTotalIncome() != null
-                                                        ? snapshot.getTotalIncome()
-                                                        : 0L,
-
-                                                snapshot.getTotalExpense() != null
-                                                        ? snapshot.getTotalExpense()
-                                                        : 0L
-                                        )
+        return latestByDate.values()
+                .stream()
+                .map(snapshot ->
+                        new AssetDashboardResponseDto.AssetHistoryInfo(
+                                snapshot.getSnapshotDate(),
+                                safeAmount(snapshot.getTotalAsset()),
+                                safeAmount(snapshot.getTotalIncome()),
+                                safeAmount(snapshot.getTotalExpense())
                         )
-
-                        .toList();
-
-
-        // =========================================
-        // 6. 개발 확인용 로그
-        // =========================================
-
-        System.out.println(
-                "========================================="
-        );
-
-        System.out.println(
-                "[Asset History]"
-        );
-
-        System.out.println(
-                "userId = " + userId
-        );
-
-        System.out.println(
-                "period = " + normalizedPeriod
-        );
-
-        System.out.println(
-                "startDate = " + startDate
-        );
-
-        System.out.println(
-                "endDate = " + endDate
-        );
-
-        System.out.println(
-                "history size = " + history.size()
-        );
-
-        System.out.println(
-                "========================================="
-        );
+                )
+                .toList();
+    }
 
 
-        // =========================================
-        // 7. 반환
-        // =========================================
+    // =====================================================
+    // 내부 — Snapshot 저장 (중복/동시성 방어)
+    // =====================================================
+
+    private void saveTodaySnapshotSafely(
+            Long userId,
+            LocalDate today,
+            long totalAsset,
+            long totalIncome,
+            long totalExpense
+    ) {
+        try {
+            assetSnapshotWriter.upsert(
+                    userId, today, totalAsset, totalIncome, totalExpense
+            );
+        } catch (DataIntegrityViolationException firstTry) {
+            // 동시에 들어온 다른 요청이 먼저 INSERT 한 경우 → 이번엔 UPDATE 로 처리된다
+            try {
+                assetSnapshotWriter.upsert(
+                        userId, today, totalAsset, totalIncome, totalExpense
+                );
+            } catch (RuntimeException retry) {
+                // Snapshot 저장 실패가 Dashboard 조회 자체를 깨뜨리지 않도록 로그만 남긴다
+                log.warn("[AssetSnapshot] userId={} 저장 재시도 실패: {}", userId, retry.getMessage());
+            }
+        } catch (RuntimeException e) {
+            log.warn("[AssetSnapshot] userId={} 저장 실패: {}", userId, e.getMessage());
+        }
+    }
+
+
+    // =====================================================
+    // 내부 — 그 달 일별 흐름 (응답 호환용)
+    // =====================================================
+
+    private List<AssetDashboardResponseDto.AssetHistoryInfo>
+    buildMonthlyAssetHistory(
+            YearMonth targetYearMonth,
+            LocalDate today,
+            List<TransactionEntity> monthTransactions,
+            BalanceCalculator balance
+    ) {
+
+        List<AssetDashboardResponseDto.AssetHistoryInfo> history =
+                new ArrayList<>();
+
+        YearMonth currentYearMonth =
+                YearMonth.from(today);
+
+        if (targetYearMonth.isAfter(currentYearMonth)) {
+            return history;
+        }
+
+        LocalDate monthStart =
+                targetYearMonth.atDay(1);
+
+        LocalDate monthEnd =
+                targetYearMonth.atEndOfMonth();
+
+        LocalDate graphEndDate =
+                targetYearMonth.equals(currentYearMonth) && today.isBefore(monthEnd)
+                        ? today
+                        : monthEnd;
+
+
+        // 날짜별 수입 / 지출 (가계부 전체)
+        Map<LocalDate, Long> dailyIncome = new LinkedHashMap<>();
+        Map<LocalDate, Long> dailyExpense = new LinkedHashMap<>();
+
+        for (TransactionEntity transaction : monthTransactions) {
+
+            if (transaction.getTransactionDate() == null) {
+                continue;
+            }
+
+            LocalDate date =
+                    transaction.getTransactionDate().toLocalDate();
+
+            long amount =
+                    safeAmount(transaction.getAmount());
+
+            if ("income".equalsIgnoreCase(transaction.getType())) {
+                dailyIncome.merge(date, amount, Long::sum);
+            } else if ("expense".equalsIgnoreCase(transaction.getType())) {
+                dailyExpense.merge(date, amount, Long::sum);
+            }
+        }
+
+
+        long cumulativeIncome = 0L;
+        long cumulativeExpense = 0L;
+
+        for (
+                LocalDate date = monthStart;
+                !date.isAfter(graphEndDate);
+                date = date.plusDays(1)
+        ) {
+
+            cumulativeIncome += dailyIncome.getOrDefault(date, 0L);
+            cumulativeExpense += dailyExpense.getOrDefault(date, 0L);
+
+            history.add(
+                    new AssetDashboardResponseDto.AssetHistoryInfo(
+                            date,
+                            // 그날 하루가 끝난 시점의 계좌 잔액 합계
+                            balance.assetAt(date.plusDays(1).atStartOfDay()),
+                            cumulativeIncome,
+                            cumulativeExpense
+                    )
+            );
+        }
 
         return history;
+    }
+
+
+    // =====================================================
+    // 내부 — 잔액 역산기
+    // =====================================================
+
+    private BalanceCalculator createBalanceCalculator(
+            Long userId,
+            String username,
+            LocalDateTime from
+    ) {
+
+        List<Account> activeAccounts =
+                accountRepository.findByUser_IdAndLinkStatus(
+                        userId,
+                        LinkStatus.ACTIVE
+                );
+
+        long currentTotal =
+                activeAccounts.stream()
+                        .map(Account::getBalance)
+                        .filter(value -> value != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .longValue();
+
+        Set<Long> activeAccountIds =
+                activeAccounts.stream()
+                        .map(Account::getAccountId)
+                        .collect(Collectors.toSet());
+
+        // from 이후 거래 중 "연동 중인 계좌에 반영된" 것만
+        List<TransactionEntity> linkedSince =
+                accountBookRepository
+                        .findByUsernameAndTransactionDateGreaterThanEqual(
+                                username,
+                                from
+                        )
+                        .stream()
+                        .filter(transaction ->
+                                transaction.getAccountId() != null
+                                        && activeAccountIds.contains(transaction.getAccountId())
+                                        && transaction.getTransactionDate() != null
+                        )
+                        .toList();
+
+        return new BalanceCalculator(currentTotal, linkedSince);
+    }
+
+
+    /**
+     * 현재 잔액에서 "T 이후에 계좌에 반영된 거래"를 되돌려 T 시점 잔액을 구한다.
+     * (가계부에서 계좌를 지정해 입력한 거래만 잔액을 바꾸기 때문 — AccountBalanceService 참고)
+     */
+    private record BalanceCalculator(
+            long currentTotal,
+            List<TransactionEntity> linkedTransactions
+    ) {
+
+        long assetAt(LocalDateTime moment) {
+
+            long asset = currentTotal;
+
+            for (TransactionEntity transaction : linkedTransactions) {
+
+                if (transaction.getTransactionDate().isBefore(moment)) {
+                    continue;
+                }
+
+                long amount =
+                        transaction.getAmount() != null
+                                ? transaction.getAmount()
+                                : 0L;
+
+                if ("income".equalsIgnoreCase(transaction.getType())) {
+                    asset -= amount;
+                } else if ("expense".equalsIgnoreCase(transaction.getType())) {
+                    asset += amount;
+                }
+            }
+
+            return asset;
+        }
+    }
+
+
+    // =====================================================
+    // 내부 — 공통 계산
+    // =====================================================
+
+    private String findUsername(
+            Long userId
+    ) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "사용자를 찾을 수 없습니다. userId=" + userId
+                                )
+                        );
+
+        return user.getUserName();
+    }
+
+
+    private long sumByType(
+            List<TransactionEntity> transactions,
+            String type
+    ) {
+        return transactions.stream()
+                .filter(transaction -> type.equalsIgnoreCase(transaction.getType()))
+                .mapToLong(transaction -> safeAmount(transaction.getAmount()))
+                .sum();
+    }
+
+
+    private Map<String, Long> buildCategoryExpenseMap(
+            List<TransactionEntity> transactions
+    ) {
+
+        Map<String, Long> categoryExpenseMap =
+                new LinkedHashMap<>();
+
+        transactions.stream()
+                .filter(transaction -> "expense".equalsIgnoreCase(transaction.getType()))
+                .forEach(transaction -> {
+
+                    String category =
+                            transaction.getCategory();
+
+                    if (category == null || category.isBlank()) {
+                        category = "ETC";
+                    }
+
+                    categoryExpenseMap.merge(
+                            category.toUpperCase(),
+                            safeAmount(transaction.getAmount()),
+                            Long::sum
+                    );
+                });
+
+        return categoryExpenseMap;
+    }
+
+
+    /**
+     * 자산 증감률 (소수점 첫째 자리).
+     * 시작 자산이 0 이하이면 비율이 의미가 없으므로 0 을 반환한다.
+     * (예전에는 음수 시작자산일 때 부호가 뒤집힌 비율이 나왔다)
+     */
+    private double calculateAssetChangeRate(
+            long startAsset,
+            long currentAsset
+    ) {
+        if (startAsset <= 0L) {
+            return 0.0;
+        }
+
+        double changeRate =
+                ((double) (currentAsset - startAsset) / startAsset) * 100.0;
+
+        return Math.round(changeRate * 10.0) / 10.0;
+    }
+
+
+    private long safeAmount(
+            Long amount
+    ) {
+        return amount != null ? amount : 0L;
+    }
+
+
+    private long safeId(
+            AssetSnapshot snapshot
+    ) {
+        return snapshot.getSnapshotId() != null ? snapshot.getSnapshotId() : 0L;
     }
 }

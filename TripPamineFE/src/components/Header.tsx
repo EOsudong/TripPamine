@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserAccessToken } from "../auth/session";
 import { getMyInfoApi } from "../api/auth";
+import BrandMark from "./BrandMark";
 
 interface HeaderProps {
     sidebarOpen: boolean;
@@ -204,11 +205,15 @@ export default function Header({
             className="
         fixed inset-x-0 top-0 z-50
         flex h-16 items-center
-        border-b border-slate-200/80
-        bg-white/90 px-4
-        backdrop-blur-xl
+        border-b border-white/60
+        bg-white/70 px-4
+        shadow-[0_1px_0_rgba(124,108,255,0.08),0_10px_30px_-20px_rgba(80,60,200,0.25)]
+        backdrop-blur-2xl
       "
         >
+            {/* 상단 AI 그라데이션 라인 */}
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] tp-gradient-bg opacity-80" />
+
             <button
                 type="button"
                 onClick={onToggleSidebar}
@@ -218,8 +223,8 @@ export default function Header({
           items-center justify-center
           rounded-xl text-slate-500
           transition
-          hover:bg-slate-100
-          hover:text-slate-900
+          hover:bg-sky-50
+          hover:text-sky-600
         "
             >
                 <svg
@@ -244,27 +249,51 @@ export default function Header({
             <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="ml-2 flex items-center gap-3"
+                className="ml-2 flex items-center gap-2.5"
             >
-        <span className="text-lg font-black tracking-tight">
-          <span className="text-sky-500">
-            Trip
-          </span>
+                <BrandMark />
 
-          <span className="text-slate-950">
-            Pamine
-          </span>
-        </span>
+                <span className="font-display text-lg font-bold tracking-tight text-slate-950">
+                    TripPamine
+                </span>
 
-                <span className="hidden rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold tracking-wide text-slate-500 sm:inline">
-          AI MANAGER
-        </span>
+                <span
+                    className="
+            hidden items-center gap-1.5
+            rounded-full border border-sky-200 bg-sky-50
+            px-2.5 py-1
+            text-[10px] font-black tracking-[0.14em] text-sky-700
+            sm:inline-flex
+          "
+                >
+                    <span className="relative flex h-1.5 w-1.5">
+                        <span className="absolute inset-0 animate-ping rounded-full bg-cyan-400 opacity-70" />
+                        <span className="relative h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    </span>
+                    AI ONLINE
+                </span>
             </button>
 
             <div className="ml-auto flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => navigate("/assets")}
+                    className="
+            hidden items-center gap-1.5
+            rounded-xl tp-gradient-border
+            px-3.5 py-2
+            text-xs font-bold text-slate-700
+            transition
+            hover:shadow-[0_6px_20px_-8px_rgba(124,108,255,0.6)]
+            md:inline-flex
+          "
+                >
+                    <span className="tp-gradient-text">✦</span>
+                    자산 리포트
+                </button>
+
                 {isLoggedIn ? (
                     <>
-                        {/* [수정] 병합 과정에서 빠졌던 사용자명 + 회원등급 배지 표시를 복구 */}
                         <button
                             type="button"
                             onClick={() =>
@@ -273,14 +302,18 @@ export default function Header({
                             title="마이페이지"
                             className="
                 hidden items-center gap-2
-                rounded-xl px-3 py-1.5
+                rounded-xl py-1.5 pl-1.5 pr-3
                 text-sm font-semibold text-slate-600
                 transition
-                hover:bg-slate-100
+                hover:bg-sky-50
                 hover:text-slate-950
                 sm:flex
               "
                         >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg tp-gradient-bg text-xs font-black text-white">
+                                {displayUserName.slice(0, 1)}
+                            </span>
+
                             <span className="max-w-[120px] truncate">
                                 {userLoading
                                     ? "불러오는 중..."
@@ -306,11 +339,11 @@ export default function Header({
                             onClick={handleLogout}
                             className="
                 rounded-xl border border-slate-200
-                bg-white px-3.5 py-2
+                bg-white/80 px-3.5 py-2
                 text-xs font-bold text-slate-600
                 transition
                 hover:border-slate-300
-                hover:bg-slate-50
+                hover:bg-white
               "
                         >
                             로그아웃
@@ -323,11 +356,12 @@ export default function Header({
                             navigate("/login")
                         }
                         className="
-              rounded-xl bg-slate-950
+              rounded-xl tp-gradient-bg
               px-4 py-2
               text-sm font-bold text-white
+              shadow-[0_8px_24px_-10px_rgba(124,108,255,0.9)]
               transition
-              hover:bg-sky-600
+              hover:brightness-110
             "
                     >
                         시작하기
@@ -337,5 +371,3 @@ export default function Header({
         </header>
     );
 }
-
-

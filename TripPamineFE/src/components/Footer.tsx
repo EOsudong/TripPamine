@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import BrandMark from "./BrandMark";
 // 하단 푸터. 로고/소개 문구/SNS 버튼 + 링크 3개 그룹으로 구성된 정적 컴포넌트입니다.
 // (실제 클릭 가능한 페이지로 연결된 링크는 없고 전부 "#" — 필요할 때 라우트를 붙이면 됩니다)
 const travelFilterMap: Record<string, string> = {
@@ -164,16 +165,41 @@ export default function Footer() {
     },
   };
   return (
-    <footer className="bg-slate-900 text-slate-400 py-12 px-4">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
+    <footer className="relative overflow-hidden bg-night-950 px-4 pb-10 pt-16 text-white/50">
+      {/* 오로라 배경 + 점 그리드 */}
+      <div className="pointer-events-none absolute inset-0 tp-aurora opacity-60" />
+      <div className="pointer-events-none absolute inset-0 tp-dot-grid opacity-30" />
+
+      {/* 상단 CTA 배너 */}
+      <div className="relative mx-auto mb-14 flex max-w-5xl flex-col items-start justify-between gap-6 rounded-3xl border border-white/10 bg-white/[0.04] p-7 backdrop-blur md:flex-row md:items-center">
+        <div>
+          <p className="text-[10px] font-black tracking-[0.2em] text-cyan-300">
+            AI HYPER-PERSONALIZATION
+          </p>
+          <p className="mt-2 font-display text-2xl font-bold text-white md:text-3xl">
+            나에게 꼭 맞는 다음 선택, <span className="tp-gradient-text">AI에게 물어보세요</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="shrink-0 rounded-2xl tp-gradient-bg px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_-10px_rgba(124,108,255,0.9)] transition hover:brightness-110"
+        >
+          ✦ AI 매니저 열기
+        </button>
+      </div>
+
+      <div className="relative max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
         {/* 왼쪽: 로고 + 소개 문구 + SNS 버튼 */}
-        <div className="col-span-2 md:col-span-1">
-          <div className="text-xl font-bold mb-3">
-            <span className="text-sky-400">Trip</span>
-            <span className="text-white">Pamine</span>
+        <div className="md:col-span-1">
+          <div className="mb-3 flex items-center gap-2">
+            <BrandMark small />
+            <span className="font-display text-xl font-bold text-white">
+              TripPamine
+            </span>
           </div>
-          <p className="text-sm leading-relaxed mb-4">
-            대한민국 구석구석, AI와 함께 더 특별한 국내 여행을 경험하세요.
+          <p className="text-sm leading-relaxed mb-5">
+            여행 · 자산 · 일상을 하나로 잇는 AI 기반 초개인화 맞춤 솔루션 플랫폼.
           </p>
           <div className="flex gap-2">
             {[
@@ -183,14 +209,17 @@ export default function Footer() {
             ].map(({ l, c }) => (
               <button
                 key={l}
-                style={{ backgroundColor: c }}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
+                type="button"
+                className="group flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 transition hover:border-transparent"
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               >
-                <span className="text-xs font-bold text-white">{l}</span>
+                <span className="text-xs font-bold text-white/80 group-hover:text-white">{l}</span>
               </button>
             ))}
           </div>
         </div>
+
         {/* 오른쪽: 링크 3개 그룹(여행 서비스/고객 지원/회사 정보)을 배열.map()으로 반복 렌더링 */}
         {[
           {
@@ -207,7 +236,7 @@ export default function Footer() {
           },
         ].map((col) => (
           <div key={col.title}>
-            <p className="text-white font-semibold text-sm mb-3">{col.title}</p>
+            <p className="mb-4 text-[11px] font-black tracking-[0.16em] text-white/80">{col.title}</p>
             <ul className="space-y-2">
               {col.items.map((item) => (
                 <li key={item}>
@@ -236,7 +265,7 @@ export default function Footer() {
                         setModalType(item);
                       }
                     }}
-                    className="text-sm hover:text-sky-400 transition-colors text-left"
+                    className="text-left text-sm transition-colors hover:text-white"
                   >
                     {item}
                   </button>
@@ -246,8 +275,12 @@ export default function Footer() {
           </div>
         ))}
       </div>
-      <div className="border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-        © 2026 TripPamine. All rights reserved.
+      <div className="relative mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 border-t border-white/10 pt-6 text-xs text-white/35 md:flex-row">
+        <span>© 2026 TripPamine. All rights reserved.</span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
+          AI Manager online
+        </span>
       </div>
       {modalType && modalContents[modalType] && (
         <div
@@ -255,7 +288,7 @@ export default function Footer() {
           onClick={() => setModalType(null)}
         >
           <div
-            className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl"
+            className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-night-900 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-white/10 px-6 py-5">

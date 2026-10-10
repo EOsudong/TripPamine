@@ -161,30 +161,34 @@ export default function Hero() {
         alt="Korean coastal travel"
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-sky-900/55 via-sky-800/35 to-slate-900/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-night-950/80 via-sky-950/60 to-night-950/90" />
+      <div className="absolute inset-0 tp-aurora opacity-70 mix-blend-screen" />
+      <div className="absolute inset-0 tp-dot-grid opacity-40 [mask-image:radial-gradient(70%_60%_at_50%_30%,black,transparent)]" />
 
       <div className="relative z-10 w-full max-w-6xl mx-auto px-4 pt-10 pb-16">
         {/* 상단 텍스트 */}
         <div className="text-center mb-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-sky-200 text-xs font-semibold tracking-widest uppercase mb-3 backdrop-blur-sm">
-            ✈ TripPamine Manager
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-violet-100 backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.9)]" />
+            Travel Workspace · AI Manager
           </span>
-          <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-lg">
-            나의 여행 계획 관리
+          <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl">
+            여행 계획을 세우면,<br />
+            <span className="tp-gradient-text animate-shimmer">AI가 판을 짜요</span>
           </h1>
-          <p className="text-white/80 text-sm md:text-base">
-            여행 일정과 예산을 등록하고 간편하게 관리해보세요
+          <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 md:text-base">
+            일정과 예산을 등록하면 AI 매니저가 코스·퀘스트·미스터리 투어로 이어 드립니다
           </p>
         </div>
         {/* 여행 플래너 / 미스터리 투어 탭 */}
-        <div className="max-w-md mx-auto mb-6 bg-white/90 backdrop-blur-sm rounded-2xl p-1.5 shadow-xl flex">
+        <div className="mx-auto mb-8 flex max-w-md rounded-2xl border border-white/15 bg-white/10 p-1.5 shadow-2xl backdrop-blur-xl">
           <button
             type="button"
             onClick={() => setActiveTab("planner")}
             className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
               activeTab === "planner"
-                ? "bg-sky-500 text-white shadow-md"
-                : "text-slate-500 hover:bg-slate-100"
+                ? "tp-gradient-bg text-white shadow-[0_8px_24px_-8px_rgba(124,108,255,0.9)]"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             ✈ 여행 플래너
@@ -195,8 +199,8 @@ export default function Hero() {
             onClick={() => setActiveTab("mystery")}
             className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
               activeTab === "mystery"
-                ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-md"
-                : "text-slate-500 hover:bg-slate-100"
+                ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white shadow-[0_8px_24px_-8px_rgba(217,70,239,0.9)]"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             🎁 미스터리 투어
@@ -205,7 +209,7 @@ export default function Hero() {
         {activeTab === "planner" ? (
           <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
             {/* 1열: 등록 / 수정 폼 */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-6 py-13 border border-white/40">
+            <div className="rounded-3xl border border-white/50 bg-white/90 p-6 py-13 shadow-[0_30px_80px_-30px_rgba(60,40,180,0.6)] backdrop-blur-xl">
               <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
                 <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
                   {editingId ? "EDIT PLAN" : "NEW PLAN"}
@@ -227,7 +231,7 @@ export default function Hero() {
                     onChange={handleChange}
                     placeholder="예: 제주도 3박 4일 여행"
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                   />
                 </div>
 
@@ -244,7 +248,7 @@ export default function Hero() {
                       onChange={handleChange}
                       placeholder="500000"
                       required
-                      className="w-full px-3.5 py-2.5 pr-8 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                      className="w-full px-3.5 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                       원
@@ -261,7 +265,7 @@ export default function Hero() {
                       name="companionType"
                       value={form.companionType}
                       onChange={handleChange}
-                      className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                     >
                       <option value="">선택</option>
                       <option value="ALONE">혼자</option>
@@ -282,7 +286,7 @@ export default function Hero() {
                     value={form.startDate}
                     onChange={handleChange}
                     min={minDateTime}
-                    className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                   />
                 </div>
 
@@ -296,7 +300,7 @@ export default function Hero() {
                     value={form.endDate}
                     onChange={handleChange}
                     min={form.startDate || minDateTime}
-                    className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                   />
                 </div>
 
@@ -304,7 +308,7 @@ export default function Hero() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
+                    className="flex-1 rounded-xl tp-gradient-bg py-3 text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(124,108,255,0.9)] transition hover:brightness-110 disabled:opacity-60"
                   >
                     {loading
                       ? "저장 중..."
@@ -361,7 +365,7 @@ export default function Hero() {
                 plans.map((plan) => (
                   <div
                     key={plan.planId}
-                    className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between transition-all hover:shadow-xl"
+                    className="tp-lift flex flex-col justify-between rounded-2xl border border-white/60 bg-white/95 p-5 shadow-lg backdrop-blur"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">

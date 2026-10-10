@@ -352,40 +352,48 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
   return (
       <div className="w-full text-left space-y-6">
         {/* 1. 요약 정보 카드 세트 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* 총 수입 카드 */}
-          <div className="bg-gradient-to-br from-sky-500 to-sky-600 rounded-2xl p-5 text-white shadow-md shadow-sky-200/50 flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-sky-100 uppercase tracking-wider">총 수입</span>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* 현재 잔액 카드 (선택한 기간의 수입-지출 합계 - 연동 계좌 잔액과는 별개 지표) */}
+          <div className="relative overflow-hidden rounded-3xl bg-night-950 p-5 text-white md:order-last">
+            <div className="pointer-events-none absolute inset-0 tp-aurora opacity-80" />
+            <div className="relative">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/50">기간 잔액</span>
+              <p className="mt-3 font-display text-2xl font-bold tracking-tight">{netBalance.toLocaleString()}원</p>
+              <p className="mt-1 text-[11px] text-white/45">수입 − 지출</p>
             </div>
-            <span className="text-xl font-extrabold tracking-tight">+{totalIncome.toLocaleString()}원</span>
+          </div>
+
+          {/* 총 수입 카드 */}
+          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5">
+            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">↓</span>
+              총 수입
+            </span>
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900">+{totalIncome.toLocaleString()}원</p>
           </div>
 
           {/* 총 지출 카드 */}
-          <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-md shadow-amber-200/50 flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-amber-100 uppercase tracking-wider">총 지출</span>
-            </div>
-            <span className="text-xl font-extrabold tracking-tight">-{totalExpense.toLocaleString()}원</span>
-          </div>
-
-          {/* 현재 잔액 카드 (선택한 기간의 수입-지출 합계 - 연동 계좌 잔액과는 별개 지표) */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white shadow-md shadow-slate-300/50 flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">현재 잔액</span>
-            </div>
-            <span className="text-xl font-extrabold tracking-tight">{netBalance.toLocaleString()}원</span>
+          <div className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-5">
+            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-rose-500">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white">↑</span>
+              총 지출
+            </span>
+            <p className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900">-{totalExpense.toLocaleString()}원</p>
           </div>
         </div>
 
         {/* 2. 내역 추가 입력 폼 */}
-        <form onSubmit={handleAddTransaction} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 transition-all">
+        <form onSubmit={handleAddTransaction} className="rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50/80 via-white to-cyan-50/40 p-4">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md tp-gradient-bg text-[10px] text-white">+</span>
+            빠른 기록
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 items-center">
             {/* 유형 선택 */}
             <select
                 value={type}
                 onChange={(e) => setType(e.target.value as 'income' | 'expense')}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs font-semibold text-slate-700 bg-white transition-colors cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-xl tp-input text-xs font-semibold text-slate-700 bg-white transition-colors cursor-pointer"
             >
               <option value="expense">지출</option>
               <option value="income">수입</option>
@@ -395,7 +403,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
             <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-sky-100 bg-sky-50/50 focus:border-sky-500 outline-none text-xs font-bold text-sky-700 transition-colors cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-xl tp-input !bg-sky-50/60 !border-sky-100 text-xs font-bold text-sky-700 transition-colors cursor-pointer"
             >
               {SELECTABLE_CATEGORIES.map(([key, value]) => (
                   <option key={key} value={key}>{value}</option>
@@ -406,7 +414,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
             <select
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-emerald-100 bg-emerald-50/50 focus:border-emerald-500 outline-none text-xs font-bold text-emerald-700 transition-colors cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-xl tp-input !bg-emerald-50/60 !border-emerald-100 text-xs font-bold text-emerald-700 transition-colors cursor-pointer"
             >
               <option value="">계좌 미지정</option>
               {accounts.map((a) => (
@@ -428,7 +436,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
               <button
                   type="button"
                   onClick={handleCompactDateButtonClick}
-                  className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 hover:border-sky-300 text-xs font-bold text-sky-600 bg-white transition-colors truncate text-left"
+                  className="w-full px-3 py-2.5 rounded-xl tp-input hover:border-sky-300 text-xs font-bold text-sky-600 bg-white transition-colors truncate text-left"
               >
                 {formatCompactDate(transactionDate)}
               </button>
@@ -440,7 +448,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                 placeholder="내역 입력"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 bg-white transition-colors placeholder-slate-400"
+                className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 bg-white transition-colors placeholder-slate-400"
             />
 
             {/* 금액 입력 */}
@@ -449,13 +457,13 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                 placeholder="금액 입력"
                 value={amount || ''}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 bg-white transition-colors placeholder-slate-400"
+                className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 bg-white transition-colors placeholder-slate-400"
             />
 
             {/* 추가 버튼 */}
             <button
                 type="submit"
-                className="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
+                className="w-full py-2.5 tp-gradient-bg hover:brightness-110 text-white font-bold text-xs rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]"
             >
               추가
             </button>
@@ -465,12 +473,12 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
         {/* 3. 상단 헤더 (필터, 정렬, OCR 버튼) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
-              <span>🧾</span> 최근 입출금 내역
+            <h4 className="flex items-center gap-1.5 text-base font-bold text-slate-900">
+              최근 입출금 내역
             </h4>
 
             {/* OCR 영수증 스캔 버튼 */}
-            <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-colors">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-night-950 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-night-700">
               {isOcrLoading ? (
                   <>
                     <span className="w-3 h-3 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></span>
@@ -479,7 +487,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
               ) : (
                   <>
                     <span>📷</span>
-                    <span>영수증 등록</span>
+                    <span>AI 영수증 인식</span>
                   </>
               )}
               <input
@@ -496,7 +504,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
             <select
                 value={filterMode}
                 onChange={(e) => setFilterMode(e.target.value as 'year' | 'month' | 'day')}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-sky-700 bg-sky-50/60 outline-none focus:border-sky-500 cursor-pointer"
+                className="cursor-pointer rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-sky-400"
             >
               <option value="day">일별 단위</option>
               <option value="month">월별 통합</option>
@@ -518,7 +526,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                     setFilterDate(val);
                   }
                 }}
-                className="px-2.5 py-1 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-sky-500"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-sky-400"
             />
           </div>
 
@@ -526,7 +534,7 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
           <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 bg-white outline-none focus:border-sky-500 cursor-pointer shrink-0"
+              className="shrink-0 cursor-pointer rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-sky-400"
           >
             <option value="timeDesc">최신 시간순</option>
             <option value="timeAsc">과거 시간순</option>
@@ -538,15 +546,19 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
         </div>
 
         {/* 4. 거래 내역 리스트 */}
-        <div className="max-h-[320px] overflow-y-auto pr-1 space-y-2.5">
+        <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
           {currentFilteredList.map((t) => {
             const linkedAccountName = accountLabel(t.accountId);
             return (
                 <div
                     key={t.id}
-                    className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-sky-200 transition-all shadow-sm"
+                    className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 transition hover:border-sky-200 hover:shadow-[0_12px_30px_-20px_rgba(80,60,200,0.5)]"
                 >
-                  <div className="text-left space-y-1">
+                  <div className="flex min-w-0 items-center gap-3 text-left">
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
+                      {t.type === 'income' ? '↓' : '↑'}
+                    </span>
+                  <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                       <span>{formatDateTime(t.transactionDate)}</span>
                       <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 font-bold text-[10px]">
@@ -558,16 +570,17 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                   </span>
                       )}
                     </div>
-                    <p className="font-bold text-slate-800 text-sm leading-snug">{t.description}</p>
+                    <p className="truncate text-sm font-bold leading-snug text-slate-900">{t.description}</p>
+                  </div>
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-              <span className={`font-extrabold text-sm ${t.type === 'income' ? 'text-sky-600' : 'text-rose-500'}`}>
+              <span className={`font-display text-[15px] font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
                 {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()}원
               </span>
                     <button
                         onClick={() => openEditModal(t)}
-                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-xs text-slate-400 opacity-60 transition group-hover:opacity-100 hover:bg-sky-50 hover:text-sky-600"
                         title="내역 수정"
                     >
                       ⚙️
@@ -586,19 +599,19 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
 
         {/* 5. 내역 수정 모달 */}
         {isModalOpen && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-100 space-y-4">
+            <div className="tp-modal-backdrop">
+              <div className="tp-modal max-w-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-800 text-center flex items-center justify-center gap-1.5">
                   <span>⚙️</span> 내역 편집
                 </h3>
 
                 <div className="space-y-3 text-left">
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">유형</label>
+                    <label className="tp-label">유형</label>
                     <select
                         value={editType}
                         onChange={(e) => setEditType(e.target.value as 'income' | 'expense')}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white cursor-pointer"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 transition-colors bg-white cursor-pointer"
                     >
                       <option value="expense">지출 (출금)</option>
                       <option value="income">수입 (입금)</option>
@@ -606,11 +619,11 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">카테고리</label>
+                    <label className="tp-label">카테고리</label>
                     <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white cursor-pointer"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 transition-colors bg-white cursor-pointer"
                     >
                       {SELECTABLE_CATEGORIES.map(([key, value]) => (
                           <option key={key} value={key}>{value}</option>
@@ -620,11 +633,11 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
 
                   {/* [Mock 은행 연동 추가] 반영 계좌 변경 - 계좌를 바꾸거나 해제하면 이전 반영은 자동으로 되돌려짐 */}
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">반영 계좌</label>
+                    <label className="tp-label">반영 계좌</label>
                     <select
                         value={editAccountId}
                         onChange={(e) => setEditAccountId(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-emerald-100 bg-emerald-50/50 focus:border-emerald-500 outline-none text-xs font-bold text-emerald-700 transition-colors cursor-pointer"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input !bg-emerald-50/60 !border-emerald-100 text-xs font-bold text-emerald-700 transition-colors cursor-pointer"
                     >
                       <option value="">계좌 미지정</option>
                       {accounts.map((a) => (
@@ -636,32 +649,32 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">날짜 및 시분 설정</label>
+                    <label className="tp-label">날짜 및 시분 설정</label>
                     <input
                         type="datetime-local"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 transition-colors bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">내역</label>
+                    <label className="tp-label">내역</label>
                     <input
                         type="text"
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 transition-colors bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1">금액</label>
+                    <label className="tp-label">금액</label>
                     <input
                         type="number"
                         value={editAmount}
                         onChange={(e) => setEditAmount(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-sky-500 outline-none text-xs text-slate-800 transition-colors bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl tp-input text-xs text-slate-800 transition-colors bg-white"
                     />
                   </div>
                 </div>
@@ -669,19 +682,19 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
                 <div className="flex gap-2 pt-2">
                   <button
                       onClick={handleUpdate}
-                      className="flex-1 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-sky-200"
+                      className="flex-1 py-2.5 tp-gradient-bg hover:brightness-110 text-white font-bold text-xs rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]"
                   >
                     저장
                   </button>
                   <button
                       onClick={handleDelete}
-                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-rose-200"
+                      className="tp-btn-danger flex-1 py-2.5 text-xs"
                   >
                     삭제
                   </button>
                   <button
                       onClick={() => setIsModalOpen(false)}
-                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-colors"
+                      className="tp-btn-ghost flex-1 py-2.5 text-xs"
                   >
                     취소
                   </button>

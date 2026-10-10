@@ -51,7 +51,7 @@ export default function PopularDestinations() {
           {filtered.map((d) => (
             <div
               key={d.id}
-              className="group rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-xl border border-slate-100 transition-all duration-300 flex flex-col"
+              className="group rounded-3xl overflow-hidden tp-card hover:shadow-xl transition-all duration-300 flex flex-col"
             >
               {/* 이미지 영역: 클릭하면 상세 페이지(/detail/destination/:id)로 이동 */}
               <Link to={`/detail/destination/${d.id}`} className="relative overflow-hidden h-48 block">

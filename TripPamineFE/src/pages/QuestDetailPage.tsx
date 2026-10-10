@@ -460,7 +460,7 @@ export default function QuestDetailPage() {
 
     return (
         <AppLayout
-            pageClassName="bg-slate-950 text-white"
+            pageClassName="bg-night-950 text-white"
         >
             <div
                 className="

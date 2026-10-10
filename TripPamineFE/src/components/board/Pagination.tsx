@@ -13,7 +13,7 @@ export default function Pagination({ page, totalPages, onChange }: PaginationPro
     const end = Math.min(start + blockSize, totalPages)
     const pages = Array.from({ length: end - start }, (_, i) => start + i)
 
-    const base = "min-w-9 h-9 px-2 rounded-lg text-sm font-medium transition-colors"
+    const base = "min-w-10 h-10 px-2 rounded-full text-sm font-semibold transition"
 
     return (
         <nav className="flex items-center justify-center gap-1 mt-8" aria-label="페이지 이동">
@@ -32,8 +32,8 @@ export default function Pagination({ page, totalPages, onChange }: PaginationPro
                     aria-current={p === page ? "page" : undefined}
                     className={`${base} ${
                         p === page
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
+                            ? "tp-gradient-bg text-white shadow-[0_8px_20px_-10px_rgba(124,108,255,0.9)]"
+                            : "text-slate-600 hover:bg-white hover:text-sky-600"
                     }`}
                 >
                     {p + 1}

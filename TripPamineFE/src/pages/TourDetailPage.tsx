@@ -134,14 +134,14 @@ export default function TourDetailPage() {
     const backLabel = category ? `${category.label} 목록으로` : "홈으로"
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen tp-aurora-light">
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <Header sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
             <main className={`transition-all duration-300 pt-16 ${sidebarOpen ? "lg:pl-64" : "lg:pl-16"}`}>
                 {loading ? (
                     <div className="max-w-4xl mx-auto px-4 py-10">
-                        <div className="h-72 sm:h-96 rounded-3xl bg-white border border-slate-100 animate-pulse mb-6" />
+                        <div className="h-72 sm:h-96 rounded-3xl tp-card animate-pulse mb-6" />
                         <div className="h-5 w-1/3 bg-white border border-slate-100 rounded animate-pulse" />
                     </div>
                 ) : error || !detail ? (
@@ -154,7 +154,7 @@ export default function TourDetailPage() {
                 ) : (
                     <div>
                         {/* 상단 대표 이미지 + 제목 */}
-                        <div className="relative h-72 sm:h-96 overflow-hidden">
+                        <div className="relative mx-auto mt-4 h-72 max-w-6xl overflow-hidden rounded-[2rem] shadow-[0_40px_80px_-40px_rgba(60,40,180,0.7)] sm:mx-4 sm:h-[28rem] xl:mx-auto">
                             <img
                                 src={detail.imageUrl ?? FALLBACK_IMAGE}
                                 alt={detail.title}
@@ -163,11 +163,12 @@ export default function TourDetailPage() {
                                     e.currentTarget.src = FALLBACK_IMAGE
                                 }}
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                            <div className="absolute bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto">
+                            <div className="absolute inset-0 bg-gradient-to-t from-night-950/90 via-night-950/20 to-transparent" />
+                            <div className="absolute inset-0 tp-aurora opacity-40 mix-blend-screen" />
+                            <div className="absolute bottom-8 left-0 right-0 mx-auto max-w-4xl px-6">
                                 <div className="flex items-center gap-2 mb-2">
                                     {detail.category && (
-                                        <span className="inline-block px-2.5 py-1 bg-sky-500 text-white text-xs font-bold rounded-full">
+                                        <span className="inline-block rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur">
                                             {detail.category}
                                         </span>
                                     )}
@@ -177,7 +178,7 @@ export default function TourDetailPage() {
                                         </span>
                                     )}
                                 </div>
-                                <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow-lg">{detail.title}</h1>
+                                <h1 className="font-display text-3xl font-bold tracking-tight text-white drop-shadow-lg sm:text-5xl">{detail.title}</h1>
                                 {detail.address && <p className="text-white/80 text-sm mt-1">{detail.address}</p>}
                             </div>
                         </div>
@@ -185,13 +186,13 @@ export default function TourDetailPage() {
                         {/* 소개 + 정보 카드 */}
                         <div className="max-w-4xl mx-auto px-4 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
                             <div className="sm:col-span-2">
-                                <h2 className="font-bold text-slate-800 text-lg mb-3">소개</h2>
+                                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900"><span className="h-5 w-1.5 rounded-full tp-gradient-bg" />소개</h2>
                                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
                                     {detail.overview || "제공되는 소개 정보가 없어요."}
                                 </p>
                             </div>
 
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit space-y-4">
+                            <div className="h-fit space-y-4 rounded-3xl border border-white bg-white/85 p-5 shadow-[0_20px_50px_-30px_rgba(60,40,180,0.45)] backdrop-blur-xl sm:sticky sm:top-24">
                                 <button
                                     type="button"
                                     onClick={handleToggleBookmark}
@@ -245,7 +246,7 @@ export default function TourDetailPage() {
 
                                 <Link
                                     to={backTo}
-                                    className="block w-full text-center py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-sky-200"
+                                    className="block w-full text-center py-3 tp-gradient-bg hover:brightness-110 text-white font-bold text-sm rounded-xl transition-colors shadow-[0_10px_24px_-12px_rgba(124,108,255,0.9)]"
                                 >
                                     {backLabel}
                                 </Link>

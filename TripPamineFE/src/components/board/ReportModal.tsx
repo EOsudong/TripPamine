@@ -40,15 +40,15 @@ export default function ReportModal({ postId, onClose, onReported }: ReportModal
     }
 
     return (
-        <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="tp-modal-backdrop" onClick={onClose}>
             <form
                 onSubmit={handleSubmit}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl"
+                className="tp-modal max-w-md"
                 role="dialog"
                 aria-labelledby="report-title"
             >
-                <h2 id="report-title" className="text-lg font-bold text-slate-900">게시글 신고</h2>
+                <h2 id="report-title" className="flex items-center gap-2 text-lg font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-sm">🚨</span>게시글 신고</h2>
                 <p className="text-sm text-slate-500 mt-1 mb-5">
                     신고 사유를 선택해주세요. 운영자가 확인 후 조치하며, 허위 신고는 제재될 수 있어요.
                 </p>
@@ -80,7 +80,7 @@ export default function ReportModal({ postId, onClose, onReported }: ReportModal
                     onChange={(e) => setDetail(e.target.value.slice(0, DETAIL_MAX))}
                     rows={3}
                     placeholder="어떤 점이 문제인지 알려주시면 확인에 도움이 돼요"
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-rose-300"
+                    className="tp-input resize-none text-sm"
                 />
                 <p className="text-right text-xs text-slate-400 mt-1">{detail.length}/{DETAIL_MAX}</p>
 
@@ -90,14 +90,14 @@ export default function ReportModal({ postId, onClose, onReported }: ReportModal
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-slate-400"
+                        className="tp-btn-ghost flex-1"
                     >
                         취소
                     </button>
                     <button
                         type="submit"
                         disabled={!canSubmit}
-                        className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+                        className="tp-btn flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-[0_10px_24px_-12px_rgba(244,63,94,0.9)] hover:brightness-110"
                     >
                         {submitting ? "접수 중..." : "신고하기"}
                     </button>

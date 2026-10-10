@@ -100,7 +100,7 @@ function FestivalCard({ festival, bookmarked, onBookmark }: FestivalCardProps) {
   return (
     <Link
       to={`/detail/festival/${festival.id}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-100 transition-all duration-300 cursor-pointer flex flex-col"
+      className="group tp-card rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
     >
       {/* Image */}
       <div className="relative overflow-hidden h-44 shrink-0">
