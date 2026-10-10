@@ -4,6 +4,7 @@ import com.example.trippaminebe.domain.board.entity.BoardCategory;
 import com.example.trippaminebe.domain.board.entity.BoardPost;
 import com.example.trippaminebe.domain.board.entity.BoardStatus;
 import com.example.trippaminebe.domain.board.entity.BoardWriterType;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,6 +32,9 @@ public class BoardPostSummaryResponse {
   private boolean pinned;
   private String thumbnailUrl; // 첫 번째 첨부 이미지 (없으면 null)
   private int imageCount;
+  // 누적 신고 수 - 관리자 목록(fromForAdmin)에서만 채워지고, 회원 응답에서는 JSON에서 빠진다
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private Long reportCount;
   private BoardStatus status;
   private LocalDateTime createDate;
 
@@ -53,5 +57,11 @@ public class BoardPostSummaryResponse {
         .status(post.getStatus())
         .createDate(post.getCreateDate())
         .build();
+  }
+
+  public static BoardPostSummaryResponse fromForAdmin(BoardPost post) {
+    BoardPostSummaryResponse response = from(post);
+    response.reportCount = post.getReportCount();
+    return response;
   }
 }

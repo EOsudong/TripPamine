@@ -6,19 +6,17 @@
 // 사용하는 백엔드 API: /admin/boards/** (AdminBoardController)
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import AdminLayout from "../components/AdminLayout"
+import AdminBoardComments from "../components/AdminBoardComments"
 import { ApiError } from "../api/client"
 import {
-    changeBoardCommentStatus,
     changeBoardPostPinned,
     changeBoardPostStatus,
     createBoardPost,
-    getBoardComments,
     getBoardPost,
     getBoardPosts,
     updateBoardPost,
 } from "../api/boards"
 import type {
-    AdminBoardComment,
     AdminBoardImage,
     AdminBoardPostDetail,
     AdminBoardPostSummary,
@@ -258,6 +256,11 @@ export default function AdminBoards() {
                                         {post.pinned && <span className="mr-1">📌</span>}
                                         {post.title}
                                         {post.imageCount > 0 && <span className="ml-1 text-xs text-slate-400">🖼{post.imageCount}</span>}
+                                        {(post.reportCount ?? 0) > 0 && (
+                                            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[11px] font-semibold">
+                                                신고 {post.reportCount}
+                                            </span>
+                                        )}
                                     </button>
                                 </td>
                                 <td className="px-4 py-3.5">
@@ -393,15 +396,11 @@ function PostDetailModal({
     onCommentChanged: () => void
 }) {
     const [post, setPost] = useState<AdminBoardPostDetail | null>(null)
-    const [comments, setComments] = useState<AdminBoardComment[]>([])
     const [error, setError] = useState<string | null>(null)
-    const [busyCommentId, setBusyCommentId] = useState<number | null>(null)
 
     async function load() {
         try {
-            const [detail, commentPage] = await Promise.all([getBoardPost(postId), getBoardComments(postId)])
-            setPost(detail)
-            setComments(commentPage.content)
+            setPost(await getBoardPost(postId))
         } catch (err) {
             setError(errorMessage(err, "게시글을 불러오지 못했습니다."))
         }
@@ -411,19 +410,6 @@ function PostDetailModal({
         load()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postId])
-
-    async function handleCommentStatus(comment: AdminBoardComment, next: BoardStatus) {
-        setBusyCommentId(comment.commentId)
-        try {
-            await changeBoardCommentStatus(comment.commentId, next)
-            await load()
-            onCommentChanged()
-        } catch (err) {
-            setError(errorMessage(err, "댓글 상태 변경에 실패했습니다."))
-        } finally {
-            setBusyCommentId(null)
-        }
-    }
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -469,45 +455,11 @@ function PostDetailModal({
                                 </div>
                             )}
 
-                            <h4 className="font-semibold text-slate-800 text-sm mt-8 mb-3">댓글 {comments.length}</h4>
-                            {comments.length === 0 ? (
-                                <p className="text-sm text-slate-400">댓글이 없습니다.</p>
-                            ) : (
-                                <ul className="divide-y divide-slate-100 border border-slate-100 rounded-xl">
-                                    {comments.map((comment) => (
-                                        <li key={comment.commentId} className="px-4 py-3 flex gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 text-xs mb-1">
-                                                    <span className="font-semibold text-slate-700">{comment.writerName}</span>
-                                                    <span className="text-slate-400">{formatDate(comment.createDate)}</span>
-                                                    <span className={`px-1.5 py-0.5 rounded-full font-semibold ${statusStyle[comment.status]}`}>
-                                    {statusLabel[comment.status]}
-                                  </span>
-                                                </div>
-                                                <p className={`text-sm whitespace-pre-wrap break-words ${comment.status === "ACTIVE" ? "text-slate-700" : "text-slate-400"}`}>
-                                                    {comment.content}
-                                                </p>
-                                            </div>
-                                            <div className="shrink-0 flex items-start">
-                                                {comment.status === "ACTIVE" ? (
-                                                    <>
-                                                        <RowButton tone="amber" disabled={busyCommentId === comment.commentId} onClick={() => handleCommentStatus(comment, "HIDDEN")}>
-                                                            숨김
-                                                        </RowButton>
-                                                        <RowButton tone="red" disabled={busyCommentId === comment.commentId} onClick={() => handleCommentStatus(comment, "DELETED")}>
-                                                            삭제
-                                                        </RowButton>
-                                                    </>
-                                                ) : (
-                                                    <RowButton tone="emerald" disabled={busyCommentId === comment.commentId} onClick={() => handleCommentStatus(comment, "ACTIVE")}>
-                                                        {comment.status === "DELETED" ? "복구" : "노출"}
-                                                    </RowButton>
-                                                )}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                            <AdminBoardComments
+                                postId={post.postId}
+                                canWrite={post.status !== "DELETED"}
+                                onChanged={onCommentChanged}
+                            />
                         </>
                     )}
                 </div>
@@ -706,3 +658,6 @@ function EditorThumb({ src, onRemove }: { src: string; onRemove: () => void }) {
         </div>
     )
 }
+
+
+

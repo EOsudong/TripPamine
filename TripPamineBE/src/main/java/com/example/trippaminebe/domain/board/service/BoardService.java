@@ -2,31 +2,39 @@ package com.example.trippaminebe.domain.board.service;
 
 import com.example.trippaminebe.domain.board.dto.request.BoardCommentRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardPostRequest;
+import com.example.trippaminebe.domain.board.dto.request.BoardReportRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardSearchType;
 import com.example.trippaminebe.domain.board.dto.response.*;
 import com.example.trippaminebe.domain.board.entity.*;
 import com.example.trippaminebe.domain.board.exception.BoardAccessDeniedException;
+import com.example.trippaminebe.domain.board.exception.BoardConflictException;
 import com.example.trippaminebe.domain.board.exception.BoardNotFoundException;
 import com.example.trippaminebe.domain.board.repository.BoardCommentRepository;
 import com.example.trippaminebe.domain.board.repository.BoardPostLikeRepository;
 import com.example.trippaminebe.domain.board.repository.BoardPostRepository;
 import com.example.trippaminebe.domain.board.repository.BoardPostSpecs;
+import com.example.trippaminebe.domain.board.repository.BoardReportRepository;
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.entity.UserStatus;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
 
-// 회원용 게시판 서비스 (목록/상세/작성/수정/삭제, 좋아요, 댓글)
+// 회원용 게시판 서비스 (목록/상세/작성/수정/삭제, 좋아요, 댓글, 신고)
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -41,6 +49,11 @@ public class BoardService {
   private final BoardPostLikeRepository likeRepository;
   private final UserRepository userRepository;
   private final BoardPostImageHandler imageHandler;
+  private final BoardReportRepository reportRepository;
+
+  // 처리 대기(PENDING) 신고가 이 수 이상 쌓이면 관리자 확인 전까지 자동 숨김
+  @Value("${app.board.report-hide-threshold:5}")
+  private int reportHideThreshold;
 
   // ===================== 게시글 =====================
 
@@ -63,7 +76,8 @@ public class BoardService {
 
     BoardPost post = findActivePost(postId); // UPDATE 쿼리 이후 최신 값으로 다시 조회
     boolean liked = userId != null && likeRepository.existsByPost_PostIdAndUser_Id(postId, userId);
-    return BoardPostDetailResponse.of(post, liked, post.isWrittenBy(userId));
+    boolean reported = userId != null && reportRepository.existsByPost_PostIdAndReporter_Id(postId, userId);
+    return BoardPostDetailResponse.of(post, liked, post.isWrittenBy(userId), reported);
   }
 
   // 수정 화면 진입용: 본인 글인지 확인하고, 조회수는 올리지 않는다
@@ -142,13 +156,20 @@ public class BoardService {
 
   // ===================== 댓글 =====================
 
+  // 원댓글 기준으로 페이징하고, 각 원댓글의 답글(운영자 답글 등)을 replies에 담아 내려준다
   public BoardPageResponse<BoardCommentResponse> getComments(Long postId, Long userId, int page, int size) {
     findActivePost(postId);
     Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size, DEFAULT_COMMENT_PAGE_SIZE));
-    Page<BoardCommentResponse> result = commentRepository
-        .findByPost_PostIdAndStatusOrderByCommentIdAsc(postId, BoardStatus.ACTIVE, pageable)
-        .map(comment -> BoardCommentResponse.of(comment, userId));
-    return BoardPageResponse.from(result);
+    Page<BoardComment> roots = commentRepository.findVisibleRoots(postId, BoardStatus.ACTIVE, pageable);
+
+    List<Long> rootIds = roots.getContent().stream().map(BoardComment::getCommentId).toList();
+    List<BoardComment> replies = rootIds.isEmpty()
+        ? List.of()
+        : commentRepository.findByParent_CommentIdInAndStatusOrderByCommentIdAsc(rootIds, BoardStatus.ACTIVE);
+
+    List<BoardCommentResponse> content = BoardCommentTree.assemble(
+        roots.getContent(), replies, comment -> BoardCommentResponse.forUser(comment, userId));
+    return BoardPageResponse.from(new PageImpl<>(content, pageable, roots.getTotalElements()));
   }
 
   @Transactional
@@ -161,7 +182,7 @@ public class BoardService {
         .user(user)
         .content(request.getContent().trim())
         .build());
-    BoardCommentResponse response = BoardCommentResponse.of(comment, userId);
+    BoardCommentResponse response = BoardCommentResponse.forUser(comment, userId);
 
     postRepository.addCommentCount(postId, 1);
     return response;
@@ -175,7 +196,7 @@ public class BoardService {
       throw new BoardAccessDeniedException("본인이 작성한 댓글만 수정할 수 있습니다.");
     }
     comment.updateContent(request.getContent().trim());
-    return BoardCommentResponse.of(comment, userId);
+    return BoardCommentResponse.forUser(comment, userId);
   }
 
   @Transactional
@@ -187,6 +208,48 @@ public class BoardService {
     Long postId = comment.getPost().getPostId();
     comment.changeStatus(BoardStatus.DELETED);
     postRepository.addCommentCount(postId, -1);
+  }
+
+  // ===================== 신고 =====================
+
+  // 게시글 신고. 회원당 같은 글은 한 번만, 본인 글/운영자 글은 신고할 수 없다.
+  @Transactional
+  public void reportPost(Long userId, Long postId, BoardReportRequest request) {
+    User reporter = findWritableUser(userId);
+    BoardPost post = findActivePost(postId);
+
+    if (post.getAdmin() != null) {
+      throw new BoardAccessDeniedException("운영자가 작성한 글은 신고할 수 없습니다.");
+    }
+    if (post.isWrittenBy(userId)) {
+      throw new BoardAccessDeniedException("본인이 작성한 글은 신고할 수 없습니다.");
+    }
+    if (request.getReason() == BoardReportReason.ETC && !StringUtils.hasText(request.getDetail())) {
+      throw new IllegalArgumentException("기타 사유는 상세 내용을 입력해주세요.");
+    }
+    if (reportRepository.existsByPost_PostIdAndReporter_Id(postId, userId)) {
+      throw new BoardConflictException("이미 신고한 게시글입니다.");
+    }
+
+    // saveAndFlush: 동시에 두 번 신고해서 유니크 제약(UK_BOARD_REPORTS)에 걸리면 여기서 바로 409
+    reportRepository.saveAndFlush(BoardReport.builder()
+        .post(post)
+        .reporter(reporter)
+        .reason(request.getReason())
+        .detail(StringUtils.hasText(request.getDetail()) ? request.getDetail().trim() : null)
+        .build());
+    postRepository.increaseReportCount(postId);
+
+    long pending = reportRepository.countByPost_PostIdAndStatus(postId, BoardReportStatus.PENDING);
+    if (reportHideThreshold > 0 && pending >= reportHideThreshold) {
+      // increaseReportCount가 영속성 컨텍스트를 비웠으므로 다시 조회해서 변경
+      postRepository.findById(postId)
+          .filter(BoardPost::isActive)
+          .ifPresent(p -> {
+            p.changeStatus(BoardStatus.HIDDEN);
+            log.info("[BOARD] 신고 {}건 누적으로 게시글 자동 숨김: postId={}", pending, postId);
+          });
+    }
   }
 
   // ===================== 내부 공통 =====================
@@ -249,3 +312,6 @@ public class BoardService {
     return Math.min(size, MAX_PAGE_SIZE);
   }
 }
+
+
+

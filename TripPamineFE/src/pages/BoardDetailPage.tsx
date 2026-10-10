@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import BoardLayout from "../components/board/BoardLayout"
 import BoardComments from "../components/board/BoardComments"
 import CategoryBadge from "../components/board/CategoryBadge"
+import ReportModal from "../components/board/ReportModal"
 import { useAuth } from "../context/AuthContext"
 import {
     boardApi,
@@ -30,6 +31,7 @@ export default function BoardDetailPage() {
     const [error, setError] = useState<string | null>(null)
     const [liking, setLiking] = useState(false)
     const [viewerImage, setViewerImage] = useState<string | null>(null)
+    const [reportOpen, setReportOpen] = useState(false)
 
     // 상세 조회 API는 조회수를 +1 하므로, 개발 모드(StrictMode)에서 effect가 두 번 실행돼도
     // 같은 글에 대해 한 번만 호출되도록 막는다.
@@ -68,6 +70,14 @@ export default function BoardDetailPage() {
         } finally {
             setLiking(false)
         }
+    }
+
+    function handleReportClick() {
+        if (!isLoggedIn) {
+            navigate("/login", { state: { from: location } })
+            return
+        }
+        setReportOpen(true)
     }
 
     async function handleDelete() {
@@ -177,8 +187,8 @@ export default function BoardDetailPage() {
                         </div>
                     </article>
 
-                    {/* 본인 글 관리 */}
-                    {post.mine && (
+                    {/* 본인 글이면 수정/삭제, 다른 회원 글이면 신고 (운영자 글은 신고 불가) */}
+                    {post.mine ? (
                         <div className="flex justify-end gap-2 mt-3">
                             <button
                                 onClick={() => navigate(`/boards/${post.postId}/edit`, { state: { backTo } })}
@@ -193,6 +203,18 @@ export default function BoardDetailPage() {
                                 삭제
                             </button>
                         </div>
+                    ) : (
+                        post.writerType === "USER" && (
+                            <div className="flex justify-end mt-3">
+                                <button
+                                    onClick={handleReportClick}
+                                    disabled={post.reported}
+                                    className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-rose-500 disabled:hover:text-slate-400 disabled:cursor-default"
+                                >
+                                    {post.reported ? "신고 접수됨" : "🚨 신고"}
+                                </button>
+                            </div>
+                        )
                     )}
 
                     <BoardComments
@@ -202,6 +224,18 @@ export default function BoardDetailPage() {
                         }
                     />
                 </>
+            )}
+
+            {reportOpen && post && (
+                <ReportModal
+                    postId={post.postId}
+                    onClose={() => setReportOpen(false)}
+                    onReported={() => {
+                        setReportOpen(false)
+                        setPost((prev) => (prev ? { ...prev, reported: true } : prev))
+                        window.alert("신고가 접수됐어요. 운영자가 확인 후 조치할게요.")
+                    }}
+                />
             )}
 
             {/* 이미지 크게 보기 */}
@@ -218,3 +252,6 @@ export default function BoardDetailPage() {
         </BoardLayout>
     )
 }
+
+
+

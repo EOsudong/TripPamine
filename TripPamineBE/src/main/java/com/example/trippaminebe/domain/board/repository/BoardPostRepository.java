@@ -25,6 +25,13 @@ public interface BoardPostRepository extends JpaRepository<BoardPost, Long>, Jpa
   @Query("update BoardPost p set p.commentCount = p.commentCount + :delta where p.postId = :postId")
   int addCommentCount(@Param("postId") Long postId, @Param("delta") long delta);
 
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("update BoardPost p set p.reportCount = p.reportCount + 1 where p.postId = :postId")
+  int increaseReportCount(@Param("postId") Long postId);
+
   @Query("select p.likeCount from BoardPost p where p.postId = :postId")
   Optional<Long> findLikeCount(@Param("postId") Long postId);
 }
+
+
+

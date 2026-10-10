@@ -12,6 +12,16 @@ export type BoardCategory = "NOTICE" | "REVIEW" | "QNA" | "FREE"
 export type BoardStatus = "ACTIVE" | "HIDDEN" | "DELETED"
 export type BoardWriterType = "USER" | "ADMIN"
 export type BoardSearchType = "TITLE" | "CONTENT" | "TITLE_CONTENT" | "WRITER"
+export type BoardReportReason = "SPAM" | "ABUSE" | "OBSCENE" | "PRIVACY" | "FALSE_INFO" | "ETC"
+
+export const BOARD_REPORT_REASON_LABEL: Record<BoardReportReason, string> = {
+    SPAM: "스팸/광고",
+    ABUSE: "욕설/비방",
+    OBSCENE: "음란/선정성",
+    PRIVACY: "개인정보 노출",
+    FALSE_INFO: "허위 정보",
+    ETC: "기타",
+}
 
 export const BOARD_CATEGORY_LABEL: Record<BoardCategory, string> = {
     NOTICE: "공지사항",
@@ -91,22 +101,34 @@ export interface BoardPostDetail {
     images: BoardImage[]
     liked: boolean
     mine: boolean
+    reported: boolean // 내가 이미 신고한 글인지
     createDate: string
     updateDate: string | null
 }
 
 // BoardCommentResponse
+// 원댓글은 replies에 답글(운영자 답글 등)을 담고, 답글은 replies가 빈 배열.
+// 원댓글이 숨김/삭제됐는데 답글이 남아 있으면 status가 ACTIVE가 아니고 content가 안내 문구로 내려온다.
 export interface BoardComment {
     commentId: number
     postId: number
+    parentId: number | null
     content: string
     writerId: number | null
     writerName: string
     writerProfileImageUrl: string | null
+    writerType: BoardWriterType
     mine: boolean
     status: BoardStatus
     createDate: string
     updateDate: string | null
+    replies: BoardComment[]
+}
+
+// BoardReportRequest
+export interface BoardReportRequest {
+    reason: BoardReportReason
+    detail?: string
 }
 
 // BoardLikeResponse
@@ -201,6 +223,11 @@ export const boardApi = {
         return response.data
     },
 
+    // 게시글 신고 (회원당 1회, 사유 ETC는 detail 필수)
+    reportPost: async (postId: number, request: BoardReportRequest): Promise<void> => {
+        await api.post(`/boards/${postId}/reports`, request)
+    },
+
     getComments: async (
         postId: number,
         page = 0,
@@ -263,3 +290,6 @@ export function extractBoardErrorMessage(err: unknown, fallback: string): string
     if (anyErr?.response?.status === 413) return "첨부한 이미지 용량이 너무 커요. 장수나 크기를 줄여주세요."
     return anyErr?.response?.data?.message ?? fallback
 }
+
+
+

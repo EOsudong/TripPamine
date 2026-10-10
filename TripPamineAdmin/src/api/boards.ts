@@ -1,6 +1,10 @@
 import { apiFormRequest, apiRequest } from "./client"
 import type {
     AdminBoardComment,
+    AdminBoardReport,
+    AdminReportedPost,
+    BoardReportProcessRequest,
+    BoardReportStatus,
     AdminBoardPostDetail,
     AdminBoardPostRequest,
     AdminBoardPostSummary,
@@ -77,4 +81,55 @@ export function getBoardComments(postId: number, page = 0, size = 50): Promise<B
 // PATCH /admin/boards/comments/{commentId}/status
 export function changeBoardCommentStatus(commentId: number, status: BoardStatus): Promise<void> {
     return apiRequest<void>(`/admin/boards/comments/${commentId}/status`, { method: "PATCH", body: { status } })
+}
+
+
+
+
+// ===================== 운영자 댓글/답글 =====================
+
+// POST /admin/boards/{postId}/comments - 운영자 댓글
+export function createAdminComment(postId: number, content: string): Promise<AdminBoardComment> {
+    return apiRequest<AdminBoardComment>(`/admin/boards/${postId}/comments`, { method: "POST", body: { content } })
+}
+
+// POST /admin/boards/comments/{commentId}/replies - 댓글에 운영자 답글
+export function replyToComment(commentId: number, content: string): Promise<AdminBoardComment> {
+    return apiRequest<AdminBoardComment>(`/admin/boards/comments/${commentId}/replies`, { method: "POST", body: { content } })
+}
+
+// PUT /admin/boards/comments/{commentId} - 본인이 쓴 운영자 댓글/답글 수정
+export function updateAdminComment(commentId: number, content: string): Promise<AdminBoardComment> {
+    return apiRequest<AdminBoardComment>(`/admin/boards/comments/${commentId}`, { method: "PUT", body: { content } })
+}
+
+// ===================== 신고 관리 =====================
+
+// GET /admin/boards/reports - 신고된 게시글 목록 (status 비우면 전체)
+export function getReportedPosts(
+    status: BoardReportStatus | "",
+    page: number,
+    size = 20,
+): Promise<BoardPage<AdminReportedPost>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) })
+    if (status) query.set("status", status)
+    return apiRequest<BoardPage<AdminReportedPost>>(`/admin/boards/reports?${query.toString()}`)
+}
+
+// GET /admin/boards/reports/pending-count
+export function getPendingReportCount(): Promise<{ pendingCount: number }> {
+    return apiRequest<{ pendingCount: number }>("/admin/boards/reports/pending-count")
+}
+
+// GET /admin/boards/{postId}/reports - 게시글별 신고 내역
+export function getPostReports(postId: number, page = 0, size = 50): Promise<BoardPage<AdminBoardReport>> {
+    return apiRequest<BoardPage<AdminBoardReport>>(`/admin/boards/${postId}/reports?page=${page}&size=${size}`)
+}
+
+// PATCH /admin/boards/{postId}/reports - 대기 신고 일괄 처리
+export function processPostReports(
+    postId: number,
+    request: BoardReportProcessRequest,
+): Promise<{ processedCount: number }> {
+    return apiRequest<{ processedCount: number }>(`/admin/boards/${postId}/reports`, { method: "PATCH", body: request })
 }

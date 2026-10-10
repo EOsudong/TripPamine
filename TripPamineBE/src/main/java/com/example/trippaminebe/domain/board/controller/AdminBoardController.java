@@ -2,15 +2,21 @@ package com.example.trippaminebe.domain.board.controller;
 
 import com.example.trippaminebe.domain.admin.service.custom.CustomAdminDetails;
 import com.example.trippaminebe.domain.board.dto.request.AdminBoardPostRequest;
+import com.example.trippaminebe.domain.board.dto.request.BoardCommentRequest;
+import com.example.trippaminebe.domain.board.dto.request.BoardReportProcessRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardPinRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardSearchType;
 import com.example.trippaminebe.domain.board.dto.request.BoardStatusUpdateRequest;
+import com.example.trippaminebe.domain.board.dto.response.AdminBoardReportResponse;
+import com.example.trippaminebe.domain.board.dto.response.AdminReportedPostResponse;
 import com.example.trippaminebe.domain.board.dto.response.BoardCommentResponse;
 import com.example.trippaminebe.domain.board.dto.response.BoardPageResponse;
 import com.example.trippaminebe.domain.board.dto.response.BoardPostDetailResponse;
 import com.example.trippaminebe.domain.board.dto.response.BoardPostSummaryResponse;
 import com.example.trippaminebe.domain.board.entity.BoardCategory;
+import com.example.trippaminebe.domain.board.entity.BoardReportStatus;
 import com.example.trippaminebe.domain.board.entity.BoardStatus;
+import com.example.trippaminebe.domain.board.service.AdminBoardReportService;
 import com.example.trippaminebe.domain.board.service.AdminBoardService;
 import com.example.trippaminebe.security.jwt.aspect.AdminLoggable;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 // 관리자용 게시판 API (/admin/** → AdminJWTAuthenticationFilter로 관리자 인증)
 // 변경 작업은 @AdminLoggable로 ADMIN_LOGS에 자동 기록된다.
@@ -35,6 +42,7 @@ import java.util.List;
 public class AdminBoardController {
 
   private final AdminBoardService adminBoardService;
+  private final AdminBoardReportService adminBoardReportService;
 
   @GetMapping
   @Operation(summary = "게시글 목록 조회 (관리자용, 숨김/삭제 포함)", description = "status를 비우면 전체 상태")
@@ -101,13 +109,49 @@ public class AdminBoardController {
   }
 
   @GetMapping("/{postId}/comments")
-  @Operation(summary = "댓글 목록 조회 (관리자용, 숨김/삭제 포함)")
+  @Operation(summary = "댓글 목록 조회 (관리자용, 숨김/삭제 포함, 답글 중첩)")
   public ResponseEntity<BoardPageResponse<BoardCommentResponse>> getComments(
       @PathVariable Long postId,
+      @AuthenticationPrincipal CustomAdminDetails adminDetails,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size
   ) {
-    return ResponseEntity.ok(adminBoardService.getComments(postId, page, size));
+    return ResponseEntity.ok(adminBoardService.getComments(adminDetails.getAdmin().getId(), postId, page, size));
+  }
+
+  @PostMapping("/{postId}/comments")
+  @Operation(summary = "운영자 댓글 작성")
+  @AdminLoggable(actionType = "BOARD_COMMENT_CREATE", targetTable = "BOARD_COMMENTS")
+  public ResponseEntity<BoardCommentResponse> createComment(
+      @PathVariable Long postId,
+      @AuthenticationPrincipal CustomAdminDetails adminDetails,
+      @Valid @RequestBody BoardCommentRequest request
+  ) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(adminBoardService.createComment(adminDetails.getAdmin().getId(), postId, request));
+  }
+
+  @PostMapping("/comments/{commentId}/replies")
+  @Operation(summary = "댓글에 운영자 답글 작성", description = "답글에 답글을 달면 원댓글 아래로 붙는다 (1단계 구조)")
+  @AdminLoggable(actionType = "BOARD_COMMENT_REPLY", targetTable = "BOARD_COMMENTS")
+  public ResponseEntity<BoardCommentResponse> replyToComment(
+      @PathVariable Long commentId,
+      @AuthenticationPrincipal CustomAdminDetails adminDetails,
+      @Valid @RequestBody BoardCommentRequest request
+  ) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(adminBoardService.replyToComment(adminDetails.getAdmin().getId(), commentId, request));
+  }
+
+  @PutMapping("/comments/{commentId}")
+  @Operation(summary = "운영자 댓글/답글 수정 (본인 작성분만)")
+  @AdminLoggable(actionType = "BOARD_COMMENT_UPDATE", targetTable = "BOARD_COMMENTS")
+  public ResponseEntity<BoardCommentResponse> updateComment(
+      @PathVariable Long commentId,
+      @AuthenticationPrincipal CustomAdminDetails adminDetails,
+      @Valid @RequestBody BoardCommentRequest request
+  ) {
+    return ResponseEntity.ok(adminBoardService.updateComment(adminDetails.getAdmin().getId(), commentId, request));
   }
 
   @PatchMapping("/comments/{commentId}/status")
@@ -119,5 +163,45 @@ public class AdminBoardController {
   ) {
     adminBoardService.changeCommentStatus(commentId, request.getStatus());
     return ResponseEntity.noContent().build();
+  }
+
+  // ===================== 신고 관리 =====================
+
+  @GetMapping("/reports")
+  @Operation(summary = "신고된 게시글 목록 (게시글 단위 집계)", description = "status 미지정 시 처리 상태와 무관하게 전체")
+  public ResponseEntity<BoardPageResponse<AdminReportedPostResponse>> getReportedPosts(
+      @RequestParam(required = false) BoardReportStatus status,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size
+  ) {
+    return ResponseEntity.ok(adminBoardReportService.getReportedPosts(status, page, size));
+  }
+
+  @GetMapping("/reports/pending-count")
+  @Operation(summary = "처리 대기 신고 수")
+  public ResponseEntity<Map<String, Long>> getPendingReportCount() {
+    return ResponseEntity.ok(Map.of("pendingCount", adminBoardReportService.countPending()));
+  }
+
+  @GetMapping("/{postId}/reports")
+  @Operation(summary = "게시글별 신고 내역")
+  public ResponseEntity<BoardPageResponse<AdminBoardReportResponse>> getPostReports(
+      @PathVariable Long postId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size
+  ) {
+    return ResponseEntity.ok(adminBoardReportService.getPostReports(postId, page, size));
+  }
+
+  @PatchMapping("/{postId}/reports")
+  @Operation(summary = "게시글 신고 일괄 처리", description = "대기 신고 전체를 ACCEPTED/REJECTED 처리 + 게시글 조치(KEEP/HIDE/DELETE/ACTIVATE)")
+  @AdminLoggable(actionType = "BOARD_REPORT_PROCESS", targetTable = "BOARD_REPORTS")
+  public ResponseEntity<Map<String, Integer>> processPostReports(
+      @PathVariable Long postId,
+      @AuthenticationPrincipal CustomAdminDetails adminDetails,
+      @Valid @RequestBody BoardReportProcessRequest request
+  ) {
+    int processed = adminBoardReportService.processPostReports(adminDetails.getAdmin().getId(), postId, request);
+    return ResponseEntity.ok(Map.of("processedCount", processed));
   }
 }

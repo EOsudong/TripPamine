@@ -11,6 +11,7 @@ const navItems = [
   { to: "/quests/chapters", label: "챕터 관리", icon: "❖" },
   { to: "/titles", label: "칭호 관리", icon: "★" },
   { to: "/boards", label: "게시판 관리", icon: "▣" },
+  { to: "/boards/reports", label: "신고 관리", icon: "⚑" },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -70,3 +71,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </div>
   )
 }
+
+
+

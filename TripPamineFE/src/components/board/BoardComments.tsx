@@ -88,7 +88,8 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
         if (!trimmed) return
         try {
             const updated = await boardApi.updateComment(commentId, trimmed)
-            setComments((prev) => prev.map((c) => (c.commentId === commentId ? updated : c)))
+            // 수정 응답에는 답글이 담겨 있지 않으므로 기존 답글은 그대로 유지
+            setComments((prev) => prev.map((c) => (c.commentId === commentId ? { ...updated, replies: c.replies } : c)))
             setEditingId(null)
         } catch (err) {
             setError(extractBoardErrorMessage(err, "댓글 수정에 실패했어요."))
@@ -99,11 +100,92 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
         if (!window.confirm("댓글을 삭제할까요?")) return
         try {
             await boardApi.deleteComment(commentId)
-            setComments((prev) => prev.filter((c) => c.commentId !== commentId))
+            // 운영자 답글이 달린 댓글은 목록에서 빼지 않고 "삭제된 댓글"로 남겨 답글 흐름을 유지
+            setComments((prev) =>
+                prev.flatMap((c) => {
+                    if (c.commentId !== commentId) return [c]
+                    if (c.replies.length === 0) return []
+                    return [{ ...c, status: "DELETED" as const, content: "삭제된 댓글입니다.", writerName: "", mine: false }]
+                }),
+            )
             onCountChange(-1)
         } catch (err) {
             setError(extractBoardErrorMessage(err, "댓글 삭제에 실패했어요."))
         }
+    }
+
+    // 댓글 한 개(원댓글/답글 공용) 렌더링
+    function renderComment(comment: BoardComment) {
+        const removed = comment.status !== "ACTIVE" // 숨김/삭제된 원댓글 (답글만 남아 있는 경우)
+        const isAdmin = comment.writerType === "ADMIN"
+
+        if (removed) {
+            return <p className="text-sm text-slate-400 italic">{comment.content}</p>
+        }
+
+        return (
+            <>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                        {comment.parentId !== null && <span className="text-slate-300 text-xs shrink-0">↳</span>}
+                        <Avatar url={comment.writerProfileImageUrl} name={comment.writerName} admin={isAdmin} />
+                        <span className={`text-sm font-semibold truncate ${isAdmin ? "text-rose-600" : "text-slate-700"}`}>
+                            {comment.writerName}
+                        </span>
+                        <span className="text-xs text-slate-400 shrink-0">
+                            {formatBoardDateTime(comment.createDate)}
+                            {comment.updateDate && " (수정됨)"}
+                        </span>
+                    </div>
+                    {comment.mine && editingId !== comment.commentId && (
+                        <div className="flex gap-1 shrink-0">
+                            <button
+                                onClick={() => {
+                                    setEditingId(comment.commentId)
+                                    setEditingContent(comment.content)
+                                }}
+                                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800"
+                            >
+                                수정
+                            </button>
+                            <button
+                                onClick={() => handleDelete(comment.commentId)}
+                                className="px-2 py-1 text-xs text-slate-500 hover:text-rose-500"
+                            >
+                                삭제
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {editingId === comment.commentId ? (
+                    <div className="pl-9">
+                        <textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value.slice(0, MAX_LENGTH))}
+                            rows={3}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-sky-400"
+                        />
+                        <div className="flex justify-end gap-2 mt-1.5">
+                            <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">
+                                취소
+                            </button>
+                            <button
+                                onClick={() => handleUpdate(comment.commentId)}
+                                disabled={!editingContent.trim()}
+                                className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:bg-slate-200"
+                            >
+                                저장
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <p className={`${comment.parentId !== null ? "pl-[3.25rem]" : "pl-9"} text-sm text-slate-700 whitespace-pre-wrap break-words`}>
+                        {comment.content}
+                    </p>
+                )}
+            </>
+        )
     }
 
     return (
@@ -143,59 +225,15 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
                 <ul className="divide-y divide-slate-100">
                     {comments.map((comment) => (
                         <li key={comment.commentId} className="py-3.5">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <Avatar url={comment.writerProfileImageUrl} name={comment.writerName} />
-                                    <span className="text-sm font-semibold text-slate-700 truncate">{comment.writerName}</span>
-                                    <span className="text-xs text-slate-400 shrink-0">
-                                        {formatBoardDateTime(comment.createDate)}
-                                        {comment.updateDate && " (수정됨)"}
-                                    </span>
-                                </div>
-                                {comment.mine && editingId !== comment.commentId && (
-                                    <div className="flex gap-1 shrink-0">
-                                        <button
-                                            onClick={() => {
-                                                setEditingId(comment.commentId)
-                                                setEditingContent(comment.content)
-                                            }}
-                                            className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800"
-                                        >
-                                            수정
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(comment.commentId)}
-                                            className="px-2 py-1 text-xs text-slate-500 hover:text-rose-500"
-                                        >
-                                            삭제
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {editingId === comment.commentId ? (
-                                <div className="pl-9">
-                                    <textarea
-                                        value={editingContent}
-                                        onChange={(e) => setEditingContent(e.target.value.slice(0, MAX_LENGTH))}
-                                        rows={3}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-sky-400"
-                                    />
-                                    <div className="flex justify-end gap-2 mt-1.5">
-                                        <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800">
-                                            취소
-                                        </button>
-                                        <button
-                                            onClick={() => handleUpdate(comment.commentId)}
-                                            disabled={!editingContent.trim()}
-                                            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:bg-slate-200"
-                                        >
-                                            저장
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="pl-9 text-sm text-slate-700 whitespace-pre-wrap break-words">{comment.content}</p>
+                            {renderComment(comment)}
+                            {comment.replies.length > 0 && (
+                                <ul className="mt-3 ml-9 space-y-2">
+                                    {comment.replies.map((reply) => (
+                                        <li key={reply.commentId} className="rounded-xl bg-slate-50 px-3 py-2.5">
+                                            {renderComment(reply)}
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </li>
                     ))}
@@ -215,13 +253,20 @@ export default function BoardComments({ postId, onCountChange }: BoardCommentsPr
     )
 }
 
-function Avatar({ url, name }: { url: string | null; name: string }) {
+function Avatar({ url, name, admin = false }: { url: string | null; name: string; admin?: boolean }) {
     if (url) {
         return <img src={url} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-100 shrink-0" />
     }
     return (
-        <span className="w-7 h-7 rounded-full bg-sky-100 text-sky-600 text-xs font-bold flex items-center justify-center shrink-0">
+        <span
+            className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
+                admin ? "bg-rose-100 text-rose-600" : "bg-sky-100 text-sky-600"
+            }`}
+        >
             {name.slice(0, 1)}
         </span>
     )
 }
+
+
+

@@ -212,6 +212,7 @@ export interface AdminBoardPostSummary {
   pinned: boolean
   thumbnailUrl: string | null
   imageCount: number
+  reportCount?: number // 누적 신고 수 (관리자 응답에만 포함)
   status: BoardStatus
   createDate: string
 }
@@ -233,17 +234,58 @@ export interface AdminBoardPostDetail extends Omit<AdminBoardPostSummary, "thumb
 }
 
 // BoardCommentResponse
+// 원댓글은 replies에 답글을 담는다. mine = 현재 로그인한 관리자가 쓴 운영자 댓글인지
 export interface AdminBoardComment {
   commentId: number
   postId: number
+  parentId: number | null
   content: string
   writerId: number | null
   writerName: string
   writerProfileImageUrl: string | null
+  writerType: BoardWriterType
   mine: boolean
   status: BoardStatus
   createDate: string
   updateDate: string | null
+  replies: AdminBoardComment[]
+}
+
+// ===================== 게시글 신고 =====================
+export type BoardReportReason = "SPAM" | "ABUSE" | "OBSCENE" | "PRIVACY" | "FALSE_INFO" | "ETC"
+export type BoardReportStatus = "PENDING" | "ACCEPTED" | "REJECTED"
+export type BoardReportPostAction = "KEEP" | "HIDE" | "DELETE" | "ACTIVATE"
+
+// AdminReportedPostResponse - 신고된 게시글 (게시글 단위 집계)
+export interface AdminReportedPost {
+  post: AdminBoardPostSummary
+  reportCount: number
+  pendingCount: number
+  lastReportedAt: string
+  reasonCounts: Partial<Record<BoardReportReason, number>>
+}
+
+// AdminBoardReportResponse - 개별 신고
+export interface AdminBoardReport {
+  reportId: number
+  postId: number
+  reporterId: number | null
+  reporterName: string
+  reason: BoardReportReason
+  reasonLabel: string
+  detail: string | null
+  status: BoardReportStatus
+  handledByName: string | null
+  handledAt: string | null
+  handleMemo: string | null
+  createDate: string
+}
+
+// BoardReportProcessRequest
+export interface BoardReportProcessRequest {
+  result: "ACCEPTED" | "REJECTED"
+  postAction: BoardReportPostAction
+  memo?: string
 }
 
 // AdminBoardPostRequest
@@ -254,3 +296,6 @@ export interface AdminBoardPostRequest {
   pinned: boolean
   keepImageIds?: number[]
 }
+
+
+

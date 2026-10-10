@@ -25,6 +25,11 @@ public class BoardExceptionHandler {
     return body(HttpStatus.FORBIDDEN, e.getMessage());
   }
 
+  @ExceptionHandler(BoardConflictException.class)
+  public ResponseEntity<Map<String, Object>> handleBoardConflict(BoardConflictException e) {
+    return body(HttpStatus.CONFLICT, e.getMessage());
+  }
+
   @ExceptionHandler(BoardImageException.class)
   public ResponseEntity<Map<String, Object>> handleImage(BoardImageException e) {
     return body(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -53,3 +58,6 @@ public class BoardExceptionHandler {
     ));
   }
 }
+
+
+

@@ -60,6 +60,11 @@ public class BoardPost {
   @Builder.Default
   private Long commentCount = 0L;
 
+  // 누적 신고 수 (관리자 화면 표시용). 증감은 BoardPostRepository.addReportCount로만.
+  @Column(name = "REPORT_COUNT", nullable = false)
+  @Builder.Default
+  private Long reportCount = 0L;
+
   // 상단 고정 여부(Y/N) - 관리자만 변경 가능
   @Column(name = "PINNED_YN", nullable = false, length = 1)
   @Builder.Default
@@ -131,3 +136,6 @@ public class BoardPost {
     this.images.remove(image); // orphanRemoval = true 이므로 DB에서도 삭제됨
   }
 }
+
+
+

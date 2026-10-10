@@ -2,6 +2,7 @@ package com.example.trippaminebe.domain.board.controller;
 
 import com.example.trippaminebe.domain.board.dto.request.BoardCommentRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardPostRequest;
+import com.example.trippaminebe.domain.board.dto.request.BoardReportRequest;
 import com.example.trippaminebe.domain.board.dto.request.BoardSearchType;
 import com.example.trippaminebe.domain.board.dto.response.*;
 import com.example.trippaminebe.domain.board.entity.BoardCategory;
@@ -111,6 +112,17 @@ public class BoardController {
     return ResponseEntity.ok(boardService.toggleLike(currentUserId(userDetails), postId));
   }
 
+  @PostMapping("/{postId}/reports")
+  @Operation(summary = "게시글 신고", description = "회원당 같은 글은 1회. 본인 글/운영자 글은 신고 불가. 사유 ETC는 detail 필수")
+  public ResponseEntity<Void> reportPost(
+      @PathVariable Long postId,
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Valid @RequestBody BoardReportRequest request
+  ) {
+    boardService.reportPost(currentUserId(userDetails), postId, request);
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
   // ===================== 댓글 =====================
 
   @GetMapping("/{postId}/comments")
@@ -155,3 +167,6 @@ public class BoardController {
     return ResponseEntity.noContent().build();
   }
 }
+
+
+

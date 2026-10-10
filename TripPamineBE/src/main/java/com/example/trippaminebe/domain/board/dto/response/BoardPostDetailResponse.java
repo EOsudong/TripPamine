@@ -36,10 +36,15 @@ public class BoardPostDetailResponse {
   private List<BoardImageResponse> images;
   private boolean liked; // 로그인한 회원이 좋아요를 눌렀는지 (비로그인은 false)
   private boolean mine;  // 로그인한 회원 본인 글인지 (수정/삭제 버튼 노출용)
+  private boolean reported; // 로그인한 회원이 이미 신고한 글인지 (신고 버튼 비활성화용)
   private LocalDateTime createDate;
   private LocalDateTime updateDate;
 
   public static BoardPostDetailResponse of(BoardPost post, boolean liked, boolean mine) {
+    return of(post, liked, mine, false);
+  }
+
+  public static BoardPostDetailResponse of(BoardPost post, boolean liked, boolean mine, boolean reported) {
     BoardWriter writer = BoardWriter.of(post.getUser(), post.getAdmin());
     return BoardPostDetailResponse.builder()
         .postId(post.getPostId())
@@ -59,8 +64,12 @@ public class BoardPostDetailResponse {
         .images(post.getImages().stream().map(BoardImageResponse::from).toList())
         .liked(liked)
         .mine(mine)
+        .reported(reported)
         .createDate(post.getCreateDate())
         .updateDate(post.getUpdateDate())
         .build();
   }
 }
+
+
+

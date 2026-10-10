@@ -7,6 +7,7 @@ import AdminQuestChapters from "../pages/AdminQuestChapters"
 import AdminQuestSteps from "../pages/AdminQuestSteps"
 import AdminTitles from "../pages/AdminTitles"
 import AdminBoards from "../pages/AdminBoards"
+import AdminBoardReports from "../pages/AdminBoardReports"
 import ProtectedRoute from "../components/ProtectedRoute"
 
 export default function Router() {
@@ -70,7 +71,18 @@ export default function Router() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/boards/reports"
+                    element={
+                        <ProtectedRoute>
+                            <AdminBoardReports />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </BrowserRouter>
     )
 }
+
+
+
