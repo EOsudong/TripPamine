@@ -1211,6 +1211,17 @@ export default function AiManagerDashboard() {
 
 
                         <WorkspaceRow
+                            label="감정 분석"
+                            description="내 대화의 감정을 분석하고 기록"
+                            onClick={() =>
+                                navigate(
+                                    "/ai/emotion",
+                                )
+                            }
+                        />
+
+
+                        <WorkspaceRow
                             label="퀘스트"
                             description="위치 기반 미션과 보상"
                             onClick={() =>
