@@ -12,6 +12,7 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
+import EmotionAnalysisPage from "../pages/EmotionAnalysisPage";
 import QuestPage from "../pages/QuestPage";
 import QuestDetailPage from "../pages/QuestDetailPage";
 import FinancialProductsPage from "../pages/FinancialProductsPage";
@@ -97,6 +98,17 @@ export default function Router() {
                 <Route
                     path="/ai-recommend"
                     element={<AiRecommendPage />}
+                />
+
+
+                {/* 감정 분석: Spring Boot → AWS 모델 → Oracle 저장 */}
+                <Route
+                    path="/ai/emotion"
+                    element={
+                        <ProtectedRoute>
+                            <EmotionAnalysisPage />
+                        </ProtectedRoute>
+                    }
                 />
 
 
