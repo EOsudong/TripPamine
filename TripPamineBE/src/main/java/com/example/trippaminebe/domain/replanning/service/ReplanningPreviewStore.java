@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 @Component
 public class ReplanningPreviewStore {
@@ -18,6 +19,10 @@ public class ReplanningPreviewStore {
   // previewId → 미리보기 데이터
   private final Map<String, PreviewData> previews =
       new ConcurrentHashMap<>();
+
+  // 현재 승인 처리 중인 미리보기 ID
+  private final Set<String> applyingPreviews =
+          ConcurrentHashMap.newKeySet();
 
   /**
    * 미리보기 데이터
@@ -97,6 +102,34 @@ public class ReplanningPreviewStore {
     }
 
     return data;
+  }
+
+  /**
+   * 동일한 미리보기의 중복 승인 요청 방지
+   */
+  public PreviewData beginApply(
+          String previewId,
+          Long userId,
+          Long planId
+  ) {
+    // 기존 사용자·여행 계획·만료 시간 검증
+    PreviewData data = get(previewId, userId, planId);
+
+    // 이미 승인 진행 중이면 차단
+    if (!applyingPreviews.add(previewId)) {
+      throw new IllegalStateException(
+              "이미 승인 처리 중인 재계획입니다."
+      );
+    }
+
+    return data;
+  }
+
+  /**
+   * 승인 처리 상태 해제
+   */
+  public void endApply(String previewId) {
+    applyingPreviews.remove(previewId);
   }
 
   /**
