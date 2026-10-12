@@ -9,14 +9,12 @@ import {
 } from "../api/travel";
 import { useNavigate } from "react-router-dom";
 import MysteryTour from "./MysteryTour";
-import TravelReplanningModal from "./TravelReplanningModal";
 
 // 가계부(AccountBook)는 마이페이지(/mypage)로 이동했습니다.
 // 로그인 여부와 무관하게 노출되던 메인 페이지 대신, 로그인 후에만 접근 가능한
 // 마이페이지 탭에서 확인할 수 있어요. (src/pages/MyPage.tsx 참고)
 
 export default function Hero() {
-  const [replanningPlan, setReplanningPlan] = useState<TravelPlan | null>(null);
   const [activeTab, setActiveTab] = useState<"planner" | "mystery">("planner");
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -414,7 +412,6 @@ export default function Hero() {
                     </div>
 
                     <div className="flex justify-end flex-wrap gap-2 pt-2 border-t border-slate-100">
-                      <button onClick={() => setReplanningPlan(plan)} className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg">🤖 AI 재계획</button>
                       <button
                         onClick={() => handleEdit(plan)}
                         className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
@@ -437,7 +434,6 @@ export default function Hero() {
           <MysteryTour />
         )}
       </div>
-      {replanningPlan && <TravelReplanningModal plan={replanningPlan} onClose={() => setReplanningPlan(null)} />}
     </section>
   );
 }

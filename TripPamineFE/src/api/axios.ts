@@ -1,71 +1,77 @@
-import axios from "axios"
+import axios from "axios";
 import {
-    expireUserSession,
-    getUserAccessToken,
-    isUserTokenExpired,
-} from "../auth/session"
+  expireUserSession,
+  getUserAccessToken,
+  isUserTokenExpired,
+} from "../auth/session";
 
 export const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080"
-).replace(/\/$/, "")
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080"
+).replace(/\/$/, "");
 
 export const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        "Content-Type": "application/json",
-    },
-})
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 const SESSION_EXPIRY_EXCLUDED_PATHS = [
-    "/users/auth/login",
-    "/users/auth/signup",
-    "/users/auth/check-email",
-    "/users/auth/logout",
-]
+  "/users/auth/login",
+  "/users/auth/signup",
+  "/users/auth/check-email",
+  "/users/auth/logout",
+];
 
 function isSessionExpiryExcluded(url?: string): boolean {
-    if (!url) return false
-    return SESSION_EXPIRY_EXCLUDED_PATHS.some((path) => url.includes(path))
+  if (!url) return false;
+  return SESSION_EXPIRY_EXCLUDED_PATHS.some((path) => url.includes(path));
 }
 
 api.interceptors.request.use(
-    (config) => {
-        const token = getUserAccessToken()
+  (config) => {
+    const token = getUserAccessToken();
 
-        if (
-            token &&
-            !isSessionExpiryExcluded(config.url) &&
-            isUserTokenExpired(token)
-        ) {
-            expireUserSession()
-            return Promise.reject(new Error("로그인이 만료되었습니다."))
-        }
+    if (
+      token &&
+      !isSessionExpiryExcluded(config.url) &&
+      isUserTokenExpired(token)
+    ) {
+      expireUserSession();
+      return Promise.reject(new Error("로그인이 만료되었습니다."));
+    }
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`
-        }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-        return config
-    },
-    (error) => Promise.reject(error),
-)
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
 api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        const requestUrl = error.config?.url as string | undefined
-        const hasSession = Boolean(getUserAccessToken())
+  (response) => response,
+  (error) => {
+    const requestUrl = error.config?.url as string | undefined;
+    const hasSession = Boolean(getUserAccessToken());
 
-        if (
-            error.response?.status === 401 &&
-            hasSession &&
-            !isSessionExpiryExcluded(requestUrl)
-        ) {
-            expireUserSession()
-        }
+    if (
+      error.response?.status === 401 &&
+      hasSession &&
+      !isSessionExpiryExcluded(requestUrl)
+    ) {
+      console.error("🚨 401로 인한 강제 로그아웃", {
+        url: requestUrl,
+        status: error.response?.status,
+        tokenExpired: isUserTokenExpired(getUserAccessToken() ?? ""),
+      });
 
-        return Promise.reject(error)
-    },
-)
+      expireUserSession();
+    }
 
-export default api
+    return Promise.reject(error);
+  },
+);
+
+export default api;
