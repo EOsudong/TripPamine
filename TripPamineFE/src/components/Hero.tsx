@@ -174,7 +174,7 @@ export default function Hero() {
           </span>
           <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl">
             여행 계획을 세우면,<br />
-            <span className="tp-gradient-text animate-shimmer">AI가 판을 짜요</span>
+            <span className="tp-gradient-text animate-shimmer">AI가 모든 걸 해결해 줍니다</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 md:text-base">
             일정과 예산을 등록하면 AI 매니저가 코스·퀘스트·미스터리 투어로 이어 드립니다
