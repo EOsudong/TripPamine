@@ -11,6 +11,7 @@ import {
 } from "../api/recommendation";
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal, type PlaceItem } from '../components/KakaoMapModal';
+import TravelReplanningModal from "../components/TravelReplanningModal";
 import { getTripWeatherApi, type TripDayWeather } from "../api/weather";
 import PageHero from "../components/PageHero";
 
@@ -31,6 +32,8 @@ export default function AiRecommendPage() {
     const [recommendError, setRecommendError] = useState("");
 
     const [isMapOpen, setIsMapOpen] = useState(false);
+    const [isSosOpen, setIsSosOpen] = useState(false);
+    const [sosNotice, setSosNotice] = useState(false);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -63,6 +66,8 @@ export default function AiRecommendPage() {
     };
 
     const handleSelectPlan = async (plan: TravelPlan) => {
+        setIsSosOpen(false);
+        setSosNotice(false);
         setSelectedPlan(plan);
         setRecommendation(null);
         setParsedRecommendation(null);
@@ -543,6 +548,57 @@ export default function AiRecommendPage() {
                     </div>
                 </div>
             </div>
+
+            {/* 선택한 여행의 추천 일정 유무에 따라 SOS 활성/안내 상태를 구분 */}
+            {selectedPlan && (
+                <div className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-7">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (recommendation && parsedRecommendation && !recommendLoading) {
+                                setSosNotice(false);
+                                setIsSosOpen(true);
+                            } else {
+                                setSosNotice(true);
+                            }
+                        }}
+                        aria-label="여행 SOS"
+                        aria-disabled={!(recommendation && parsedRecommendation && !recommendLoading)}
+                        className={`flex items-center gap-3 rounded-full border-2 border-white px-5 py-4 text-base font-extrabold shadow-2xl transition-all focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-red-500 sm:px-6 sm:py-5 ${
+                            recommendation && parsedRecommendation && !recommendLoading
+                                ? "bg-red-600 text-white shadow-red-900/30 hover:scale-105 hover:bg-red-700"
+                                : "cursor-pointer bg-slate-300 text-slate-600 shadow-slate-900/10 hover:bg-slate-400"
+                        }`}
+                    >
+                        <span className="text-3xl leading-none" aria-hidden="true">🆘</span>
+                        <span>여행 SOS</span>
+                    </button>
+                    {sosNotice && !(recommendation && parsedRecommendation && !recommendLoading) && (
+                        <div role="alert" className="relative max-w-[280px] rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-9 text-sm font-semibold leading-relaxed text-slate-700 shadow-xl">
+                            {recommendLoading
+                                ? "AI 추천 일정을 확인하는 중입니다. 잠시 후 다시 시도해 주세요."
+                                : recommendError
+                                    ? "AI 추천 일정을 확인할 수 없습니다. 추천 화면의 오류를 확인해 주세요."
+                                    : "여행 SOS는 AI 추천 일정이 있어야 이용할 수 있습니다."}
+                            <button
+                                type="button"
+                                onClick={() => setSosNotice(false)}
+                                aria-label="안내 닫기"
+                                className="absolute right-3 top-3 text-slate-400 hover:text-slate-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {isSosOpen && selectedPlan && recommendation && parsedRecommendation && (
+                <TravelReplanningModal
+                    plan={selectedPlan}
+                    onClose={() => setIsSosOpen(false)}
+                />
+            )}
 
             {/* KakaoMapModal 호출 시 저장 핸들러(onSavePlaces) 전달 */}
             <KakaoMapModal

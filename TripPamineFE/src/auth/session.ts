@@ -253,7 +253,14 @@ export function getSafeUserTimerDelay(
 // =====================================================
 
 export function expireUserSession(): void {
+    
+        console.error(
+        "🚨 로그아웃 함수 실행됨!"
+    )
 
+    console.trace(
+        "🚨 expireUserSession 호출 경로"
+    )
 
     clearUserSession()
 

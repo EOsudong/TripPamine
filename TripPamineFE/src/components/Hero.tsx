@@ -415,7 +415,7 @@ export default function Hero() {
                       )}
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex justify-end flex-wrap gap-2 pt-2 border-t border-slate-100">
                       <button
                         onClick={() => handleEdit(plan)}
                         className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
