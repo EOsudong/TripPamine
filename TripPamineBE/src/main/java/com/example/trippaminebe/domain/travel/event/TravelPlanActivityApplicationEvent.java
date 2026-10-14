@@ -4,6 +4,7 @@ import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 
 /**
@@ -76,6 +77,9 @@ public record TravelPlanActivityApplicationEvent(
 
 ) {
 
+	private static final ZoneId SERVICE_ZONE =
+			ZoneId.of("Asia/Seoul");
+
 	/**
 	 * 여행 계획에서 현재 기록할 사건 종류.
 	 */
@@ -130,7 +134,9 @@ public record TravelPlanActivityApplicationEvent(
 
 				plan.getEndDate(),
 
-				LocalDateTime.now()
+				LocalDateTime.now(
+						SERVICE_ZONE
+				)
 		);
 	}
 }

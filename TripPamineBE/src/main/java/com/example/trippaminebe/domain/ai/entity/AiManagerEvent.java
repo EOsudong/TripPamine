@@ -1,12 +1,12 @@
 package com.example.trippaminebe.domain.ai.entity;
 
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-
 
 /**
  * AI Manager가 관찰한 사용자 사건(Event)을 저장하는 Entity.
@@ -247,28 +247,14 @@ public class AiManagerEvent {
 	private LocalDateTime createdAt;
 
 
-	/* =====================================================
-	 * Lifecycle
-	 * ===================================================== */
-
-	/**
-	 * Event를 생성하는 코드에서 OCCURRED_AT을 빠뜨려도
-	 * NOT NULL 오류로 전체 Event 저장이 실패하지 않도록
-	 * 마지막 안전장치를 둔다.
-	 *
-	 * 주의:
-	 *
-	 * 이것은 fallback이다.
-	 *
-	 * 실제 Domain에서 사건 발생시각을 알고 있다면
-	 * Builder에서 occurredAt을 직접 지정하는 것이 우선이다.
-	 */
 	@PrePersist
 	protected void prePersist() {
 
 		if (this.occurredAt == null) {
+
 			this.occurredAt =
-					LocalDateTime.now();
+					AiTimeProvider
+							.nowInServiceZone();
 		}
 	}
 }

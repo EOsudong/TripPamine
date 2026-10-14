@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.ai.entity;
 
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -120,32 +121,48 @@ public class AiInsight {
 	private LocalDateTime updatedAt;
 
 	public void dismiss() {
+
 		this.status =
 				AiInsightStatus.DISMISSED;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 
+
 	public void expire() {
+
+		LocalDateTime now =
+				AiTimeProvider
+						.nowInServiceZone();
+
+
 		this.status =
 				AiInsightStatus.EXPIRED;
 
 		this.validUntil =
-				LocalDateTime.now();
+				now;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				now;
 	}
 
+
 	public void supersede() {
+
+		LocalDateTime now =
+				AiTimeProvider
+						.nowInServiceZone();
+
+
 		this.status =
 				AiInsightStatus.SUPERSEDED;
 
 		this.validUntil =
-				LocalDateTime.now();
+				now;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				now;
 	}
 }

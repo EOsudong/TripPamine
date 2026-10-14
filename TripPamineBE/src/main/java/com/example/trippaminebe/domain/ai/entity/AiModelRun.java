@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.ai.entity;
 
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -150,29 +151,45 @@ public class AiModelRun {
 	private LocalDateTime createdAt;
 
 	public void completeSuccess() {
-		this.status = AiModelRunStatus.SUCCESS;
-		this.completedAt = LocalDateTime.now();
-		this.errorCode = null;
-		this.errorMessage = null;
+		this.status =
+				AiModelRunStatus.SUCCESS;
+		this.completedAt =
+				AiTimeProvider.nowInServiceZone();
+		this.errorCode =
+				null;
+		this.errorMessage =
+				null;
 	}
+
 
 	public void completeFailure(
 			String errorCode,
 			String errorMessage
 	) {
-		this.status = AiModelRunStatus.FAILED;
-		this.completedAt = LocalDateTime.now();
-		this.errorCode = errorCode;
-		this.errorMessage = errorMessage;
+
+		this.status =
+				AiModelRunStatus.FAILED;
+		this.completedAt =
+				AiTimeProvider.nowInServiceZone();
+		this.errorCode =
+				errorCode;
+		this.errorMessage =
+				errorMessage;
 	}
 
-	// 혹시 다른 코드에서 startedAt을 지정하지 않고 저장하더라도
-	// DB NOT NULL 제약조건에 걸리지 않도록 최종 안전장치를 둔다.
+
+	/**
+	 * startedAt을 Service에서 넣지 못했을 경우의
+	 * 마지막 안전장치.
+	 */
 	@PrePersist
 	protected void ensureStartedAt() {
 
-		if (startedAt == null) {
-			startedAt = LocalDateTime.now();
+		if (
+				startedAt == null
+		) {
+			startedAt =
+					AiTimeProvider.nowInServiceZone();
 		}
 	}
 }

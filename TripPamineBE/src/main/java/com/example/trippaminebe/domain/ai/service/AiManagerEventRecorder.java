@@ -1,7 +1,9 @@
 package com.example.trippaminebe.domain.ai.service;
 
 import com.example.trippaminebe.domain.ai.entity.AiManagerEvent;
+import com.example.trippaminebe.domain.ai.event.AiManagerEventRecordedApplicationEvent;
 import com.example.trippaminebe.domain.ai.repository.AiManagerEventRepository;
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.quest.event.QuestCompletedApplicationEvent;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.travel.event.TravelPlanActivityApplicationEvent;
@@ -9,6 +11,7 @@ import com.example.trippaminebe.domain.travel.repository.TravelPlanRepository;
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,14 +78,14 @@ public class AiManagerEventRecorder {
 	private final TravelPlanRepository
 			travelPlanRepository;
 
-	/**
-	 * Spring Boot 4 / Jackson 3의 JSON Mapper.
-	 *
-	 * com.fasterxml.jackson.databind.ObjectMapper가 아니라
-	 * tools.jackson.databind.json.JsonMapper를 사용한다.
-	 */
 	private final JsonMapper
 			jsonMapper;
+
+	private final AiTimeProvider
+			aiTimeProvider;
+
+	private final ApplicationEventPublisher
+			applicationEventPublisher;
 
 
 	/* =====================================================
@@ -193,7 +196,7 @@ public class AiManagerEventRecorder {
 		LocalDateTime occurredAt =
 				event.clearDate() != null
 						? event.clearDate()
-						: LocalDateTime.now();
+						: aiTimeProvider.now();
 
 
 		/* -------------------------------------------------
@@ -258,6 +261,16 @@ public class AiManagerEventRecorder {
 						.saveAndFlush(
 								managerEvent
 						);
+
+
+		/*
+		 * AI_MANAGER_EVENTS 저장 Transaction이
+		 * 실제 COMMIT된 뒤 Memory Pipeline이 실행되도록
+		 * 공통 Application Event를 발행한다.
+		 */
+		publishRecordedEvent(
+				savedEvent
+		);
 
 
 		return savedEvent.getEventId();
@@ -454,7 +467,7 @@ public class AiManagerEventRecorder {
 		LocalDateTime occurredAt =
 				event.occurredAt() != null
 						? event.occurredAt()
-						: LocalDateTime.now();
+						: aiTimeProvider.now();
 
 
 		/* -------------------------------------------------
@@ -522,6 +535,11 @@ public class AiManagerEventRecorder {
 						);
 
 
+		publishRecordedEvent(
+				savedEvent
+		);
+
+
 		return savedEvent.getEventId();
 	}
 
@@ -529,6 +547,52 @@ public class AiManagerEventRecorder {
 	/* =====================================================
 	 * JSON Helper
 	 * ===================================================== */
+
+	/**
+	 * AI_MANAGER_EVENTS 저장 완료 사실을
+	 * AI Manager 내부 Pipeline에 알린다.
+	 *
+	 *
+	 * publishEvent() 자체는 현재 Transaction 안에서 호출되지만,
+	 *
+	 * AiUserMemoryEvidenceListener가
+	 *
+	 * TransactionPhase.AFTER_COMMIT
+	 *
+	 * 으로 동작하므로 실제 Memory 처리는
+	 * AI_MANAGER_EVENTS INSERT가 COMMIT된 후 시작된다.
+	 */
+	private void publishRecordedEvent(
+			AiManagerEvent savedEvent
+	) {
+
+		if (
+				savedEvent == null
+						||
+						savedEvent.getEventId() == null
+		) {
+
+			return;
+		}
+
+
+		applicationEventPublisher
+				.publishEvent(
+
+						new AiManagerEventRecordedApplicationEvent(
+
+								savedEvent.getEventId(),
+
+								savedEvent
+										.getUser()
+										.getId(),
+
+								savedEvent.getEventType(),
+
+								savedEvent.getOccurredAt()
+						)
+				);
+	}
 
 	/**
 	 * Java Object를 JSON 문자열로 변환한다.

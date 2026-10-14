@@ -1,15 +1,10 @@
 package com.example.trippaminebe.domain.ai.entity;
 
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.user.entity.User;
-
 import jakarta.persistence.*;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -80,23 +75,46 @@ public class AiManagerConversation {
 
 	@PreUpdate
 	protected void onUpdate() {
-		updatedAt = LocalDateTime.now();
+
+		updatedAt =
+				AiTimeProvider
+						.nowInServiceZone();
 	}
+
 
 	public void recordMessage() {
-		LocalDateTime now = LocalDateTime.now();
 
-		lastMessageAt = now;
-		updatedAt = now;
+		LocalDateTime now =
+				AiTimeProvider
+						.nowInServiceZone();
+
+
+		lastMessageAt =
+				now;
+
+		updatedAt =
+				now;
 	}
+
 
 	public void close() {
-		status = AiManagerConversationStatus.CLOSED;
-		updatedAt = LocalDateTime.now();
+
+		status =
+				AiManagerConversationStatus.CLOSED;
+
+		updatedAt =
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 
+
 	public void archive() {
-		status = AiManagerConversationStatus.ARCHIVED;
-		updatedAt = LocalDateTime.now();
+
+		status =
+				AiManagerConversationStatus.ARCHIVED;
+
+		updatedAt =
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 }

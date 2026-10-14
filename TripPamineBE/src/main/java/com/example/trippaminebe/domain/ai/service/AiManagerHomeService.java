@@ -115,64 +115,171 @@ public class AiManagerHomeService {
 		 * ================================================= */
 
 		List<UserQuestLogResponse> questLogs =
-				questService.findMyLogs(userId);
+				questService.findMyLogs(
+						userId
+				);
 
+
+		/*
+		 * 현재 진행 중인 Quest 개수.
+		 */
 		long activeCount =
 				questLogs.stream()
 						.filter(log ->
-								log.getStatus() == QuestStatus.PROGRESS
-						)
-						.count();
-
-		long completedCount =
-				questLogs.stream()
-						.filter(log ->
-								log.getStatus() == QuestStatus.SUCCESS
-						)
-						.count();
-
-		long failedCount =
-				questLogs.stream()
-						.filter(log ->
-								log.getStatus() == QuestStatus.FAILED
+								log.getStatus()
+										== QuestStatus.PROGRESS
 						)
 						.count();
 
 
 		/*
-		 * Home Activity Feed에서는 최근 퀘스트 몇 개만 필요합니다.
+		 * 완료된 Quest 개수.
+		 */
+		long completedCount =
+				questLogs.stream()
+						.filter(log ->
+								log.getStatus()
+										== QuestStatus.SUCCESS
+						)
+						.count();
+
+
+		/*
+		 * 실패한 Quest 개수.
+		 */
+		long failedCount =
+				questLogs.stream()
+						.filter(log ->
+								log.getStatus()
+										== QuestStatus.FAILED
+						)
+						.count();
+
+
+		/*
+		 * =================================================
+		 * Active Quest Context
+		 * =================================================
 		 *
-		 * 모든 USER_QUEST_LOGS를 프론트에 전달하지 않습니다.
+		 * 이전에는 activeCount만 전달했기 때문에
+		 * AI Manager가:
+		 *
+		 * "진행 중 Quest가 2개 있다"
+		 *
+		 * 는 사실만 알 수 있었다.
+		 *
+		 * 이제 실제 진행 중 Quest의:
+		 *
+		 * - logId
+		 * - questId
+		 * - 이름
+		 * - 보상
+		 * - 시작 시각
+		 * - Chain 진행도
+		 *
+		 * 를 Context에 포함한다.
+		 *
+		 *
+		 * startedAt이 존재하는 경우
+		 * 최근 시작한 Quest부터 배치한다.
+		 *
+		 * startedAt이 null인 비정상/레거시 데이터는
+		 * 목록에서 삭제하지 않고 마지막으로 보낸다.
+		 */
+		List<AiManagerHomeResponse.ActiveQuest> activeQuests =
+				questLogs.stream()
+						.filter(log ->
+								log.getStatus()
+										== QuestStatus.PROGRESS
+						)
+						.sorted(
+								Comparator.comparing(
+										UserQuestLogResponse::getStartedAt,
+										Comparator.nullsLast(
+												Comparator.reverseOrder()
+										)
+								)
+						)
+						.map(log ->
+								new AiManagerHomeResponse.ActiveQuest(
+
+										log.getLogId(),
+
+										log.getQuestId(),
+
+										log.getQuestName(),
+
+										log.getRewardPoint(),
+
+										log.getRewardExp(),
+
+										log.getStartedAt(),
+
+										log.getClearedStepCount(),
+
+										log.getTotalStepCount()
+								)
+						)
+						.toList();
+
+
+		/*
+		 * =================================================
+		 * Recent Completed Quest
+		 * =================================================
+		 *
+		 * 기존 동작을 그대로 유지한다.
 		 */
 		List<AiManagerHomeResponse.RecentCompletedQuest> recentCompleted =
 				questLogs.stream()
 						.filter(log ->
-								log.getStatus() == QuestStatus.SUCCESS
-										&& log.getClearDate() != null
+								log.getStatus()
+										== QuestStatus.SUCCESS
+										&&
+										log.getClearDate() != null
 						)
 						.sorted(
 								Comparator.comparing(
 										UserQuestLogResponse::getClearDate
 								).reversed()
 						)
-						.limit(3)
+						.limit(
+								3
+						)
 						.map(log ->
 								new AiManagerHomeResponse.RecentCompletedQuest(
+
 										log.getLogId(),
+
 										log.getQuestId(),
+
 										log.getQuestName(),
+
 										log.getRewardPoint(),
+
 										log.getClearDate()
 								)
 						)
 						.toList();
 
 
+		/*
+		 * 최종 Quest Context.
+		 *
+		 * activeCount와 activeQuests를 둘 다 유지하는 이유:
+		 *
+		 * activeCount
+		 * → 빠른 Summary / UI 표시
+		 *
+		 * activeQuests
+		 * → Priority Engine / Manager SLM 판단
+		 */
 		AiManagerHomeResponse.QuestContext questContext =
 				new AiManagerHomeResponse.QuestContext(
 						activeCount,
 						completedCount,
 						failedCount,
+						activeQuests,
 						recentCompleted
 				);
 

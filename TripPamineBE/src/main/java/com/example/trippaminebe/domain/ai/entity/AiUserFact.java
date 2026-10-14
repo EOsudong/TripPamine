@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.ai.entity;
 
+import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import com.example.trippaminebe.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -124,47 +125,82 @@ public class AiUserFact {
 			AiUserFactSourceType sourceType,
 			BigDecimal confidence
 	) {
-		this.factValueJson = factValueJson;
-		this.sourceType = sourceType;
-		this.confidence = confidence;
-		this.lastObservedAt = LocalDateTime.now();
-		this.updatedAt = LocalDateTime.now();
+
+		LocalDateTime now =
+				AiTimeProvider
+						.nowInServiceZone();
+
+
+		this.factValueJson =
+				factValueJson;
+
+		this.sourceType =
+				sourceType;
+
+		this.confidence =
+				confidence;
+
+		this.lastObservedAt =
+				now;
+
+		this.updatedAt =
+				now;
 	}
 
+
 	public void incrementEvidenceCount() {
+
+		LocalDateTime now =
+				AiTimeProvider
+						.nowInServiceZone();
+
+
 		this.evidenceCount =
 				this.evidenceCount == null
 						? 1
 						: this.evidenceCount + 1;
 
+
+		/*
+		 * 새로운 Evidence가 하나 더 관찰됐으므로
+		 * 마지막 관찰 시각도 함께 갱신한다.
+		 */
 		this.lastObservedAt =
-				LocalDateTime.now();
+				now;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				now;
 	}
 
 	public void dispute() {
+
 		this.status =
 				AiUserFactStatus.DISPUTED;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 
+
 	public void retire() {
+
 		this.status =
 				AiUserFactStatus.RETIRED;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 
+
 	public void activate() {
+
 		this.status =
 				AiUserFactStatus.ACTIVE;
 
 		this.updatedAt =
-				LocalDateTime.now();
+				AiTimeProvider
+						.nowInServiceZone();
 	}
 }
