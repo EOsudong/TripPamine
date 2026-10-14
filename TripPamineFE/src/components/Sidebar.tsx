@@ -43,7 +43,8 @@ type NavIconName =
     | "building"
     | "compass"
     | "board"
-    | "wallet";
+    | "wallet"
+    | "photoEditor"; 
 
 
 interface NavItem {
@@ -140,6 +141,13 @@ const navItems: NavGroup[] = [
                 icon: "ai",
                 label: "AI 여행 추천",
                 to: "/ai-recommend",
+            },
+
+
+            {
+                icon: "photoEditor",
+                label: "AI 사진 편집",
+                to: "/ai-photo-editor",
             },
 
             {
@@ -1010,6 +1018,16 @@ function NavIcon({
                     <path d="M15 10h.01" />
                     <path d="M9 14h6" />
                     <path d="M12 3v3" />
+                </svg>
+            );
+
+
+        /* AI 사진 편집 */
+        case "photoEditor":
+            return (
+                <svg {...commonProps}>
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
                 </svg>
             );
 

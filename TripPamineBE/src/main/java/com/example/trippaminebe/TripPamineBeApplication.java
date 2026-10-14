@@ -23,9 +23,9 @@ public class TripPamineBeApplication {
 		} else {
 			// 프로젝트 실제 경로를 지정하여 로드
 			dotenv = Dotenv.configure()
-					.directory(userDir+"\\TripPamineBE")
-					.ignoreIfMissing()
-					.load();
+				.directory(userDir+"\\TripPamineBE")
+				.ignoreIfMissing()
+				.load();
 			projectRoot = new File(userDir, "TripPamineBE");
 		}
 		dotenv.entries().forEach(entry -> {

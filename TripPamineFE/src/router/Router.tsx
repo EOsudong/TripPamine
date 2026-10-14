@@ -22,6 +22,7 @@ import BoardDetailPage from "../pages/BoardDetailPage";
 import BoardWritePage from "../pages/BoardWritePage";
 import AssetDashboardPage from "../pages/AssetDashboardPage";
 import ProtectedRoute from "../components/ProtectedRoute";
+import AiPhotoEditorPage from "../pages/AiPhotoEditorPage";
 
 export default function Router() {
     return (
@@ -99,6 +100,15 @@ export default function Router() {
                     element={<AiRecommendPage />}
                 />
 
+                {/* AI 사진 편집 스튜디오 */}
+                <Route
+                    path="/ai-photo-editor"
+                    element={
+                        <ProtectedRoute>
+                            <AiPhotoEditorPage />
+                        </ProtectedRoute>
+                    }
+                />
 
                 {/* 퀘스트 */}
                 <Route
