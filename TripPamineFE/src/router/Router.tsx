@@ -12,10 +12,11 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
-import QuestPage from "../pages/QuestPage";
-import QuestDetailPage from "../pages/QuestDetailPage";
-import FinancialProductsPage from "../pages/FinancialProductsPage";
-import MysteryTourPlay from "../pages/MysteryTourPlay";
+import EmotionAnalysisPage from "../pages/EmotionAnalysisPage";
+import QuestPage from "../pages/QuestPage"
+import QuestDetailPage from "../pages/QuestDetailPage"
+import FinancialProductsPage from "../pages/FinancialProductsPage"
+import MysteryTourPlay from "../pages/MysteryTourPlay"   // ← 추가
 import TravelPage from "../pages/TravelPage";
 import BoardListPage from "../pages/BoardListPage";
 import BoardDetailPage from "../pages/BoardDetailPage";
@@ -47,6 +48,27 @@ export default function Router() {
                     element={
                         <ProtectedRoute>
                             <MyPage />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* 소셜 로그인(카카오/구글/네이버) 성공 후 백엔드가 accessToken을 쿼리로 붙여
+          여기로 리다이렉트함.*/}
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
+                {/* /detail/destination/jeju , /detail/festival/boryeong-mud 처럼
+            type(destination|festival)과 id 값을 URL에서 그대로 받아서 Detail.jsx에서 분기 처리 */}
+                <Route path="/detail/:type/:id" element={<Detail />} />
+                {/* 사이드바 "정보" 그룹의 대분류 3개(국내 축제 및 행사/관광 여행지/관광 산업) 공용 페이지.
+            categoryKey는 data/tourCategories.ts의 key("festivals"|"destinations"|"industry")와 매칭됨 */}
+                <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
+                {/* 위 목록 페이지에서 카드를 클릭하면 이동하는 상세 페이지 (TourItemCard.tsx -> TourDetailPage.tsx) */}
+                <Route path="/tour/:categoryKey/:contentId" element={<TourDetailPage />} />
+                <Route path="/ai-recommend" element={<AiRecommendPage />} />
+                {/* 사용자 감정 분석: JWT 인증 필수 */}
+                <Route
+                    path="/ai/emotion"
+                    element={
+                        <ProtectedRoute>
+                            <EmotionAnalysisPage />
                         </ProtectedRoute>
                     }
                 />
