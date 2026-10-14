@@ -59,6 +59,47 @@ export async function getLatestEmotionApi():
 }
 
 
+/**
+ * 로그인 사용자의 대화를 AI 모델로 분석하고 Oracle에 기록한다.
+ * JWT 인증과 사용자 ID 검증은 기존 Backend가 담당한다.
+ */
+export interface EmotionAnalysisRequest {
+    planId: number | null;
+    humanTurns: string[];
+}
+
+export interface EmotionAnalysisResponse {
+    requestId: string;
+    modelRunId: number;
+    eventId: number;
+    observationId: number;
+    fineLabel: string;
+    fineLabelName: string;
+    coarseLabel: string;
+    confidence: number;
+    first2Confidence: number;
+    first2Margin: number;
+    contextMode: "FIRST2" | "FULL_FALLBACK";
+    fallbackTriggered: boolean;
+    humanTurnCount: number;
+    turnsUsed: number;
+    policyVersion: string;
+    modelVersion: string;
+    latencyMs: number;
+}
+
+export async function analyzeEmotionApi(
+    request: EmotionAnalysisRequest,
+): Promise<EmotionAnalysisResponse> {
+    const response = await api.post<EmotionAnalysisResponse>(
+        "/ai/emotion/predict",
+        request,
+    );
+
+    return response.data;
+}
+
+
 /* =====================================================
  * AI Manager Home
  * ===================================================== */
