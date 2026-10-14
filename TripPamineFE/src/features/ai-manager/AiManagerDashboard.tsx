@@ -1211,8 +1211,8 @@ export default function AiManagerDashboard() {
 
 
                         <WorkspaceRow
-                            label="감정 분석"
-                            description="내 대화의 감정을 분석하고 기록"
+                            label="내 마음 살펴보기"
+                            description="오늘의 기분을 알아보고 기록하기"
                             onClick={() =>
                                 navigate(
                                     "/ai/emotion",
