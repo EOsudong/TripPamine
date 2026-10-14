@@ -245,7 +245,7 @@ export default function AiManagerDashboard() {
                         );
 
                         setLoadError(
-                            "AI Manager Context를 불러오지 못했습니다.",
+                            "필요한 정보를 불러오지 못했어요.",
                         );
                     }
 
@@ -539,7 +539,7 @@ export default function AiManagerDashboard() {
                     text-sky-200
                   "
                                 >
-                  AI MANAGER
+                  트립파민 도우미
                 </span>
 
                             </div>
@@ -589,12 +589,12 @@ export default function AiManagerDashboard() {
                             >
 
                                 {loading
-                                    ? "현재 Context를 확인하고 있어요."
+                                    ? "지금 필요한 정보를 살펴보고 있어요."
                                     : loadError
-                                        ? "현재 Context를 불러오지 못했습니다."
+                                        ? "지금 필요한 정보를 불러오지 못했어요."
                                         : attentionItems.length > 0
                                             ? `오늘 확인할 내용이 ${attentionItems.length}개 있어요. 중요한 것부터 정리해드릴게요.`
-                                            : "지금 바로 확인해야 할 중요한 항목은 없어요. 최근 Context를 정리해두었습니다."}
+                                            : "지금 확인해야 할 중요한 내용은 없어요. 최근 활동을 아래에서 살펴보세요."}
 
                             </p>
 
@@ -689,7 +689,7 @@ export default function AiManagerDashboard() {
                   text-sky-600
                 "
                             >
-                                NEEDS YOUR ATTENTION
+                                오늘 확인할 내용
                             </p>
 
 
@@ -732,7 +732,7 @@ export default function AiManagerDashboard() {
 
                         <EmptyPanel
                             symbol="!"
-                            title="Context를 불러오지 못했습니다."
+                            title="정보를 불러오지 못했어요."
                             description="잠시 후 페이지를 다시 불러와 주세요."
                             error
                         />
@@ -750,7 +750,7 @@ export default function AiManagerDashboard() {
                 text-slate-400
               "
                         >
-                            AI Manager가 현재 Context를 확인하고 있습니다.
+                            나에게 필요한 정보를 살펴보고 있어요.
                         </div>
 
                     ) : attentionItems.length === 0 ? (
@@ -859,7 +859,7 @@ export default function AiManagerDashboard() {
                     text-slate-400
                   "
                                 >
-                                    AI ACTIVITY
+                                    나의 활동 기록
                                 </p>
 
 
@@ -894,7 +894,7 @@ export default function AiManagerDashboard() {
                     text-slate-500
                   "
                                 >
-                  {activities.length} events
+                  {activities.length}건
                 </span>
 
                             )}
@@ -939,8 +939,8 @@ export default function AiManagerDashboard() {
                     text-slate-400
                   "
                                 >
-                                    감정 분석, 퀘스트 완료 등 실제 활동이 발생하면
-                                    AI Manager Timeline에 기록됩니다.
+                                    마음을 살펴보거나 퀘스트를 완료하면
+                                    이곳에서 확인할 수 있어요.
                                 </p>
 
                             </div>
@@ -1014,7 +1014,7 @@ export default function AiManagerDashboard() {
                 text-slate-400
               "
                         >
-                            CURRENT CONTEXT
+                            나의 현황
                         </p>
 
 
@@ -1087,7 +1087,7 @@ export default function AiManagerDashboard() {
 
 
                             <ContextRow
-                                label="Activity"
+                                label="최근 활동"
                                 value={`${activities.length}개`}
                             />
 
@@ -1160,7 +1160,7 @@ export default function AiManagerDashboard() {
               text-slate-400
             "
                     >
-                        WORKSPACES
+                        원하는 기능 바로가기
                     </p>
 
 
@@ -1375,7 +1375,7 @@ function GuestManagerView({
               text-sky-200
             "
                     >
-                        TRIPPAMINE AI MANAGER
+                        TRIPPAMINE
                     </p>
 
 
@@ -1461,7 +1461,7 @@ function GuestManagerView({
                 hover:bg-sky-400
               "
                         >
-                            AI Manager 시작하기
+                            트립파민 시작하기
                         </button>
 
 
@@ -1813,28 +1813,6 @@ function ActivityRow({
           "
                 >
                     {activity.description}
-                </p>
-
-
-                {/*
-         * Event Type은 일반 사용자에게 항상 보여줄 필요는 없다.
-         *
-         * 하지만 개발 단계에서는 Event Pipeline 확인에 유용하므로
-         * 작고 약한 색상으로 표시한다.
-         *
-         * 운영 UI가 안정화되면 제거해도 된다.
-         */}
-                <p
-                    className="
-            mt-2
-
-            text-[9px]
-            font-bold
-            tracking-wide
-            text-slate-300
-          "
-                >
-                    {activity.eventType}
                 </p>
 
             </div>
@@ -2193,7 +2171,7 @@ function ManagerCommandBar({
 
 
         setHint(
-            "현재는 여행 · AI 추천 · 퀘스트 · 마이페이지 이동 명령을 지원합니다.",
+            "여행 · 추천 · 퀘스트 · 마이페이지로 이동할 수 있어요.",
         );
     };
 
@@ -2280,7 +2258,7 @@ function ManagerCommandBar({
                             );
                         }}
 
-                        placeholder="TP Manager에게 물어보세요"
+                        placeholder="찾고 싶은 기능을 입력해 주세요 (예: 여행, 퀘스트)"
 
                         className="
               min-w-0
@@ -2303,7 +2281,7 @@ function ManagerCommandBar({
 
                     <button
                         type="submit"
-                        aria-label="명령 실행"
+                        aria-label="이동하기"
 
                         className="
               flex
@@ -2491,7 +2469,7 @@ function DomainIndicator({
 
             travel: {
                 label:
-                    "TRAVEL",
+                    "여행",
 
                 className:
                     "bg-sky-50 text-sky-600",
@@ -2499,7 +2477,7 @@ function DomainIndicator({
 
             quest: {
                 label:
-                    "QUEST",
+                    "퀘스트",
 
                 className:
                     "bg-emerald-50 text-emerald-600",
@@ -2507,7 +2485,7 @@ function DomainIndicator({
 
             emotion: {
                 label:
-                    "EMOTION",
+                    "마음",
 
                 className:
                     "bg-indigo-50 text-indigo-600",
@@ -2515,7 +2493,7 @@ function DomainIndicator({
 
             finance: {
                 label:
-                    "FINANCE",
+                    "금융",
 
                 className:
                     "bg-amber-50 text-amber-600",
@@ -2523,7 +2501,7 @@ function DomainIndicator({
 
             diary: {
                 label:
-                    "DIARY",
+                    "일기",
 
                 className:
                     "bg-violet-50 text-violet-600",
@@ -2531,7 +2509,7 @@ function DomainIndicator({
 
             system: {
                 label:
-                    "MANAGER",
+                    "소식",
 
                 className:
                     "bg-slate-100 text-slate-500",
@@ -2746,7 +2724,7 @@ function buildAttentionItems(
                 "아직 예정된 여행이 없어요",
 
             description:
-                "첫 여행 계획을 등록하면 AI Manager가 여행 계획을 연결하기 시작합니다.",
+                "여행 계획을 하나 만들어 두면 앞으로의 일정을 한눈에 볼 수 있어요.",
 
             actionLabel:
                 "여행 만들기",
