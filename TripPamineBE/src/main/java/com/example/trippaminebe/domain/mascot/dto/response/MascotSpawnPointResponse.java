@@ -31,6 +31,11 @@ public class MascotSpawnPointResponse {
     // 이미 이 스폰 지점에서 이 마스코트를 잡은 적이 있는지 (도감 중복 표시용, 재포획 허용 여부와 무관하게 UI 참고용)
     private boolean alreadyCaught;
 
+    // [관리자 화면 추가] 수정 모달에서 기존 값을 그대로 보여주고 유지하기 위해 함께 내려준다.
+    // (이 값이 없으면 관리자가 스폰을 수정할 때 연동 퀘스트가 지워질 수 있었다)
+    private Long linkedQuestId;
+    private String activeYn;
+
     public static MascotSpawnPointResponse from(MascotSpawnPoint spawnPoint, boolean alreadyCaught) {
         return MascotSpawnPointResponse.builder()
                 .spawnId(spawnPoint.getSpawnId())
@@ -43,6 +48,10 @@ public class MascotSpawnPointResponse {
                 .mascotRarity(spawnPoint.getMascot().getRarity().name())
                 .mascotImageUrl(spawnPoint.getMascot().getImageUrl())
                 .alreadyCaught(alreadyCaught)
+                .linkedQuestId(spawnPoint.getLinkedQuestId())
+                .activeYn(spawnPoint.getActiveYn())
                 .build();
     }
 }
+
+

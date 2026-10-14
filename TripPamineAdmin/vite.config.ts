@@ -12,6 +12,8 @@ export default defineConfig({
       "/admin": "http://localhost:8080",
       // [게시판 추가] 게시글 첨부 이미지(<img src="/board-images/...">)도 백엔드에서 받아오기
       "/board-images": "http://localhost:8080",
+      // 관리자 화면 주소(/mascots)는 프론트 라우트이므로 "/mascots" 전체를 프록시하면 안 된다 → .png만 정규식으로 매칭
+      "^/mascots/.*\\.(png|jpe?g|webp|gif)$": "http://localhost:8080",
     },
   },
 })

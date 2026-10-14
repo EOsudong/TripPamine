@@ -9,6 +9,7 @@ import AdminTitles from "../pages/AdminTitles"
 import AdminBoards from "../pages/AdminBoards"
 import AdminBoardReports from "../pages/AdminBoardReports"
 import ProtectedRoute from "../components/ProtectedRoute"
+import AdminMascots from "../pages/AdminMascots"
 
 export default function Router() {
     return (
@@ -76,6 +77,15 @@ export default function Router() {
                     element={
                         <ProtectedRoute>
                             <AdminBoardReports />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* [마스코트 추가] */}
+                <Route
+                    path="/mascots"
+                    element={
+                        <ProtectedRoute>
+                            <AdminMascots />
                         </ProtectedRoute>
                     }
                 />

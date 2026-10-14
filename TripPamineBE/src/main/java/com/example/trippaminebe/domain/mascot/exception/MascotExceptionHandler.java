@@ -13,31 +13,37 @@ public class MascotExceptionHandler {
 
     @ExceptionHandler(MascotSpawnNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleSpawnNotFound(MascotSpawnNotFoundException e) {
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(Map.of(
-                        "status", 404,
-                        "message", e.getMessage()
-                ));
+        return body(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(MascotLocationException.class)
     public ResponseEntity<Map<String, Object>> handleLocationError(MascotLocationException e) {
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                        "status", 400,
-                        "message", e.getMessage()
-                ));
+        return body(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(EncounterTokenInvalidException.class)
     public ResponseEntity<Map<String, Object>> handleTokenInvalid(EncounterTokenInvalidException e) {
+        return body(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    // [추가] 연동 퀘스트 미클리어
+    @ExceptionHandler(MascotLockedException.class)
+    public ResponseEntity<Map<String, Object>> handleLocked(MascotLockedException e) {
+        return body(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    // [추가] 관리자 삭제 충돌
+    @ExceptionHandler(MascotDeleteConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleDeleteConflict(MascotDeleteConflictException e) {
+        return body(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    private ResponseEntity<Map<String, Object>> body(HttpStatus status, String message) {
         return ResponseEntity
-                .status(HttpStatus.CONFLICT)
+                .status(status)
                 .body(Map.of(
-                        "status", 409,
-                        "message", e.getMessage()
+                        "status", status.value(),
+                        "message", message
                 ));
     }
 }
