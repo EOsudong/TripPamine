@@ -53,7 +53,7 @@ export default function EmotionAnalysisPage() {
         event.preventDefault();
 
         if (invalidTurns || analyzing) {
-            setError("1~50개의 대화를 입력해 주세요. 각 대화는 최대 4,000자입니다.");
+            setError("한 줄 이상 적어주세요. 내용이 길다면 여러 줄로 나누어 작성해 주세요.");
             return;
         }
 
@@ -78,9 +78,9 @@ export default function EmotionAnalysisPage() {
             }
         } catch (cause) {
             if (axios.isAxiosError(cause) && cause.response?.status === 503) {
-                setError("감정 분석 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+                setError("지금은 연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
             } else {
-                setError("감정 분석 중 오류가 발생했습니다. 로그인 및 서버 상태를 확인해 주세요.");
+                setError("마음을 살펴보는 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
             }
         } finally {
             setAnalyzing(false);
@@ -92,13 +92,13 @@ export default function EmotionAnalysisPage() {
             <div className="mx-auto max-w-4xl px-4 py-10 md:px-8">
                 <header className="mb-7">
                     <p className="text-xs font-bold tracking-widest text-sky-600">
-                        AI MANAGER · EMOTION
+                        나의 마음 기록
                     </p>
                     <h1 className="mt-2 text-3xl font-black text-slate-950">
-                        감정 분석
+                        내 마음 살펴보기
                     </h1>
                     <p className="mt-3 text-sm leading-6 text-slate-600">
-                        대화를 입력하면 학습된 감정 모델이 분석하고 내 감정 기록에 저장합니다.
+                        떠오르는 생각이나 기분을 편하게 적어주세요. 지금 어떤 감정에 가까운지 살펴볼게요.
                     </p>
                 </header>
 
@@ -107,27 +107,27 @@ export default function EmotionAnalysisPage() {
                     className="rounded-3xl bg-white/90 p-6 shadow-[0_20px_50px_-35px_rgba(60,40,180,0.45)] backdrop-blur-xl"
                 >
                     <label htmlFor="emotion-human-turns" className="text-sm font-bold text-slate-800">
-                        대화 내용
+                        지금 어떤 마음인가요?
                     </label>
                     <p className="mt-1 text-xs text-slate-500">
-                        사용자 발화마다 줄을 바꿔 입력하세요. 최대 50개까지 분석할 수 있습니다.
+                        생각이 여러 가지라면 줄을 바꿔 적어주세요. 짧게 적어도 좋아요.
                     </p>
                     <textarea
                         id="emotion-human-turns"
                         value={input}
                         onChange={(event) => setInput(event.target.value)}
                         rows={6}
-                        placeholder={"내일 여행을 떠나서 설레요.\n친구들과 새로운 곳에 가는 게 기대돼요."}
+                        placeholder={"내일 여행을 떠나서 설레요.\n친구들과 좋은 추억을 만들고 싶어요."}
                         className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                     />
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs text-slate-500">현재 {humanTurns.length}개 발화</p>
+                        <p className="text-xs text-slate-500">작성한 이야기 {humanTurns.length}줄</p>
                         <button
                             type="submit"
                             disabled={analyzing || invalidTurns}
                             className="rounded-2xl bg-sky-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-sky-600/20 transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {analyzing ? "AI가 분석하고 있어요..." : "감정 분석하기"}
+                            {analyzing ? "지금 마음을 살펴보고 있어요..." : "내 마음 살펴보기"}
                         </button>
                     </div>
                     {error && (
@@ -139,33 +139,27 @@ export default function EmotionAnalysisPage() {
 
                 {result && (
                     <section aria-live="polite" className="mt-6 rounded-3xl bg-white/90 p-6 shadow-[0_20px_50px_-35px_rgba(60,40,180,0.45)]">
-                        <p className="text-xs font-bold tracking-widest text-sky-600">분석 완료 · 저장됨</p>
+                        <p className="text-xs font-bold tracking-widest text-sky-600">내 마음 기록에 남겼어요</p>
                         <h2 className="mt-3 text-2xl font-black text-slate-900">
                             {result.fineLabelName}
                         </h2>
                         <p className="mt-2 text-sm text-slate-600">
-                            {result.coarseLabel} · {result.fineLabel}
+                            적어주신 이야기에서 이런 마음이 느껴져요.
                         </p>
-                        <div className="mt-5 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
-                            <p>모델 점수: {(result.confidence * 100).toFixed(1)}%</p>
-                            <p>분석 문맥: {result.contextMode === "FULL_FALLBACK" ? "전체 대화" : "첫 2개 발화"}</p>
-                            <p>사용된 발화: {result.turnsUsed}개</p>
-                            <p>추론 시간: {result.latencyMs.toFixed(0)}ms</p>
-                        </div>
-                        <p className="mt-4 text-xs text-slate-500">
-                            모델 점수는 정답률이 아닙니다. 분석 결과는 로그인 사용자의 감정 기록에 저장됩니다.
+                        <p className="mt-4 text-xs leading-5 text-slate-500">
+                            마음은 상황에 따라 달라질 수 있어요. 이 결과는 참고로 살펴봐 주세요.
                         </p>
                     </section>
                 )}
 
                 {latest && (
                     <section className="mt-6 rounded-3xl bg-white/80 p-6 shadow-[0_15px_40px_-35px_rgba(60,40,180,0.4)]">
-                        <p className="text-xs font-bold tracking-widest text-slate-500">최근 감정 기록</p>
+                        <p className="text-xs font-bold tracking-widest text-slate-500">최근에 살펴본 마음</p>
                         <h2 className="mt-2 text-xl font-bold text-slate-900">
                             {latest.fineLabelName}
                         </h2>
                         <p className="mt-2 text-sm text-slate-600">
-                            {latest.coarseLabel} · {latest.fineLabel} · {latest.observedAt.replace("T", " ").slice(0, 19)}
+                            기록한 시간: {latest.observedAt.replace("T", " ").slice(0, 16)}
                         </p>
                     </section>
                 )}
