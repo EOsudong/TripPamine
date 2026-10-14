@@ -12,6 +12,7 @@ import OAuthCallback from "../pages/Oauthcallback";
 import TourCategoryPage from "../pages/TourCategoryPage";
 import TourDetailPage from "../pages/TourDetailPage";
 import AiRecommendPage from "../pages/AiRecommendPage";
+import EmotionAnalysisPage from "../pages/EmotionAnalysisPage";
 import QuestPage from "../pages/QuestPage"
 import QuestDetailPage from "../pages/QuestDetailPage"
 import FinancialProductsPage from "../pages/FinancialProductsPage"
@@ -57,6 +58,15 @@ export default function Router() {
                 {/* 위 목록 페이지에서 카드를 클릭하면 이동하는 상세 페이지 (TourItemCard.tsx -> TourDetailPage.tsx) */}
                 <Route path="/tour/:categoryKey/:contentId" element={<TourDetailPage />} />
                 <Route path="/ai-recommend" element={<AiRecommendPage />} />
+                {/* 사용자 감정 분석: JWT 인증 필수 */}
+                <Route
+                    path="/ai/emotion"
+                    element={
+                        <ProtectedRoute>
+                            <EmotionAnalysisPage />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route
                     path="/quests"
                     element={
