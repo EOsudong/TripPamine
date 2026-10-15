@@ -49,6 +49,16 @@ export default function AdminDashboard() {
                 </Link>
 
                 <Link
+                    to="/mascots"
+                    className="block bg-white rounded-2xl border border-slate-200 p-6 hover:border-indigo-300 hover:shadow-sm transition-all"
+                >
+                    <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-2">마스코트 관리</p>
+                    <p className="text-sm text-slate-500">
+                        마스코트 등록 및 수정, 삭제를 설정할 수 있어요.
+                    </p>
+                </Link>
+                
+                <Link
                     to="/boards"
                     className="block bg-white rounded-2xl border border-slate-200 p-6 hover:border-indigo-300 hover:shadow-sm transition-all"
                 >

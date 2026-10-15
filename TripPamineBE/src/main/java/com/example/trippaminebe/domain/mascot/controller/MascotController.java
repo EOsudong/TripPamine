@@ -3,6 +3,7 @@ package com.example.trippaminebe.domain.mascot.controller;
 import com.example.trippaminebe.domain.mascot.dto.request.MascotCatchRequest;
 import com.example.trippaminebe.domain.mascot.dto.request.MascotEncounterRequest;
 import com.example.trippaminebe.domain.mascot.dto.response.MascotCatchResponse;
+import com.example.trippaminebe.domain.mascot.dto.response.MascotDexResponse;
 import com.example.trippaminebe.domain.mascot.dto.response.MascotEncounterResponse;
 import com.example.trippaminebe.domain.mascot.dto.response.MascotSpawnPointResponse;
 import com.example.trippaminebe.domain.mascot.dto.response.UserMascotCollectionResponse;
@@ -54,7 +55,7 @@ public class MascotController {
     }
 
     @PostMapping("/spawns/{spawnId}/catch")
-    @Operation(summary = "포획 최종 확정 (안드로이드 의사 AR 미니게임 결과 + encounterToken 재검증)")
+    @Operation(summary = "포획 최종 확정 (미니게임 점수 + encounterToken 재검증, 성공 여부는 서버가 확률로 판정. 첫 포획만 포인트 지급)")
     public ResponseEntity<MascotCatchResponse> catchMascot(
         @AuthenticationPrincipal CustomUserDetails userDetails,
         @PathVariable Long spawnId,
@@ -69,5 +70,14 @@ public class MascotController {
         @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(mascotService.findMyCollection(getUserId(userDetails)));
+    }
+
+    // [추가] 도감 - 전체 마스코트를 지역별로 내려주고 내 수집 여부/횟수/수집률을 붙인다.
+    @GetMapping("/dex")
+    @Operation(summary = "마스코트 도감 조회 (전체 마스코트 + 내 수집 현황, 지역별 수집률)")
+    public ResponseEntity<MascotDexResponse> findDex(
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(mascotService.findDex(getUserId(userDetails)));
     }
 }

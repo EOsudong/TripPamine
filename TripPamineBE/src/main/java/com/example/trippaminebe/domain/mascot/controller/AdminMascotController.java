@@ -52,6 +52,15 @@ public class AdminMascotController {
         return ResponseEntity.ok(mascotService.updateRegion(regionId, request));
     }
 
+    // [추가] 소속 마스코트가 있으면 409
+    @DeleteMapping("/regions/{regionId}")
+    @Operation(summary = "지역 삭제 (관리자용)")
+    @AdminLoggable(actionType = "MASCOT_REGION_DELETE", targetTable = "REGIONS")
+    public ResponseEntity<Void> deleteRegion(@PathVariable Long regionId) {
+        mascotService.deleteRegion(regionId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ----- 마스코트(Mascot) -----
 
     @GetMapping
@@ -75,6 +84,15 @@ public class AdminMascotController {
         @Valid @RequestBody MascotRequest request
     ) {
         return ResponseEntity.ok(mascotService.updateMascot(mascotId, request));
+    }
+
+    // [추가] 포획 기록 또는 스폰 지점이 남아 있으면 409
+    @DeleteMapping("/{mascotId}")
+    @Operation(summary = "마스코트 삭제 (관리자용)")
+    @AdminLoggable(actionType = "MASCOT_DELETE", targetTable = "MASCOTS")
+    public ResponseEntity<Void> deleteMascot(@PathVariable Long mascotId) {
+        mascotService.deleteMascot(mascotId);
+        return ResponseEntity.noContent().build();
     }
 
     // ----- 스폰 지점(MascotSpawnPoint) -----
@@ -112,3 +130,5 @@ public class AdminMascotController {
         return ResponseEntity.noContent().build();
     }
 }
+
+

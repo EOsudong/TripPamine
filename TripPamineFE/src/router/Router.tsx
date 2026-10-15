@@ -23,6 +23,8 @@ import BoardDetailPage from "../pages/BoardDetailPage";
 import BoardWritePage from "../pages/BoardWritePage";
 import AssetDashboardPage from "../pages/AssetDashboardPage";
 import ProtectedRoute from "../components/ProtectedRoute";
+import MascotHuntPage from "../pages/MascotHuntPage";
+import MascotDexPage from "../pages/MascotDexPage";
 import AiPhotoEditorPage from "../pages/AiPhotoEditorPage";
 
 export default function Router() {
@@ -167,6 +169,23 @@ export default function Router() {
                     }
                 />
                 {/* 게시판: 목록/상세는 비로그인도 볼 수 있고, 작성/수정은 로그인 필요 */}
+                {/* [마스코트 추가] 탐험 지도 / 도감 - 로그인 필요 */}
+                <Route
+                    path="/mascots"
+                    element={
+                        <ProtectedRoute>
+                            <MascotHuntPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/mascots/dex"
+                    element={
+                        <ProtectedRoute>
+                            <MascotDexPage />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route path="/boards" element={<BoardListPage />} />
                 <Route
                     path="/boards/write"

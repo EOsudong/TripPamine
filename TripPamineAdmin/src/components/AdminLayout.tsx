@@ -10,6 +10,8 @@ const navItems = [
   { to: "/quests", label: "퀘스트 관리", icon: "◈" },
   { to: "/quests/chapters", label: "챕터 관리", icon: "❖" },
   { to: "/titles", label: "칭호 관리", icon: "★" },
+  // [마스코트 추가] 지역 / 마스코트 / 스폰 지점 관리
+  { to: "/mascots", label: "마스코트 관리", icon: "✦" },
   { to: "/boards", label: "게시판 관리", icon: "▣" },
   { to: "/boards/reports", label: "신고 관리", icon: "⚑" },
 ]
