@@ -32,8 +32,14 @@ public class TripPamineBeApplication {
 			System.setProperty(entry.getKey(), entry.getValue());
 		});
 
-		// Oracle Wallet 경로를 절대 경로로 설정 (실행 위치에 무관하게 동작)
-		File walletDir = new File(projectRoot, "src/main/resources/wallets");
+		// 운영 환경에서는 외부 Wallet 디렉터리를 사용하고, 로컬은 기존 경로를 유지한다.
+		String walletPath = System.getProperty("TRIPPAMINE_WALLET_DIR");
+		if (walletPath == null || walletPath.isBlank()) {
+			walletPath = System.getenv("TRIPPAMINE_WALLET_DIR");
+		}
+		File walletDir = (walletPath == null || walletPath.isBlank())
+				? new File(projectRoot, "src/main/resources/wallets")
+				: new File(walletPath);
 		System.setProperty("oracle.net.tns_admin", walletDir.getAbsolutePath());
 
 		SpringApplication.run(TripPamineBeApplication.class, args);
