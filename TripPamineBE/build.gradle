@@ -80,6 +80,13 @@ configurations.all {
     exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
 }
 
+// Wallet과 인증정보는 실행용 JAR에 포함하지 않고 운영 환경에서 별도 관리한다.
+tasks.named('processResources') {
+    exclude 'wallets/**'
+    exclude 'API/google-credentials.json'
+    exclude '.env'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
