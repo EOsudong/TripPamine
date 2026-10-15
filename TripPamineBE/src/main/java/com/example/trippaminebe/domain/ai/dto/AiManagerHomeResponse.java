@@ -11,6 +11,7 @@ import java.util.List;
  * User / Emotion / Travel / Quest Context뿐 아니라
  * 이제 공식 Activity Event Timeline도 포함한다.
  */
+
 public record AiManagerHomeResponse(
 
 		LocalDateTime generatedAt,
@@ -23,10 +24,20 @@ public record AiManagerHomeResponse(
 
 		QuestContext quests,
 
+		// 기존의 최근 활동 기록
+		List<ActivityEvent> activities,
+
 		/**
-		 * AI_MANAGER_EVENTS 기반 공식 Activity Feed.
+		 * 신규: 이번 달 금융 정보.
+		 *
+		 * 금융 정보 활용에 동의하지 않았거나
+		 * 아직 계산한 정보가 없다면 null이 된다.
+		 *
+		 * 사용자의 수입, 지출 등을
+		 * 다른 화면에 다시 요청하지 않고
+		 * AI Manager 홈에서 함께 받을 수 있다.
 		 */
-		List<ActivityEvent> activities
+		AiFinanceMonthlySummaryResponse finance
 
 ) {
 

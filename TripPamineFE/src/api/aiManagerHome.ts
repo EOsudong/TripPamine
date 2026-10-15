@@ -266,6 +266,20 @@ export interface AiManagerActivityEvent {
 /* =========================================================
  * Home Response
  * ========================================================= */
+/**
+ * 사용자의 이번 달 금융 현황.
+ */
+export interface AiFinanceMonthlySummary {
+    summaryId: number;
+    periodStart: string;
+    periodEnd: string;
+    totalIncome: number;
+    totalExpense: number;
+    netAmount: number;
+    topCategory: string | null;
+    expensesByCategory: Record<string, number>;
+    sourceRecordCount: number;
+}
 
 /**
  * AI Manager 메인 화면 전체 응답.
@@ -290,6 +304,12 @@ export interface AiManagerHomeResponse {
      */
     activities:
         AiManagerActivityEvent[];
+
+    /**
+     * 금융 정보 활용을 허용한 사용자에게만 제공된다.
+     * 허용하지 않았거나 기록이 없으면 null이다.
+     */
+    finance: AiFinanceMonthlySummary | null;
 }
 
 

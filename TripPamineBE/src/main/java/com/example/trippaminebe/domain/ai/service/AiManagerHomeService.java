@@ -1,5 +1,6 @@
 package com.example.trippaminebe.domain.ai.service;
 
+import com.example.trippaminebe.domain.ai.dto.AiFinanceMonthlySummaryResponse;
 import com.example.trippaminebe.domain.ai.dto.AiManagerHomeResponse;
 import com.example.trippaminebe.domain.ai.dto.LatestEmotionResponse;
 import com.example.trippaminebe.domain.quest.dto.response.UserQuestLogResponse;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
@@ -57,6 +59,14 @@ public class AiManagerHomeService {
 	private final TravelPlanService travelPlanService;
 	private final QuestService questService;
 	private final AiManagerActivityService aiManagerActivityService;
+
+	// 저장된 월별 금융 요약을 조회한다.
+	private final AiFinanceMonthlySummaryService
+			aiFinanceMonthlySummaryService;
+
+	// 사용자의 금융 정보 활용 동의 여부를 확인한다.
+	private final AiManagerSettingsService
+			aiManagerSettingsService;
 
 	/**
 	 * 현재 로그인 사용자의 AI Manager Home Context를 생성합니다.
@@ -311,14 +321,65 @@ public class AiManagerHomeService {
 		 * Final
 		 * ================================================= */
 
+
+		/*
+		 * =================================================
+		 * 5. Finance
+		 * =================================================
+		 *
+		 * 금융 정보를 사용하도록 설정한 사용자에게만
+		 * 저장된 이번 달 수입과 지출을 제공한다.
+		 *
+		 * 이곳에서는 금융 기록을 다시 계산하거나
+		 * 새로운 기록을 저장하지 않는다.
+		 */
+		AiFinanceMonthlySummaryResponse financeContext = null;
+
+// 기존 사용자 설정을 확인한다.
+		boolean financeEnabled =
+				aiManagerSettingsService
+						.getSettings(userId)
+						.financeInsightEnabled();
+
+		if (financeEnabled) {
+
+			// 한국 시간 기준 현재 월을 사용한다.
+			YearMonth currentMonth =
+					YearMonth.from(now);
+
+			/*
+			 * 이미 저장된 금융 요약만 가져온다.
+			 *
+			 * 아직 생성된 요약이 없다면
+			 * null을 유지해 실제 금액을 추측하지 않는다.
+			 */
+			financeContext =
+					aiFinanceMonthlySummaryService
+							.findMonthly(
+									userId,
+									currentMonth
+							)
+							.orElse(null);
+		}
+
+		/*
+		 * =================================================
+		 * Final
+		 * =================================================
+		 *
+		 * 기존 감정·여행·퀘스트·활동 정보에
+		 * 금융 요약을 추가해 한 번에 반환한다.
+		 */
 		return new AiManagerHomeResponse(
 				now,
 				userContext,
 				latestEmotion,
 				travelContext,
 				questContext,
-				activities
+				activities,
+				financeContext
 		);
+
 	}
 
 

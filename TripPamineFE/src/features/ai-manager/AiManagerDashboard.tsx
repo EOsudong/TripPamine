@@ -23,6 +23,8 @@ import {
 import aiManagerBg
     from "../../assets/images/ai-travel-bg.png";
 
+import FinanceConsentCard from "./FinanceConsentCard";
+
 
 /**
  * =========================================================
@@ -799,6 +801,30 @@ export default function AiManagerDashboard() {
 
                 </section>
 
+
+                {/* =================================================
+                    이번 달 금융 정보
+                    사용자가 직접 허용한 경우에만 표시한다.
+                ================================================= */}
+                <div className="mt-6">
+                    <FinanceConsentCard
+                        finance={homeContext?.finance ?? null}
+
+                        onSettingsChanged={async () => {
+                            /*
+                             * 금융 정보 활용 여부가 변경되면
+                             * 사용자 홈 정보를 다시 요청한다.
+                             *
+                             * 허용하면 저장된 금융 요약이 포함되고,
+                             * 중지하면 금융 정보는 null로 반환된다.
+                             */
+                            const updatedHome =
+                                await getAiManagerHomeApi();
+
+                            setHomeContext(updatedHome);
+                        }}
+                    />
+                </div>
 
                 {/* =================================================
             ACTIVITY + CONTEXT
