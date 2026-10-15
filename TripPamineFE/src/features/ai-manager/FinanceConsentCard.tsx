@@ -199,7 +199,7 @@ export default function FinanceConsentCard({
                             text-sky-600
                         "
                     >
-                        나의 돈 관리
+                        나의 자산 관리
                     </p>
 
                     <h2
@@ -303,7 +303,7 @@ export default function FinanceConsentCard({
                         />
 
                         <FinanceValue
-                            label="수입에서 지출을 뺀 금액"
+                            label="현재 등록된 자산"
                             value={formatWon(finance.netAmount)}
                         />
 

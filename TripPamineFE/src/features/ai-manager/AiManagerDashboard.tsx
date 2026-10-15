@@ -24,6 +24,7 @@ import aiManagerBg
     from "../../assets/images/ai-travel-bg.png";
 
 import FinanceConsentCard from "./FinanceConsentCard";
+import TravelOverviewCard from "./TravelOverviewCard";
 
 
 /**
@@ -128,8 +129,8 @@ export default function AiManagerDashboard() {
 
     const {
         isLoggedIn,
-    } =
-        useAuth();
+        userId,
+    } = useAuth();
 
 
     /* =====================================================
@@ -614,10 +615,6 @@ export default function AiManagerDashboard() {
               "
                         >
 
-                            <ManagerCore
-                                loading={loading}
-                                error={Boolean(loadError)}
-                            />
 
                         </div>
 
@@ -826,9 +823,23 @@ export default function AiManagerDashboard() {
                     />
                 </div>
 
-                {/* =================================================
+
+                {/*
+                    사용자 여행 현황.
+
+                    사용자 번호를 기준으로 카드를 구분한다.
+                    다른 계정으로 변경했을 때 이전 사용자 정보가
+                    남아 있지 않도록 하는 목적이다.
+                */}
+                <div className="mt-6">
+                    <TravelOverviewCard
+                        key={userId ?? "guest"}
+                    />
+                </div>
+
+          {/* =================================================
             ACTIVITY + CONTEXT
-           ================================================= */}
+          ================================================= */}
 
                 <section
                     className="
@@ -2354,125 +2365,6 @@ function ManagerCommandBar({
                 )}
 
             </form>
-
-        </div>
-    );
-}
-
-
-/* =========================================================
- * Manager Core
- * ========================================================= */
-
-function ManagerCore({
-                         loading,
-                         error,
-                     }: {
-    loading: boolean;
-
-    error: boolean;
-}) {
-
-    return (
-        <div
-            className="
-        relative
-
-        flex
-
-        h-44
-        w-44
-
-        items-center
-        justify-center
-      "
-        >
-
-            <div
-                className="
-          absolute
-          inset-0
-
-          rounded-full
-
-          border
-          border-white/10
-        "
-            />
-
-
-            <div
-                className="
-          absolute
-          inset-5
-
-          rounded-full
-
-          border
-          border-sky-300/20
-        "
-            />
-
-
-            <div
-                className="
-          absolute
-          inset-10
-
-          rounded-full
-
-          border
-          border-indigo-300/20
-        "
-            />
-
-
-            <div
-                className={`
-          relative
-
-          flex
-
-          h-20
-          w-20
-
-          items-center
-          justify-center
-
-          rounded-full
-
-          bg-gradient-to-br
-
-          ${
-                    error
-                        ? "from-rose-300 via-rose-500 to-red-700"
-                        : "from-sky-300 via-sky-500 to-indigo-600"
-                }
-
-          shadow-[0_0_60px_rgba(56,189,248,0.55)]
-
-          ${
-                    loading
-                        ? "animate-pulse"
-                        : ""
-                }
-        `}
-            >
-
-        <span
-            className="
-            h-5
-            w-5
-
-            rounded-full
-
-            bg-white
-
-            shadow-[0_0_25px_rgba(255,255,255,1)]
-          "
-        />
-
-            </div>
 
         </div>
     );
