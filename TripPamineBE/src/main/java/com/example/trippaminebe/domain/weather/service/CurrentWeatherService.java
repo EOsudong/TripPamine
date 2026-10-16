@@ -4,10 +4,12 @@ import com.example.trippaminebe.domain.weather.client.OpenWeatherApiClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CurrentWeatherService {
@@ -63,6 +65,7 @@ public class CurrentWeatherService {
       );
 
     } catch (Exception e) {
+      log.error("현재 날씨 조회 실패 lat={}, lng={}", latitude, longitude, e);
       throw new IllegalStateException(
           "현재 날씨 조회에 실패했습니다.", e
       );

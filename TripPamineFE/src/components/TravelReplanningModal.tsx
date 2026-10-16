@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { TravelPlan } from "../types";
 import { previewReplanning } from "../api/replanning";
 import type { ReplanningResponse } from "../api/replanning";
+import { getUltraShortForecastApi } from "../api/weather";
 import axios from "axios";
 import api from "../api/axios";
 
@@ -175,18 +176,11 @@ export default function TravelReplanningModal({
     setWeatherMessage("🌤️ 현재 날씨를 확인하고 있습니다...");
 
     try {
-      const response = await api.get("/api/weather/current", {
-        params: {
-          lat: latitude,
-          lng: longitude,
-        },
-      });
-
-      const data = response.data;
+      const result = await getUltraShortForecastApi(latitude, longitude);
+      const data = result.current;     // 위 4-1의 빈칸과 같은 이름
 
       if (["CLEAR", "RAIN", "SNOW", "CLOUDY"].includes(data.weather)) {
         setWeather(data.weather);
-
         setWeatherMessage(
           `🌤️ 현재 날씨: ${data.description} · ${data.temperature}°C`,
         );

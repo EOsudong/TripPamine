@@ -12,7 +12,7 @@ import {
 import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal, type PlaceItem } from '../components/KakaoMapModal';
 import TravelReplanningModal from "../components/TravelReplanningModal";
-import { getTripWeatherApi, type TripDayWeather } from "../api/weather";
+import { getTripWeatherApi, type TripDayWeather, getUltraShortForecastApi, type UltraShortForecastResult } from "../api/weather";
 import PageHero from "../components/PageHero";
 
 export default function AiRecommendPage() {
@@ -27,6 +27,8 @@ export default function AiRecommendPage() {
         useState<ParsedRecommendation | null>(null);
     const [tripWeather, setTripWeather] =
         useState<TripDayWeather[] | null>(null);
+    const [ultraShort, setUltraShort] =
+        useState<UltraShortForecastResult | null>(null);
 
     const [recommendLoading, setRecommendLoading] = useState(false);
     const [recommendError, setRecommendError] = useState("");
@@ -74,6 +76,7 @@ export default function AiRecommendPage() {
         setRecommendError("");
         setRecommendLoading(true);
         setTripWeather(null);
+        setUltraShort(null);
 
         try {
             const data = await getAiRecommendationApi(plan.planId);
@@ -102,6 +105,7 @@ export default function AiRecommendPage() {
             console.error("날씨 조회 실패:", error);
             setTripWeather(null);
         }
+        loadUltraShort();
     };
 
     const handleRegenerate = async () => {
@@ -128,6 +132,28 @@ export default function AiRecommendPage() {
         } finally {
             setRecommendLoading(false);
         }
+    };
+
+    const loadUltraShort = () => {
+        if (!navigator.geolocation) return;   // GPS를 지원하지 않는 브라우저면 중단
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const result = await getUltraShortForecastApi(
+                        position.coords.latitude,    // 위도
+                        position.coords.longitude,    // 경도
+                    );
+                    setUltraShort(result);
+                } catch (error) {
+                    console.error("초단기예보 조회 실패:", error);
+                    setUltraShort(null);   // 실패해도 일정 화면은 그대로 보여준다
+                }
+            },
+            (error) => {
+                console.warn("GPS 확인 실패:", error);
+            },
+        );
     };
 
     interface ParsedRecommendation {
@@ -445,6 +471,36 @@ export default function AiRecommendPage() {
                                                             </p>
                                                         </div>
 
+                                                        {ultraShort && (
+                                                            <div className="mb-4 rounded-2xl bg-sky-50 px-5 py-4 text-slate-700">
+                                                                {/*비 알림 여부*/}
+                                                                <p className="text-base font-bold">
+                                                                    {ultraShort.rain.rainExpected
+                                                                        ? "☔ " + ultraShort.rain.message
+                                                                        : "☀ 6시간 내에 비 소식은 없어요"}
+                                                                </p>
+
+                                                                {ultraShort.rain.rainExpected && (
+                                                                    <p className="mt-2 text-sm font-semibold text-sky-700">
+                                                                        🆘 일정에 문제가 생긴 경우 여행 SOS를 활용해보세요 🆘
+                                                                    </p>
+                                                                )}
+
+                                                                <p className="mt-0.5 text-xs text-slate-400">현재 위치 기준 · 앞으로 6시간 초단기예보</p>
+
+                                                                {/* 시간별 예보*/}
+                                                                <div className="mt-4 grid grid-cols-6 gap-2 text-center">
+                                                                    {ultraShort.hourly.map((h) => (
+                                                                        <div key={h.time} className="rounded-xl bg-white px-1 py-2 shadow-sm">
+                                                                            <p className="text-xs text-slate-400">{h.time}</p>
+                                                                            <p className="mt-1 text-lg font-bold text-slate-800">{h.temperature}°</p>
+                                                                            <p className="mt-0.5 text-xs text-sky-600">💧습도 {h.humidity}%</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div className="space-y-4">
                                                             {parsedRecommendation.days.map((day) => (
                                                                 <div
@@ -465,6 +521,13 @@ export default function AiRecommendPage() {
                                                                     {(() => {
                                                                         const w = tripWeather?.find((t) => t.day === day.day);
                                                                         if (!w) return null;
+
+                                                                        const getTodayString = () => {
+                                                                            const now = new Date();
+                                                                            const pad = (n: number) => n.toString().padStart(2, '0');
+                                                                            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                                                                        };
+                                                                        const isToday = w.date === getTodayString();
 
                                                                         // 날씨를 제공할 수 없는 날(범위 밖 등)은 안내 문구만 보여준다
                                                                         if (!w.summary.available) {
@@ -496,6 +559,11 @@ export default function AiRecommendPage() {
                                                                                         </li>
                                                                                     ))}
                                                                                     </ul>
+                                                                                )}
+                                                                                {isToday && (
+                                                                                    <p className="mt-2 text-xs font-semibold text-sky-700">
+                                                                                        💡 여행 당일은 오늘의 초단기예보가 더 정확합니다. 초단기예보를 활용해보세요!
+                                                                                    </p>
                                                                                 )}
                                                                             </div>
                                                                         );

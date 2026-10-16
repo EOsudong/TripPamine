@@ -27,7 +27,7 @@ public class TripWeatherService {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   // 하루간의 정보 담기용 빈 그릇
-  public record DayPlace(int day, LocalDate date, String placeName) {}
+  public record DayPlace(int day, LocalDate date, List<String>placeNames) {}
 
   private List<DayPlace> extractFirstPlaces(String json, LocalDate startDate) {
     List<DayPlace> result = new ArrayList<>();
@@ -37,9 +37,13 @@ public class TripWeatherService {
         int day = dayNode.path("day").asInt();
         JsonNode places = dayNode.path("places");
         if (places.isEmpty()) continue; // 장소가 없는 날은 건너뛴다
-        String name = places.get(0).path("name").asText();
+
+        List<String> names = new ArrayList<>();
+        for (JsonNode place : places) {
+          names.add(place.path("name").asText());
+        }
         LocalDate date = startDate.plusDays(day-1);
-        result.add(new DayPlace(day, date, name));
+        result.add(new DayPlace(day, date, names));
       }
     } catch (Exception e) {
       throw new IllegalArgumentException("추천 JSON 파싱 실패", e);
@@ -60,7 +64,15 @@ public class TripWeatherService {
 
     List<TripDayWeather> result = new ArrayList<>();
     for (DayPlace p : extractFirstPlaces(json, startDate)) {
-      Optional<KakaoPlace> found = kakaoLocalClient.searchFirstPlace(p.placeName());
+      Optional<KakaoPlace> found = Optional.empty();   // 아직 못 찾은 상태로 시작
+      String usedName = null;                          // 어느 장소로 찾았는지 기억
+      for (String name : p.placeNames()) {                 // 그날 장소 이름들
+        found = kakaoLocalClient.searchFirstPlace(name);
+        if (found.isPresent()) {                        // 찾았으면
+          usedName = name;
+          break;                                   // 더 찾을 필요 없음
+        }
+      }
       DailyWeatherSummary summary;
       if (found.isPresent()) {
         KakaoPlace k = found.get();
@@ -74,7 +86,7 @@ public class TripWeatherService {
             .notices(List.of("장소 위치를 찾지 못해 날씨를 제공할 수 없습니다."))
             .build();
       }
-      result.add(new TripDayWeather(p.day(), p.date(), p.placeName(), summary));
+      result.add(new TripDayWeather(p.day(), p.date(), usedName, summary));
     }
     return result;
   } ///getTripDayWeather
