@@ -36,6 +36,7 @@ export default function AiRecommendPage() {
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [isSosOpen, setIsSosOpen] = useState(false);
     const [sosNotice, setSosNotice] = useState(false);
+    const [isWeatherOpen, setIsWeatherOpen] = useState(false);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -77,6 +78,7 @@ export default function AiRecommendPage() {
         setRecommendLoading(true);
         setTripWeather(null);
         setUltraShort(null);
+        setIsWeatherOpen(false);
 
         try {
             const data = await getAiRecommendationApi(plan.planId);
@@ -473,31 +475,44 @@ export default function AiRecommendPage() {
 
                                                         {ultraShort && (
                                                             <div className="mb-4 rounded-2xl bg-sky-50 px-5 py-4 text-slate-700">
-                                                                {/*비 알림 여부*/}
                                                                 <p className="text-base font-bold">
                                                                     {ultraShort.rain.rainExpected
                                                                         ? "☔ " + ultraShort.rain.message
-                                                                        : "☀ 6시간 내에 비 소식은 없어요"}
+                                                                        : "☀ 6시간 내에 비 소식은 없어요 · 현재 온도는 " + (ultraShort.current.temperature ?? "-") + "°"}
                                                                 </p>
-
                                                                 {ultraShort.rain.rainExpected && (
-                                                                    <p className="mt-2 text-sm font-semibold text-sky-700">
-                                                                        🆘 일정에 문제가 생긴 경우 여행 SOS를 활용해보세요 🆘
-                                                                    </p>
+                                                                        <p className="mt-2 text-sm font-semibold text-sky-700">
+                                                                            🆘 일정에 문제가 생긴 경우 여행 SOS를 활용해보세요 🆘
+                                                                        </p>
                                                                 )}
+                                                                <p className="mt-0.5 text-xs text-slate-400">현재 위치 기준 · 앞으로 6시간 동안의 초단기예보</p>
 
-                                                                <p className="mt-0.5 text-xs text-slate-400">현재 위치 기준 · 앞으로 6시간 초단기예보</p>
-
-                                                                {/* 시간별 예보*/}
-                                                                <div className="mt-4 grid grid-cols-6 gap-2 text-center">
-                                                                    {ultraShort.hourly.map((h) => (
-                                                                        <div key={h.time} className="rounded-xl bg-white px-1 py-2 shadow-sm">
-                                                                            <p className="text-xs text-slate-400">{h.time}</p>
-                                                                            <p className="mt-1 text-lg font-bold text-slate-800">{h.temperature}°</p>
-                                                                            <p className="mt-0.5 text-xs text-sky-600">💧습도 {h.humidity}%</p>
+                                                                <button
+                                                                    onClick={() => setIsWeatherOpen(!isWeatherOpen)}
+                                                                    className="mt-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
+                                                                    {isWeatherOpen ? "접기 ▴" : "날씨 더보기 ▾"}
+                                                                </button>
+                                                                {isWeatherOpen && (
+                                                                    <>
+                                                                        <div className="mt-4 grid grid-cols-6 gap-2 text-center">
+                                                                            {ultraShort.hourly.map((h) => (
+                                                                                <div key={h.time} className="rounded-xl bg-white px-1 py-2 shadow-sm">
+                                                                                    <p className="text-xs text-slate-400">{h.time}</p>
+                                                                                    <p className="mt-1 text-lg font-bold text-slate-800">{h.temperature}°</p>
+                                                                                    <p className="mt-0.5 text-xs text-sky-600">💧습도 {h.humidity}%</p>
+                                                                                </div>
+                                                                            ))}
                                                                         </div>
-                                                                    ))}
-                                                                </div>
+                                                                        {ultraShort.rain.rainExpected && (
+                                                                            <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm">
+                                                                                <p>종류: {ultraShort.rain.precipitationType ?? "-"}</p>
+                                                                                <p>예상 시각: {ultraShort.rain.forecastTime ?? "-"}</p>
+                                                                                <p>강수확률: {ultraShort.rain.rainProbability !== null ? ultraShort.rain.rainProbability + "%" : "-"}</p>
+                                                                                <p>강수량: {ultraShort.rain.rainAmount ?? "-"}</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         )}
 

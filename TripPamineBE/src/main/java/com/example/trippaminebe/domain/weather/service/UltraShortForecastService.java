@@ -185,6 +185,9 @@ public class UltraShortForecastService {
     List<ForecastSlot> slots = toSlots(groupByTime(json));
     LocalDate today = now.toLocalDate();
 
+    if(slots.isEmpty()) {
+      throw new IllegalStateException("초단기예보 데이터가 비어 있습니다.");
+    }
     ForecastSlot first = slots.get(0); // 가장 가까운 시각의 예보
     String weather = toWeatherType(first.precipitationType(), first.sky());
     String description = "0".equals(first.precipitationType())
