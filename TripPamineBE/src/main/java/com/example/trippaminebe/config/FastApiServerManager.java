@@ -27,34 +27,39 @@ public class FastApiServerManager {
       try {
 
          // Mac용 실행 파일
-         File scriptFile = new File(
-                 visionDir,
-                 "run_vision.sh"
-         );
+         String scriptPath =
+                 "/Users/kimmanten/Desktop/project/vision-ai-test/run_vision.sh";
 
+         File scriptFile = new File(scriptPath);
 
-         // run_vision.sh 존재 여부 확인
          if (!scriptFile.exists()) {
-
             System.out.println(
-                    "❌ [FastAPI] run_vision.sh 파일을 찾을 수 없습니다."
+                    "[FastAPI] run_vision.sh 파일을 찾을 수 없습니다: "
+                            + scriptPath
             );
-
-            System.out.println(
-                    "경로: " + scriptFile.getAbsolutePath()
-            );
-
             return;
          }
 
+         ProcessBuilder processBuilder =
+                 new ProcessBuilder(
+                         "/bin/bash",
+                         scriptPath
+                 );
+
+         processBuilder.directory(
+                 new File(
+                         "/Users/kimmanten/Desktop/project/vision-ai-test"
+                 )
+         );
+
+         processBuilder.inheritIO();
+
+         Process process =
+                 processBuilder.start();
 
          // Mac에서는 cmd.exe가 아니라
          // /bin/zsh 사용
-         ProcessBuilder processBuilder =
-                 new ProcessBuilder(
-                         "/bin/zsh",
-                         scriptFile.getAbsolutePath()
-                 );
+
 
 
          // FastAPI 프로젝트 폴더에서 실행
