@@ -6,6 +6,7 @@ import com.example.trippaminebe.domain.account.repository.AccountRepository;
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
+import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
 import com.example.trippaminebe.domain.asset.entity.AssetGoal;
 import com.example.trippaminebe.domain.asset.entity.AssetSnapshot;
 import com.example.trippaminebe.domain.asset.entity.MonthlyBudget;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -292,72 +294,361 @@ public class AssetDashboardService {
     // 기간별 자산 흐름
     // =====================================================
     //
-    // WEEK : 최근 7일 / MONTH : 최근 1개월 / QUARTER : 최근 3개월 / YEAR : 최근 1년
+    // WEEK    : 최근 7일
+    // MONTH   : 최근 1개월
+    // QUARTER : 최근 3개월
+    // YEAR    : 최근 1년
     //
-    // [수정] 예전에 생긴 같은 날짜 중복 Snapshot 이 있어도
-    //        날짜당 1개(가장 마지막에 저장된 값)만 내려준다.
+    // Snapshot 개수에 의존하지 않고 실제 거래내역과
+    // 현재 연동계좌 잔액을 기준으로 과거 자산을 역산한다.
     // =====================================================
 
-    public List<AssetDashboardResponseDto.AssetHistoryInfo>
-    getAssetHistoryByPeriod(
+    public AssetHistoryResponseDto getAssetHistoryByPeriod(
             Long userId,
             String period
     ) {
+
+        // -------------------------------------------------
+        // 1. 사용자
+        // -------------------------------------------------
+
+        String username =
+                findUsername(userId);
+
+
+        // -------------------------------------------------
+        // 2. 기간 확인
+        // -------------------------------------------------
 
         String normalizedPeriod =
                 period == null || period.isBlank()
                         ? "MONTH"
                         : period.trim().toUpperCase();
 
+
         LocalDate endDate =
                 LocalDate.now();
 
+
         LocalDate startDate =
                 switch (normalizedPeriod) {
-                    case "WEEK" -> endDate.minusDays(6);
-                    case "MONTH" -> endDate.minusMonths(1).plusDays(1);
-                    case "QUARTER" -> endDate.minusMonths(3).plusDays(1);
-                    case "YEAR" -> endDate.minusYears(1).plusDays(1);
-                    default -> throw new IllegalArgumentException(
-                            "지원하지 않는 조회 기간입니다. "
-                                    + "WEEK, MONTH, QUARTER, YEAR 중 하나를 사용해주세요."
-                    );
+
+                    case "WEEK" ->
+                            endDate.minusDays(6);
+
+                    case "MONTH" ->
+                            endDate.minusMonths(1).plusDays(1);
+
+                    case "QUARTER" ->
+                            endDate.minusMonths(3).plusDays(1);
+
+                    case "YEAR" ->
+                            endDate.minusYears(1).plusDays(1);
+
+                    default ->
+                            throw new IllegalArgumentException(
+                                    "지원하지 않는 조회 기간입니다. "
+                                            + "WEEK, MONTH, QUARTER, YEAR 중 하나를 사용해주세요."
+                            );
                 };
 
-        List<AssetSnapshot> snapshots =
-                assetSnapshotRepository
-                        .findByUserIdAndSnapshotDateBetweenOrderBySnapshotDateAsc(
-                                userId,
-                                startDate,
-                                endDate
+
+        LocalDateTime startDateTime =
+                startDate.atStartOfDay();
+
+
+        LocalDateTime endExclusive =
+                endDate
+                        .plusDays(1)
+                        .atStartOfDay();
+
+
+        // -------------------------------------------------
+        // 3. 기간 내 전체 가계부 거래
+        // -------------------------------------------------
+
+        List<TransactionEntity> transactions =
+                accountBookRepository
+                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                username,
+                                startDateTime,
+                                endExclusive
                         );
 
-        // 날짜당 1개 (같은 날짜면 snapshotId 가 큰 = 나중에 저장된 값)
-        Map<LocalDate, AssetSnapshot> latestByDate =
+
+        long totalIncome =
+                sumByType(
+                        transactions,
+                        "income"
+                );
+
+
+        long totalExpense =
+                sumByType(
+                        transactions,
+                        "expense"
+                );
+
+
+        long netCashFlow =
+                totalIncome - totalExpense;
+
+
+        // -------------------------------------------------
+        // 4. 계좌 잔액 역산기
+        // -------------------------------------------------
+
+        BalanceCalculator balance =
+                createBalanceCalculator(
+                        userId,
+                        username,
+                        startDateTime
+                );
+
+
+        long startAsset =
+                balance.assetAt(
+                        startDateTime
+                );
+
+
+        long currentAsset =
+                balance.currentTotal();
+
+
+        long changeAmount =
+                currentAsset - startAsset;
+
+
+        double changeRate =
+                calculateAssetChangeRate(
+                        startAsset,
+                        currentAsset
+                );
+
+
+        // -------------------------------------------------
+        // 5. 날짜별 거래 Map
+        // -------------------------------------------------
+
+        Map<LocalDate, Long> dailyIncome =
                 new LinkedHashMap<>();
 
-        for (AssetSnapshot snapshot : snapshots) {
-            latestByDate.merge(
-                    snapshot.getSnapshotDate(),
-                    snapshot,
-                    (prev, next) ->
-                            safeId(next) >= safeId(prev) ? next : prev
+
+        Map<LocalDate, Long> dailyExpense =
+                new LinkedHashMap<>();
+
+
+        for (TransactionEntity transaction : transactions) {
+
+            if (transaction.getTransactionDate() == null) {
+                continue;
+            }
+
+
+            LocalDate transactionDate =
+                    transaction
+                            .getTransactionDate()
+                            .toLocalDate();
+
+
+            long amount =
+                    safeAmount(
+                            transaction.getAmount()
+                    );
+
+
+            if ("income".equalsIgnoreCase(transaction.getType())) {
+
+                dailyIncome.merge(
+                        transactionDate,
+                        amount,
+                        Long::sum
+                );
+
+            } else if ("expense".equalsIgnoreCase(transaction.getType())) {
+
+                dailyExpense.merge(
+                        transactionDate,
+                        amount,
+                        Long::sum
+                );
+            }
+        }
+
+
+        // -------------------------------------------------
+        // 6. 그래프 데이터
+        // -------------------------------------------------
+
+        List<AssetHistoryResponseDto.AssetPoint> assetHistory =
+                new ArrayList<>();
+
+
+        List<AssetHistoryResponseDto.CashFlowPoint> cashFlow =
+                new ArrayList<>();
+
+
+        LocalDate cursor =
+                startDate;
+
+
+        while (!cursor.isAfter(endDate)) {
+
+            LocalDateTime nextDay =
+                    cursor
+                            .plusDays(1)
+                            .atStartOfDay();
+
+
+            long assetAmount =
+                    balance.assetAt(nextDay);
+
+
+            assetHistory.add(
+                    AssetHistoryResponseDto.AssetPoint
+                            .builder()
+                            .date(cursor)
+                            .amount(assetAmount)
+                            .build()
+            );
+
+
+            cashFlow.add(
+                    AssetHistoryResponseDto.CashFlowPoint
+                            .builder()
+                            .date(cursor)
+                            .income(
+                                    dailyIncome.getOrDefault(
+                                            cursor,
+                                            0L
+                                    )
+                            )
+                            .expense(
+                                    dailyExpense.getOrDefault(
+                                            cursor,
+                                            0L
+                                    )
+                            )
+                            .build()
+            );
+
+
+            cursor =
+                    nextGraphDate(
+                            cursor,
+                            normalizedPeriod
+                    );
+        }
+
+
+        // 마지막 날짜가 그래프에 포함되지 않았다면 추가
+        if (
+                assetHistory.isEmpty()
+                        || !assetHistory
+                        .get(assetHistory.size() - 1)
+                        .getDate()
+                        .equals(endDate)
+        ) {
+
+            assetHistory.add(
+                    AssetHistoryResponseDto.AssetPoint
+                            .builder()
+                            .date(endDate)
+                            .amount(
+                                    balance.assetAt(
+                                            endExclusive
+                                    )
+                            )
+                            .build()
+            );
+
+
+            cashFlow.add(
+                    AssetHistoryResponseDto.CashFlowPoint
+                            .builder()
+                            .date(endDate)
+                            .income(
+                                    dailyIncome.getOrDefault(
+                                            endDate,
+                                            0L
+                                    )
+                            )
+                            .expense(
+                                    dailyExpense.getOrDefault(
+                                            endDate,
+                                            0L
+                                    )
+                            )
+                            .build()
             );
         }
 
-        return latestByDate.values()
-                .stream()
-                .map(snapshot ->
-                        new AssetDashboardResponseDto.AssetHistoryInfo(
-                                snapshot.getSnapshotDate(),
-                                safeAmount(snapshot.getTotalAsset()),
-                                safeAmount(snapshot.getTotalIncome()),
-                                safeAmount(snapshot.getTotalExpense())
-                        )
-                )
-                .toList();
-    }
 
+        // -------------------------------------------------
+        // 7. 로그
+        // -------------------------------------------------
+
+        log.info(
+                "[Asset History] userId={} period={} start={} end={} startAsset={} currentAsset={} income={} expense={}",
+                userId,
+                normalizedPeriod,
+                startDate,
+                endDate,
+                startAsset,
+                currentAsset,
+                totalIncome,
+                totalExpense
+        );
+
+
+        // -------------------------------------------------
+        // 8. 응답
+        // -------------------------------------------------
+
+        return AssetHistoryResponseDto
+                .builder()
+                .period(normalizedPeriod)
+                .startDate(startDate)
+                .endDate(endDate)
+                .startAsset(startAsset)
+                .currentAsset(currentAsset)
+                .changeAmount(changeAmount)
+                .changeRate(changeRate)
+                .totalIncome(totalIncome)
+                .totalExpense(totalExpense)
+                .netCashFlow(netCashFlow)
+                .assetHistory(assetHistory)
+                .cashFlow(cashFlow)
+                .build();
+    }
+    // =====================================================
+    // 그래프 날짜 간격
+    // =====================================================
+
+    private LocalDate nextGraphDate(
+            LocalDate currentDate,
+            String period
+    ) {
+
+        return switch (period) {
+
+            // 일 단위
+            case "WEEK", "MONTH" ->
+                    currentDate.plusDays(1);
+
+            // 7일 단위
+            case "QUARTER" ->
+                    currentDate.plusDays(7);
+
+            // 월 단위
+            case "YEAR" ->
+                    currentDate.plusMonths(1);
+
+            default ->
+                    currentDate.plusDays(1);
+        };
+    }
 
     // =====================================================
     // 내부 — Snapshot 저장 (중복/동시성 방어)

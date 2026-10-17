@@ -12,8 +12,16 @@ public interface AssetGoalRepository
     // 특정 사용자의 목표 전체 조회
     List<AssetGoal> findByUserId(Long userId);
 
+    // 본인 목표만 단건 조회
+    Optional<AssetGoal> findByGoalIdAndUserId(
+            Long goalId,
+            Long userId
+    );
 
-    // [보안 수정] 본인 목표만 단건 조회 (남의 goalId로 조회/수정/삭제 방지)
-    Optional<AssetGoal> findByGoalIdAndUserId(Long goalId, Long userId);
-
+    // 로그인 사용자의 진행 중인 여행 목표 조회
+    List<AssetGoal> findByUserIdAndGoalTypeAndStatus(
+            Long userId,
+            String goalType,
+            String status
+    );
 }

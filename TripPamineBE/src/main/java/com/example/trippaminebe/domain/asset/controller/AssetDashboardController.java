@@ -3,7 +3,7 @@ package com.example.trippaminebe.domain.asset.controller;
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
 import com.example.trippaminebe.domain.asset.service.AssetDashboardService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
-
+import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -160,20 +160,11 @@ public class AssetDashboardController {
     // =====================================================
 
     @GetMapping("/history")
-    public ResponseEntity<
-            List<AssetDashboardResponseDto.AssetHistoryInfo>
-            > getAssetHistory(
-
-            @AuthenticationPrincipal
-            CustomUserDetails userDetails,
-
-            @RequestParam(
-                    defaultValue = "MONTH"
-            )
-            String period
-
+    public ResponseEntity<AssetHistoryResponseDto>
+    getAssetHistory(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "MONTH") String period
     ) {
-
         // =========================================
         // 1. 로그인 사용자 확인
         // =========================================
@@ -237,14 +228,12 @@ public class AssetDashboardController {
         // 4. 기간별 자산 흐름 조회
         // =========================================
 
-        List<AssetDashboardResponseDto.AssetHistoryInfo>
-                history =
+        AssetHistoryResponseDto history =
                 assetDashboardService
                         .getAssetHistoryByPeriod(
                                 userId,
                                 period
                         );
-
 
         // =========================================
         // 5. 결과 반환

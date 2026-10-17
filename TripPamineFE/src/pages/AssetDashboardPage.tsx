@@ -29,6 +29,8 @@ import AppLayout from "../layout/AppLayout"
 
 import { useAuth } from "../context/AuthContext"
 import { API_BASE_URL } from "../api/axios"
+import AssetAdvicePanel
+  from "../components/asset/AssetAdvicePanel"
 // =====================================================
 // 공통 Tailwind 클래스 (예전 AssetDashboardPage.css를 대체)
 // =====================================================
@@ -1425,7 +1427,11 @@ export default function AssetDashboardPage() {
             )}
           </article>
         </section>
+        {/* ================================================= */}
+        {/* 여행자금 맞춤 자산관리 */}
+        {/* ================================================= */}
 
+        <AssetAdvicePanel />
 
         {/* ================================================= */}
         {/* Budget / Goal */}
