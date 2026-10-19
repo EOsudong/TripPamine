@@ -94,8 +94,17 @@ public class EmotionChatService {
         }
         turns = new ArrayList<>(turns.subList(contextStart, turns.size()));
 
+        // 기능 카탈로그는 앱에 실제 구현된 기능 설명만 제공한다.
+        // 이전 사용자의 질문을 참고해 "그건?", "예산은?" 같은 후속 발화의 주제도 유지한다.
+        // 사용자별 여행·자산·날씨 실시간 조회는 다음 STEP의 도메인 조회 도구가 담당한다.
+        List<String> previousUserMessages = turns.subList(0, turns.size() - 1).stream()
+                .filter(turn -> "user".equals(turn.role()))
+                .map(ManagerSlmClient.ChatTurn::content)
+                .toList();
+        String featureContext = AiManagerFeatureCatalog.buildPromptContext(message, previousUserMessages);
+
         // 외부 HTTP 호출은 DB 트랜잭션 없이 진행한다.
-        String answer = slmClient.generateWithHistory(SYSTEM_PROMPT, turns);
+        String answer = slmClient.generateWithHistory(SYSTEM_PROMPT + "\n\n" + featureContext, turns);
         if (request.saveHistory()) {
             conversationId = persistence.recordExchange(userId, conversationId, message, answer);
         }
