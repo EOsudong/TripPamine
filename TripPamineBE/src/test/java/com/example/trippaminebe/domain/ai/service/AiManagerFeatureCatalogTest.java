@@ -41,7 +41,7 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "여행 SOS는 무엇이야?", List.of());
 
-        assertThat(context).contains("응급 신고 기능이 아니다", "/travel");
+        assertThat(context).contains("응급 신고 기능이 아니다").doesNotContain("/travel");
     }
 
     @Test
@@ -49,7 +49,7 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "내 자산은 얼마야?", List.of());
 
-        assertThat(context).contains("아직 조회하지 않았다", "/assets");
+        assertThat(context).contains("아직 조회하지 않았다").doesNotContain("/assets");
     }
 
     @Test
@@ -57,6 +57,32 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "트립파민에 무슨 기능이 있어?", List.of());
 
-        assertThat(context).contains("/quests", "/mascots/dex", "/ai-recommend");
+        assertThat(context).contains("퀘스트", "마스코트 도감", "AI 여행 추천")
+                .doesNotContain("/quests", "/mascots/dex", "/ai-recommend");
     }
+    @Test
+    void 기능안내에는사용자에게내부라우트를출력하지않는다() {
+        String context = AiManagerFeatureCatalog.buildPromptContext(
+                "마스코트 도감은 어디서 봐?", List.of());
+        assertThat(context).contains("마스코트 도감")
+                .doesNotContain("/mascots/dex");
+        assertThat(AiManagerFeatureCatalog.relevantFeatureIds(
+                "마스코트 도감은 어디서 봐?", List.of())).contains("MASCOT_DEX");
+    }
+
+    @Test
+    void SOS질문은검증된여행재계획설명만반환한다() {
+        String answer = AiManagerFeatureCatalog.verifiedSosAnswer(
+                "여행 중 비가 오면 어떻게 해? 여행 SOS는 뭐야?");
+        assertThat(answer).contains("재계획", "긴급 신고 서비스는 아닙니다");
+        assertThat(answer).doesNotContain("/travel");
+    }
+
+    @Test
+    void 생성답변의개발주소를사용자용화면이름으로바꾼다() {
+        String answer = AiManagerFeatureCatalog.toUserFacingAnswer(
+                "도감은 `/mascots/dex`에서 볼 수 있습니다.");
+        assertThat(answer).contains("마스코트 도감").doesNotContain("/mascots/dex");
+    }
+
 }
