@@ -18,6 +18,8 @@ export interface EmotionChatResponse {
   conversationId: number | null;
   answer: string;
   emotionName: string | null;
+  /** 백엔드가 선정한 관련 기능 ID. 화면 경로는 노출하지 않는다. */
+  relatedFeatureIds: string[];
   createdAt: string;
 }
 
