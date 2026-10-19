@@ -1,5 +1,7 @@
 package com.example.trippaminebe.domain.quest.service;
 
+import com.example.trippaminebe.domain.quest.exception.TitleNotFoundException;
+
 import com.example.trippaminebe.domain.quest.dto.response.RpgStatsResponse;
 import com.example.trippaminebe.domain.quest.dto.response.TitleResponse;
 import com.example.trippaminebe.domain.quest.entity.Title;
@@ -130,6 +132,36 @@ public class RpgStatsService {
 
         // 새로 여러 개를 동시에 얻었다면 가장 마지막(= 가장 상위 조건) 칭호를 자동 장착한다.
         stats.equipTitle(lastUnlocked);
+    }
+
+    /* =====================================================
+     * [칭호 변경] 사용자가 보유한 칭호 중 하나를 직접 장착/해제
+     * ===================================================== */
+
+    public RpgStatsResponse equipTitle(Long userId, Long titleId) {
+        Title title = titleRepository.findById(titleId)
+            .orElseThrow(() -> new TitleNotFoundException("존재하지 않는 칭호입니다. id=" + titleId));
+
+        // 획득하지 않은 칭호는 장착할 수 없다 (요청 바디/URL 조작 방지)
+        if (!userTitleRepository.existsByUser_IdAndTitle_TitleId(userId, titleId)) {
+            throw new IllegalArgumentException("아직 획득하지 않은 칭호예요.");
+        }
+
+        // 칭호를 하나라도 가졌다면 퀘스트를 완료한 적이 있으므로 USER_RPG_STATS 행이 반드시 있다.
+        UserRpgStats stats = userRpgStatsRepository.findByUser_Id(userId)
+            .orElseThrow(() -> new IllegalArgumentException("RPG 정보가 없습니다. 퀘스트를 먼저 완료해주세요."));
+
+        stats.equipTitle(title);
+        return RpgStatsResponse.from(stats);
+    }
+
+    public RpgStatsResponse unequipTitle(Long userId) {
+        return userRpgStatsRepository.findByUser_Id(userId)
+            .map(stats -> {
+                stats.equipTitle(null);
+                return RpgStatsResponse.from(stats);
+            })
+            .orElseGet(RpgStatsResponse::defaultStats);
     }
 
     /* =====================================================

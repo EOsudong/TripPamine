@@ -88,12 +88,18 @@ export interface RpgStatsResponse {
   currentTitleName: string | null;
 }
 
+// 칭호 자동 획득 조건 (백엔드 TitleConditionType)
+export type TitleConditionType = "FIRST_QUEST_CLEAR" | "QUEST_COUNT" | "LEVEL_REACHED";
+
 // GET /quests/me/titles 응답
 export interface TitleResponse {
   titleId: number;
   titleName: string;
   description: string | null;
   iconUrl: string | null;
+  // 백엔드는 이미 내려주고 있었는데 타입에 빠져 있던 필드. 잠긴 칭호의 획득 조건 안내에 쓴다.
+  requiredConditionType?: TitleConditionType | null;
+  requiredConditionValue?: number | null;
   earned: boolean;
   earnedAt: string | null;
   equipped: boolean;
@@ -191,6 +197,18 @@ export const questApi = {
     return response.data;
   },
 
+  /** [칭호 변경] 보유한 칭호 장착. 미보유 칭호면 400. 바뀐 RPG 스탯을 돌려준다. */
+  equipTitle: async (titleId: number): Promise<RpgStatsResponse> => {
+    const response = await api.put<RpgStatsResponse>(`/quests/me/titles/${titleId}/equip`);
+    return response.data;
+  },
+
+  /** [칭호 변경] 장착한 칭호 해제 */
+  unequipTitle: async (): Promise<RpgStatsResponse> => {
+    const response = await api.delete<RpgStatsResponse>("/quests/me/titles/equip");
+    return response.data;
+  },
+
   /** 연쇄(CHAIN) 퀘스트의 단계 목록 + 내 클리어 여부 */
   getSteps: async (questId: number): Promise<QuestStepResponse[]> => {
     const response = await api.get<QuestStepResponse[]>(
@@ -225,4 +243,19 @@ export function extractQuestErrorMessage(
 ): string {
   const anyErr = err as { response?: { data?: { message?: string } } };
   return anyErr?.response?.data?.message ?? fallback;
+}
+
+// 잠긴 칭호의 획득 조건 문구
+export function describeTitleCondition(title: TitleResponse): string {
+  const value = title.requiredConditionValue ?? 0;
+  switch (title.requiredConditionType) {
+    case "FIRST_QUEST_CLEAR":
+      return "첫 퀘스트 완료 시 획득";
+    case "QUEST_COUNT":
+      return `퀘스트 ${value}개 완료 시 획득`;
+    case "LEVEL_REACHED":
+      return `Lv.${value} 달성 시 획득`;
+    default:
+      return title.description ?? "획득 조건 비공개";
+  }
 }

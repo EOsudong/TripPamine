@@ -100,6 +100,12 @@ public class User {
     this.updateDate = LocalDateTime.now(); // 변경 시점의 수정날짜 자동 갱신
   }
 
+  // [닉네임 변경] 닉네임만 바꾸는 도메인 메서드. 형식·중복 검증은 UserServiceImpl에서 끝낸 뒤 호출한다.
+  public void changeUserName(String newUserName) {
+    this.userName = newUserName;
+    this.updateDate = LocalDateTime.now();
+  }
+
   // 최종 로그인 시각 기록 메서드
   // lastLoginDate가 현재 시점으로부터 1년 이상 지났으면 배치 작업으로 휴면 처리
   public void updateLastLoginDate() {

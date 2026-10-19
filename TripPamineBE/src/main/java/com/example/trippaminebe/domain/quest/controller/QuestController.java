@@ -123,4 +123,23 @@ public class QuestController {
     ) {
         return ResponseEntity.ok(rpgStatsService.findMyTitles(getUserId(userDetails)));
     }
+
+    // [칭호 변경] 보유한 칭호 장착
+    @PutMapping("/me/titles/{titleId}/equip")
+    @Operation(summary = "내 칭호 장착 (보유한 칭호만 가능)")
+    public ResponseEntity<RpgStatsResponse> equipTitle(
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        @PathVariable Long titleId
+    ) {
+        return ResponseEntity.ok(rpgStatsService.equipTitle(getUserId(userDetails), titleId));
+    }
+
+    // [칭호 변경] 칭호 해제 (칭호 없이 표시)
+    @DeleteMapping("/me/titles/equip")
+    @Operation(summary = "내 칭호 해제")
+    public ResponseEntity<RpgStatsResponse> unequipTitle(
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(rpgStatsService.unequipTitle(getUserId(userDetails)));
+    }
 }

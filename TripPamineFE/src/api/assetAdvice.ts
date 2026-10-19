@@ -6,10 +6,10 @@ import { API_BASE_URL } from "./axios"
 // =====================================================
 
 export interface TravelGoalRequest {
-  goalName: string
-  targetAmount: number
-  currentAmount: number
-  targetDate: string
+    goalName: string
+    targetAmount: number
+    currentAmount: number
+    targetDate: string
 }
 
 
@@ -18,23 +18,23 @@ export interface TravelGoalRequest {
 // =====================================================
 
 export interface TravelGoalInfo {
-  goalId: number
+    goalId: number
 
-  goalName: string
+    goalName: string
 
-  targetAmount: number
+    targetAmount: number
 
-  currentAmount: number
+    currentAmount: number
 
-  remainingAmount: number
+    remainingAmount: number
 
-  progressRate: number
+    progressRate: number
 
-  targetDate: string
+    targetDate: string
 
-  remainingMonths: number
+    remainingMonths: number
 
-  requiredMonthlySaving: number
+    requiredMonthlySaving: number
 }
 
 
@@ -44,21 +44,21 @@ export interface TravelGoalInfo {
 
 export interface RecommendationInfo {
 
-  category:
-    | "SAVING"
-    | "BUDGET"
-    | "EXPENSE"
-    | "GOAL"
-    | "FINANCE"
+    category:
+        | "SAVING"
+        | "BUDGET"
+        | "EXPENSE"
+        | "GOAL"
+        | "FINANCE"
 
-  title: string
+    title: string
 
-  description: string
+    description: string
 
-  priority:
-    | "HIGH"
-    | "MEDIUM"
-    | "LOW"
+    priority:
+        | "HIGH"
+        | "MEDIUM"
+        | "LOW"
 }
 
 
@@ -67,11 +67,11 @@ export interface RecommendationInfo {
 // =====================================================
 
 export type FinancialStatus =
-  | "ACHIEVABLE"
-  | "TIGHT"
-  | "SHORTAGE"
-  | "COMPLETED"
-  | "NO_GOAL"
+    | "ACHIEVABLE"
+    | "TIGHT"
+    | "SHORTAGE"
+    | "COMPLETED"
+    | "NO_GOAL"
 
 
 // =====================================================
@@ -80,23 +80,23 @@ export type FinancialStatus =
 
 export interface AssetAdviceResponse {
 
-  // 최근 3개월 기준 월평균 수입
-  monthlyAverageIncome: number
+    // 최근 3개월 기준 월평균 수입
+    monthlyAverageIncome: number
 
-  // 최근 3개월 기준 월평균 지출
-  monthlyAverageExpense: number
+    // 최근 3개월 기준 월평균 지출
+    monthlyAverageExpense: number
 
-  // 월평균 여유자금
-  monthlySurplus: number
+    // 월평균 여유자금
+    monthlySurplus: number
 
-  // 여행 목표
-  travelGoal: TravelGoalInfo | null
+    // 여행 목표
+    travelGoal: TravelGoalInfo | null
 
-  // 자산관리 상태
-  financialStatus: FinancialStatus
+    // 자산관리 상태
+    financialStatus: FinancialStatus
 
-  // 맞춤 추천
-  recommendations: RecommendationInfo[]
+    // 맞춤 추천
+    recommendations: RecommendationInfo[]
 }
 
 
@@ -106,19 +106,19 @@ export interface AssetAdviceResponse {
 
 const getAccessToken = () => {
 
-  const accessToken =
-    localStorage.getItem(
-      "accessToken",
-    )
+    const accessToken =
+        localStorage.getItem(
+            "accessToken",
+        )
 
-  if (!accessToken) {
+    if (!accessToken) {
 
-    throw new Error(
-      "로그인 토큰을 확인할 수 없습니다.",
-    )
-  }
+        throw new Error(
+            "로그인 토큰을 확인할 수 없습니다.",
+        )
+    }
 
-  return accessToken
+    return accessToken
 }
 
 
@@ -129,28 +129,28 @@ const getAccessToken = () => {
 // =====================================================
 
 export const getAssetAdvice =
-  async (): Promise<AssetAdviceResponse> => {
+    async (): Promise<AssetAdviceResponse> => {
 
-    const accessToken =
-      getAccessToken()
+        const accessToken =
+            getAccessToken()
 
 
-    const response =
-      await fetch(
-        `${API_BASE_URL}/api/assets/advice`,
-        {
-          method: "GET",
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/assets/advice`,
+                {
+                    method: "GET",
 
-          headers: {
+                    headers: {
 
-            Accept:
-              "application/json",
+                        Accept:
+                            "application/json",
 
-            Authorization:
-              `Bearer ${accessToken}`,
-          },
-        },
-      )
+                        Authorization:
+                            `Bearer ${accessToken}`,
+                    },
+                },
+            )
 
 
     if (!response.ok) {

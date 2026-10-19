@@ -112,5 +112,36 @@ export const getMyInfoApi = async (): Promise<MyInfoResponse> => {
   return response.data;
 };
 
+// ================= [닉네임 변경] =================
 
+// GET /users/auth/check-nickname 응답
+export interface NicknameCheckResponse {
+  available: boolean;
+  message: string;
+}
 
+// 닉네임 규칙 (백엔드 UserServiceImpl과 동일하게 맞춤)
+export const NICKNAME_MIN = 2;
+export const NICKNAME_MAX = 12;
+export const NICKNAME_PATTERN = /^[가-힣a-zA-Z0-9_]+$/;
+
+/** 닉네임 사용 가능 여부 (형식 + 중복). 로그인 상태면 내 현재 닉네임은 사용 가능으로 나온다. */
+export const checkNicknameApi = async (userName: string): Promise<NicknameCheckResponse> => {
+  const response = await api.get<NicknameCheckResponse>("/users/auth/check-nickname", {
+    params: { userName },
+  });
+  return response.data;
+};
+
+/** 내 닉네임 변경. 형식 오류·중복이면 400 { message }가 던져진다. */
+export const updateNicknameApi = async (userName: string): Promise<MyInfoResponse> => {
+  const response = await api.patch<MyInfoResponse>("/users/me/nickname", { userName });
+  return response.data;
+};
+
+// 닉네임·칭호가 바뀌었을 때 헤더 등 다른 화면이 다시 불러오도록 알리는 브라우저 이벤트
+export const USER_UPDATED_EVENT = "trippamine:user-updated";
+
+export function notifyUserUpdated() {
+  window.dispatchEvent(new Event(USER_UPDATED_EVENT));
+}
