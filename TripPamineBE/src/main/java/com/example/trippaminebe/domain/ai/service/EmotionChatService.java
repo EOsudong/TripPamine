@@ -102,9 +102,18 @@ public class EmotionChatService {
                 .map(ManagerSlmClient.ChatTurn::content)
                 .toList();
         String featureContext = AiManagerFeatureCatalog.buildPromptContext(message, previousUserMessages);
+        List<String> relatedFeatureIds = AiManagerFeatureCatalog.relevantFeatureIds(
+                message, previousUserMessages);
+
+        // 여행 SOS의 정의는 안전상 중요한 서비스 정책이다.
+        // 작은 생성 모델이 이를 긴급 신고 기능으로 잘못 설명하지 않게 검증된 답변을 사용한다.
+        String verifiedAnswer = AiManagerFeatureCatalog.verifiedSosAnswer(message);
 
         // 외부 HTTP 호출은 DB 트랜잭션 없이 진행한다.
-        String answer = slmClient.generateWithHistory(SYSTEM_PROMPT + "\n\n" + featureContext, turns);
+        String answer = verifiedAnswer != null ? verifiedAnswer
+                : slmClient.generateWithHistory(SYSTEM_PROMPT + "\n\n" + featureContext, turns);
+        // Qwen3가 출력한 앱 내부 라우트가 사용자 말풍선에 드러나지 않도록 후처리한다.
+        answer = AiManagerFeatureCatalog.toUserFacingAnswer(answer);
         if (request.saveHistory()) {
             conversationId = persistence.recordExchange(userId, conversationId, message, answer);
         }
@@ -122,9 +131,10 @@ public class EmotionChatService {
                     .filter(turn -> "user".equals(turn.role()))
                     .map(ManagerSlmClient.ChatTurn::content)
                     .toList();
-            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0) {
+            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0
+                    && EmotionChatEmotionPolicy.hasExplicitEmotionSignal(message)) {
                 try {
-                    // FIRST2 정책이 최근 감정을 해석하도록 마지막 사용자 발화 2개만 사용한다.
+                    // 기존 FIRST2 모델 정책을 유지한다. 정보성 질문만 반복된 경우에는 호출하지 않는다.
                     List<String> recentHumanTurns = humanTurns.subList(humanTurns.size() - 2, humanTurns.size());
                     emotionName = emotionAnalysisService.analyze(
                             userId, new EmotionPredictRequest(null, recentHumanTurns)
@@ -134,6 +144,7 @@ public class EmotionChatService {
                 }
             }
         }
-        return new EmotionChatResponse(conversationId, answer, emotionName, AiTimeProvider.nowInServiceZone());
+        return new EmotionChatResponse(conversationId, answer, emotionName,
+                AiTimeProvider.nowInServiceZone(), relatedFeatureIds);
     }
 }
