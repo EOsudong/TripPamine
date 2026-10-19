@@ -79,6 +79,13 @@ class AiManagerFeatureCatalogTest {
     }
 
     @Test
+    void 실제긴급상황에서는119와112안내를포함한다() {
+        String answer = AiManagerFeatureCatalog.verifiedSosAnswer(
+                "여행 SOS 중인데 실제 사고로 다쳤어.");
+        assertThat(answer).contains("119", "112", "긴급 신고");
+    }
+
+    @Test
     void 생성답변의개발주소를사용자용화면이름으로바꾼다() {
         String answer = AiManagerFeatureCatalog.toUserFacingAnswer(
                 "도감은 `/mascots/dex`에서 볼 수 있습니다.");
