@@ -163,7 +163,7 @@ public final class AiManagerFeatureCatalog {
                     .replace(item[0], item[1]);
         }
         // 아직 등록되지 않은 내부 경로까지 일반 안내로 대체한다.
-        return safe.replaceAll("(?<![\\w])/(?:[a-z][a-z0-9-]*)(?:/[a-z0-9-]+)*", "해당 서비스");
+        return safe.replaceAll("(?<![\\w/:])/(?:[a-z][a-z0-9-]*)(?:/[a-z0-9-]+)*", "해당 서비스");
     }
 
     private static Feature feature(String id, String name, String route, String description,
