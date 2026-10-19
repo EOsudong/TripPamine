@@ -30,9 +30,10 @@ public final class AiManagerFeatureCatalog {
             feature("FINANCIAL_PRODUCTS", "금융상품", "/finance", "금융상품 정보 조회·비교 및 관심 상품 저장", "금리·가입 조건·수익은 최신 외부 정보 조회 없이 확정할 수 없다.", "금융상품", "금융 상품", "예금", "적금", "금리"),
             feature("QUEST", "여행 퀘스트", "/quests", "퀘스트 목록·진행 이력·GPS 인증·연쇄 단계 조회", "클리어·보상 지급은 실제 서버 결과로만 확인할 수 있다.", "퀘스트", "미션", "임무", "도전과제"),
             feature("RPG", "RPG·포인트·칭호", "/quests", "RPG 레벨·경험치·완료 퀘스트·칭호 조회와 장착", "포인트와 EXP는 다른 값이다. 보유 수치와 보상은 조회해야 한다.", "포인트", "레벨", "경험치", "exp", "칭호", "rpg", "보상"),
-            feature("MASCOT", "마스코트 탐험·도감", "/mascots", "주변 마스코트·GPS 조우·포획 시도 및 수집 도감 /mascots/dex", "포획에는 GPS·서버 검증·확률 판정이 필요하며 AI가 포획을 확정하지 않는다.", "마스코트", "도감", "포획", "캐릭터 잡", "수집"),
+            feature("MASCOT", "마스코트 탐험", "/mascots", "주변 마스코트·GPS 조우·포획 시도", "포획은 GPS·서버 검증·확률 판정이 필요하다.", "마스코트", "포획", "캐릭터 잡"),
+            feature("MASCOT_DEX", "마스코트 도감", "/mascots/dex", "지역별 마스코트와 본인 수집 현황을 확인하는 도감", "수집률과 포획 횟수는 실제 조회하지 않은 상태다.", "마스코트 도감", "도감", "수집"),
             feature("MYSTERY_TOUR", "미스터리 투어", "/travel", "GPS·사진 미션 진행, 퀘스트 스킵·포기", "진행 화면에는 실제 투어 ID가 필요하며 스킵 보상을 임의로 지급할 수 없다.", "미스터리", "블라인드", "랜덤여행", "랜덤 여행"),
-            feature("TOUR_INFORMATION", "관광·축제 정보", "/tour/destinations", "관광 여행지·축제(/tour/festivals)·관광 산업(/tour/industry) 정보와 북마크", "일정·입장료·운영 여부는 실제 조회로 확인해야 한다.", "축제", "관광지", "관광 정보", "볼거리", "가볼만한"),
+            feature("TOUR_INFORMATION", "관광·축제 정보", "/tour/destinations", "관광 여행지·축제·관광 산업 정보와 북마크", "일정·입장료·운영 여부는 실제 조회로 확인해야 한다.", "축제", "관광지", "관광 정보", "볼거리", "가볼만한"),
             feature("AI_PHOTO", "AI 사진 편집", "/ai-photo-editor", "AI 사진 편집 화면", "대화를 통해 실제 이미지 편집이나 저장을 수행했다고 말하지 않는다.", "사진 편집", "사진편집", "ai 사진", "이미지 편집"),
             feature("COMMUNITY", "커뮤니티", "/boards", "게시글 목록·상세·작성·수정 화면", "챗봇은 게시글을 자동으로 작성·삭제하지 않는다.", "커뮤니티", "게시판", "게시글", "후기 작성"),
             feature("EMOTION", "마음 메이트 감정 대화", "/ai/emotion", "감정 분석 동의 시 감정 모델 예측 결과 안내", "감정 결과는 추정이며 의학적 진단이 아니다.", "감정", "기분", "마음", "우울", "스트레스")
@@ -84,18 +85,19 @@ public final class AiManagerFeatureCatalog {
                 사용자의 여행 일정·자산·잔액·퀘스트·포인트·마스코트·날씨는 아직 조회하지 않았다.
                 개인 금액·횟수·날씨를 추측하지 말고 데이터 확인이 필요함을 알려라.
                 아래에 없는 화면·기능·API 실행 결과는 만들어내지 않는다.
-                사용자가 관련 질문을 하면 실제 화면 경로와 가능한 다음 행동을 짧게 안내한다.
+                내부 주소(/mascots/dex 등), API 주소, 개발 용어를 답변에 출력하지 않는다.
+                사용자가 관련 질문을 하면 해당 기능의 사용자용 이름과 가능한 다음 행동을 안내한다.
+                화면 이동 버튼은 별도 UI가 제공한다.
                 """);
 
         if (ids.isEmpty()) {
             prompt.append("""
                     [서비스 전체 요약]
-                    여행 플래너 /travel, AI 여행 추천 /ai-recommend, 여행 SOS /travel,
-                    날씨 조회, 자산관리 /assets, 가계부 /mypage, 금융상품 /finance,
-                    퀘스트·RPG·포인트·칭호 /quests, 마스코트 /mascots,
-                    마스코트 도감 /mascots/dex, 미스터리 투어 /travel,
-                    관광지 /tour/destinations, 축제 /tour/festivals,
-                    AI 사진 편집 /ai-photo-editor, 게시판 /boards, 감정 대화 /ai/emotion.
+                    여행 플래너, AI 여행 추천, 여행 SOS(여행 일정 재계획),
+                    날씨 조회, 자산관리, 가계부, 금융상품,
+                    퀘스트·RPG·포인트·칭호, 마스코트 탐험과 도감,
+                    미스터리 투어, 관광지, 축제,
+                    AI 사진 편집, 게시판, 감정 대화.
                     """);
             return prompt.toString();
         }
@@ -103,11 +105,65 @@ public final class AiManagerFeatureCatalog {
         for (Feature feature : FEATURES) {
             if (!ids.contains(feature.id())) continue;
             prompt.append("\n- 기능: ").append(feature.name())
-                    .append("\n  화면: ").append(feature.route())
                     .append("\n  확인된 기능: ").append(feature.description())
                     .append("\n  한계: ").append(feature.limitations());
         }
         return prompt.toString();
+    }
+
+
+    /**
+     * 모델이 생성하지 않아도 정확하게 답할 수 있는 핵심 정책.
+     * SOS는 '여행 일정 재계획'이라는 뜻이며 긴급 신고 시스템이 아니다.
+     * 이 중요 사항은 작은 언어 모델의 자유 생성에 맡기지 않는다.
+     */
+    public static String verifiedSosAnswer(String latestMessage) {
+        if (latestMessage == null) return null;
+        String normalized = normalize(latestMessage);
+        if (!normalized.contains("sos") && !normalized.contains("여행에스오에스")) return null;
+
+        if (List.of("다쳤", "사고", "구급", "긴급구조", "응급", "119", "112")
+                .stream().anyMatch(normalized::contains)) {
+            return "위급한 상황이라면 트립파민의 여행 SOS가 아닌 실제 긴급 신고를 이용해 주세요. "
+                    + "구급·구조는 119, 경찰 신고는 112입니다. "
+                    + "트립파민 여행 SOS는 여행 일정을 다시 짜는 기능입니다.";
+        }
+        return "트립파민의 여행 SOS는 비가 오거나 일정이 지연됐을 때 여행 일정을 다시 계획하는 기능입니다. "
+                + "변경안을 먼저 확인한 뒤 사용자가 직접 확정할 수 있으며, 긴급 신고 서비스는 아닙니다. "
+                + "여행 플래너에서 사용할 수 있어요.";
+    }
+
+    /**
+     * Qwen3가 예전 대화나 추측으로 URL을 다시 출력하더라도,
+     * 개발용 라우트가 사용자 대화 말풍선에 노출되지 않도록 변환한다.
+     * 실제 버튼 주소는 응답의 기능 ID를 통해 프론트엔드가 결정한다.
+     */
+    public static String toUserFacingAnswer(String answer) {
+        if (answer == null) return "";
+        String safe = answer;
+        // 긴 경로를 먼저 변환한다(예: /mascots/dex가 /mascots보다 우선).
+        String[][] routes = {
+                {"/mascots/dex", "마스코트 도감"},
+                {"/tour/destinations", "관광 여행지"},
+                {"/tour/festivals", "축제·행사"},
+                {"/tour/industry", "관광 산업"},
+                {"/ai-photo-editor", "AI 사진 편집"},
+                {"/ai-recommend", "AI 여행 추천"},
+                {"/ai/emotion", "마음 메이트"},
+                {"/mascots", "마스코트 탐험"},
+                {"/quests", "여행 퀘스트"},
+                {"/assets", "자산관리"},
+                {"/finance", "금융상품"},
+                {"/mypage", "마이페이지"},
+                {"/travel", "여행 플래너"},
+                {"/boards", "게시판"}
+        };
+        for (String[] item : routes) {
+            safe = safe.replace("`" + item[0] + "`", item[1])
+                    .replace(item[0], item[1]);
+        }
+        // 아직 등록되지 않은 내부 경로까지 일반 안내로 대체한다.
+        return safe.replaceAll("(?<![\\w])/(?:[a-z][a-z0-9-]*)(?:/[a-z0-9-]+)*", "해당 서비스");
     }
 
     private static Feature feature(String id, String name, String route, String description,
