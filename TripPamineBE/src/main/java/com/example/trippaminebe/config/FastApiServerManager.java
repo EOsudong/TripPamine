@@ -5,160 +5,97 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.Socket;
 
 @Component
 public class FastApiServerManager {
 
-   // FastAPI 프로젝트 폴더
-   private final String visionDir =
-           "/Users/kimmanten/Desktop/project/vision-ai-test";
-
-   // 실행된 FastAPI 프로세스를 저장
    private Process fastApiProcess;
 
-
-   /**
-    * Spring Boot 서버가 실행될 때
-    * FastAPI 서버도 자동 실행
-    */
    @PostConstruct
    public void startFastApiServer() {
+      // 1. 이미 8000번 포트가 실행 중이라면 중복 실행 방지
+      if (isPortInUse("127.0.0.1", 8000)) {
+         System.out.println("ℹ️ [FastAPI] 8000번 포트에서 비전 AI 서버가 이미 실행 중입니다.");
+         return;
+      }
 
       try {
+         // 2. 상대 경로로 vision-ai-test 디렉토리 찾기 (절대 경로 하드코딩 방지)
+         String userDir = System.getProperty("user.dir");
+         File currentDir = new File(userDir);
+         File visionDir = new File(currentDir.getParentFile(), "vision-ai-test");
+         if (!visionDir.exists()) {
+            visionDir = new File(currentDir, "vision-ai-test");
+         }
 
-         // Mac용 실행 파일
-         String scriptPath =
-                 "/Users/kimmanten/Desktop/project/vision-ai-test/run_vision.sh";
-
-         File scriptFile = new File(scriptPath);
-
-         if (!scriptFile.exists()) {
-            System.out.println(
-                    "[FastAPI] run_vision.sh 파일을 찾을 수 없습니다: "
-                            + scriptPath
-            );
+         if (!visionDir.exists()) {
+            System.err.println("⚠️ [FastAPI] vision-ai-test 디렉토리를 찾을 수 없습니다: " + visionDir.getAbsolutePath());
             return;
          }
 
-         ProcessBuilder processBuilder =
-                 new ProcessBuilder(
-                         "/bin/bash",
-                         scriptPath
-                 );
+         // 3. OS(Windows vs Mac/Linux)에 따른 실행 명령어 분기
+         boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+         ProcessBuilder processBuilder;
 
-         processBuilder.directory(
-                 new File(
-                         "/Users/kimmanten/Desktop/project/vision-ai-test"
-                 )
-         );
+         if (isWindows) {
+            File batFile = new File(visionDir, "run_vision.bat");
+            if (!batFile.exists()) {
+               System.err.println("⚠️ [FastAPI] run_vision.bat 파일이 없습니다: " + batFile.getAbsolutePath());
+               return;
+            }
+            processBuilder = new ProcessBuilder("cmd.exe", "/c", "start", "", "/b", "run_vision.bat");
+         } else {
+            File shFile = new File(visionDir, "run_vision.sh");
+            if (!shFile.exists()) {
+               System.err.println("⚠️ [FastAPI] run_vision.sh 파일이 없습니다: " + shFile.getAbsolutePath());
+               return;
+            }
+            processBuilder = new ProcessBuilder("/bin/bash", shFile.getAbsolutePath());
+         }
 
-         processBuilder.inheritIO();
-
-         Process process =
-                 processBuilder.start();
-
-         // Mac에서는 cmd.exe가 아니라
-         // /bin/zsh 사용
-
-
-
-         // FastAPI 프로젝트 폴더에서 실행
-         processBuilder.directory(
-                 new File(visionDir)
-         );
-
-
-         // 에러 로그와 일반 로그 합치기
+         processBuilder.directory(visionDir);
          processBuilder.redirectErrorStream(true);
-
-
-         // IntelliJ Console에서
-         // FastAPI 로그도 같이 확인
          processBuilder.inheritIO();
 
+         fastApiProcess = processBuilder.start();
 
-         // FastAPI 서버 실행
-         fastApiProcess =
-                 processBuilder.start();
-
-
-         System.out.println(
-                 "🚀 [FastAPI] 비전 AI 서버 자동 실행 요청 완료"
-         );
-
-         System.out.println(
-                 "📂 [FastAPI] 실행 위치: "
-                         + visionDir
-         );
-
-         System.out.println(
-                 "📄 [FastAPI] 실행 파일: "
-                         + scriptFile.getAbsolutePath()
-         );
-
+         System.out.println("🚀 [FastAPI] 비전 AI 서버 자동 실행 성공 (" + (isWindows ? "Windows .bat" : "Mac .sh") + ")");
+         System.out.println("📂 [FastAPI] 실행 위치: " + visionDir.getAbsolutePath());
 
       } catch (Exception e) {
-
-         System.out.println(
-                 "❌ [FastAPI] 비전 AI 서버 실행 실패: "
-                         + e.getMessage()
-         );
-
+         System.err.println("❌ [FastAPI] 비전 AI 서버 실행 실패: " + e.getMessage());
          e.printStackTrace();
       }
    }
 
-
-   /**
-    * Spring Boot 서버가 종료될 때
-    * 실행했던 FastAPI 서버도 같이 종료
-    */
    @PreDestroy
    public void stopFastApiServer() {
+      if (fastApiProcess != null && fastApiProcess.isAlive()) {
+         try {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
-      try {
-
-         if (fastApiProcess != null
-                 && fastApiProcess.isAlive()) {
-
-
-            // FastAPI 하위 프로세스 종료
-            fastApiProcess
-                    .descendants()
-                    .forEach(processHandle -> {
-
-                       try {
-
-                          processHandle.destroy();
-
-                       } catch (Exception ignored) {
-                       }
-
-                    });
-
-
-            // FastAPI 메인 프로세스 종료
-            fastApiProcess.destroy();
-
-
-            System.out.println(
-                    "🛑 [FastAPI] 비전 AI 서버 종료 완료"
-            );
-
-         } else {
-
-            System.out.println(
-                    "ℹ️ [FastAPI] 종료할 FastAPI 서버가 없습니다."
-            );
+            if (isWindows) {
+               // Windows: /T 옵션으로 자식 프로세스(python.exe)까지 프로세스 트리 전체 강제 종료
+               Runtime.getRuntime().exec("taskkill /F /T /PID " + fastApiProcess.pid());
+            } else {
+               // Mac/Linux: ProcessHandle을 통해 모든 하위 프로세스 강제 종료
+               fastApiProcess.descendants().forEach(ProcessHandle::destroyForcibly);
+               fastApiProcess.destroyForcibly();
+            }
+            System.out.println("🛑 [FastAPI] 비전 AI 서버가 완전히 종료되었습니다.");
+         } catch (Exception e) {
+            System.err.println("⚠️ [FastAPI] 서버 종료 중 오류 발생: " + e.getMessage());
          }
+      }
+   }
 
-
-      } catch (Exception e) {
-
-         System.out.println(
-                 "❌ [FastAPI] 비전 AI 서버 종료 실패: "
-                         + e.getMessage()
-         );
+   private boolean isPortInUse(String host, int port) {
+      try (Socket socket = new Socket(host, port)) {
+         return true;
+      } catch (IOException e) {
+         return false;
       }
    }
 }

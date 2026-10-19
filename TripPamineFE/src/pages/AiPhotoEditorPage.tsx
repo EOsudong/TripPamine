@@ -1,8 +1,23 @@
 import React, { useState, useRef, useEffect } from "react";
 import AppLayout from "../layout/AppLayout";
 
-const API_BASE_URL =
-  import.meta.env.VITE_FASTAPI_URL || "http://localhost:8000";
+const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_SPRING_API_URL) {
+        return import.meta.env.VITE_SPRING_API_URL;
+    }
+    if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+        return "http://localhost:8080/api/v1/ai-photo";
+    }
+    return "/api/v1/ai-photo";
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// 🔑 인증 헤더 생성 공통 헬퍼 함수
+const getAuthHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 type TabType = "best-shot" | "multi-mosaic" | "manual-mosaic";
 
@@ -70,10 +85,15 @@ export default function AiPhotoEditorPage() {
     bestShotFiles.forEach((file) => formData.append("images", file));
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/best-shot`, {
+      const res = await fetch(`${API_BASE_URL}/best-shot`, {
         method: "POST",
+        headers: getAuthHeaders(), // 🔒 Authorization 헤더 전달
         body: formData,
       });
+
+      if (res.status === 401) {
+        throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
+      }
 
       if (!res.ok) throw new Error("베스트 샷 분석 중 오류가 발생했습니다.");
 
@@ -128,10 +148,15 @@ export default function AiPhotoEditorPage() {
     multiMosaicFiles.forEach((file) => formData.append("images", file));
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/multi-mosaic`, {
+      const res = await fetch(`${API_BASE_URL}/multi-mosaic`, {
         method: "POST",
+        headers: getAuthHeaders(), // 🔒 Authorization 헤더 전달
         body: formData,
       });
+
+      if (res.status === 401) {
+        throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
+      }
 
       if (!res.ok)
         throw new Error("자동 모자이크 처리 중 오류가 발생했습니다.");
@@ -241,10 +266,15 @@ export default function AiPhotoEditorPage() {
       formData.append("mask", blob, "mask.png");
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/mosaic`, {
+        const res = await fetch(`${API_BASE_URL}/mosaic`, {
           method: "POST",
+          headers: getAuthHeaders(), // 🔒 Authorization 헤더 전달
           body: formData,
         });
+
+        if (res.status === 401) {
+          throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
+        }
 
         if (!res.ok) throw new Error("수동 모자이크 처리 실패");
 
