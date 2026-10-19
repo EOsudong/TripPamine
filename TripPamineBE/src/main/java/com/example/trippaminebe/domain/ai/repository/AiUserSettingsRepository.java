@@ -70,4 +70,28 @@ public interface AiUserSettingsRepository
 			@Param("userId") Long userId,
 			@Param("enabled") String enabled
 	);
+
+	/** 감정 기능 동의만 변경한다. 다른 설정값은 유지한다. */
+	@Modifying
+	@Query(value = """
+            UPDATE AI_USER_SETTINGS
+               SET EMOTION_ENABLED_YN = :enabled,
+                   UPDATED_AT = SYSTIMESTAMP
+             WHERE USER_ID = :userId
+            """, nativeQuery = true)
+	int updateEmotionConsent(
+			@Param("userId") Long userId,
+			@Param("enabled") String enabled
+	);
+
+	/** 최초 감정 기능 허용 시 DB의 다른 동의 항목 기본값 N을 유지한다. */
+	@Modifying
+	@Query(value = """
+            INSERT INTO AI_USER_SETTINGS (USER_ID, EMOTION_ENABLED_YN)
+            VALUES (:userId, :enabled)
+            """, nativeQuery = true)
+	int insertEmotionConsent(
+			@Param("userId") Long userId,
+			@Param("enabled") String enabled
+	);
 }

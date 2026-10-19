@@ -1,4 +1,3 @@
-
 import api from "./axios";
 
 /**
@@ -8,16 +7,16 @@ import api from "./axios";
  * 화면에서는 여행 상태를 다시 판단하지 않는다.
  */
 export interface AiManagerTravelItem {
-    planId: number;
-    planName: string;
-    locationCd: string | null;
-    companionType: string | null;
-    totalBudget: number | null;
-    startDate: string | null;
-    endDate: string | null;
-    phase: "PLANNED" | "ACTIVE" | "COMPLETED";
-    statusLabel: string;
-    daysUntilStart: number | null;
+  planId: number;
+  planName: string;
+  locationCd: string | null;
+  companionType: string | null;
+  totalBudget: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  phase: "PLANNED" | "ACTIVE" | "COMPLETED";
+  statusLabel: string;
+  daysUntilStart: number | null;
 }
 
 /**
@@ -27,12 +26,12 @@ export interface AiManagerTravelItem {
  * 그리고 여행별 상세 정보를 포함한다.
  */
 export interface AiManagerTravelOverview {
-    generatedAt: string;
-    totalPlanCount: number;
-    plannedCount: number;
-    activeCount: number;
-    completedCount: number;
-    plans: AiManagerTravelItem[];
+  generatedAt: string;
+  totalPlanCount: number;
+  plannedCount: number;
+  activeCount: number;
+  completedCount: number;
+  plans: AiManagerTravelItem[];
 }
 
 /**
@@ -41,13 +40,10 @@ export interface AiManagerTravelOverview {
  * 인증 정보는 프로젝트 공통 axios가 자동으로 전달한다.
  * 이 함수는 여행 정보를 읽기만 한다.
  */
-export async function getAiManagerTravelOverviewApi():
-    Promise<AiManagerTravelOverview> {
+export async function getAiManagerTravelOverviewApi(): Promise<AiManagerTravelOverview> {
+  const response = await api.get<AiManagerTravelOverview>(
+    "/api/ai-manager/travel/overview",
+  );
 
-    const response =
-        await api.get<AiManagerTravelOverview>(
-            "/api/ai-manager/travel/overview"
-        );
-
-    return response.data;
+  return response.data;
 }

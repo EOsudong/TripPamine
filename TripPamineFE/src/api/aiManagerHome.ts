@@ -1,6 +1,5 @@
 import api from "./axios";
 
-
 /**
  * =========================================================
  * AI Manager Home API Types
@@ -19,7 +18,6 @@ import api from "./axios";
  * 구조로 사용한다.
  */
 
-
 /* =========================================================
  * User Context
  * ========================================================= */
@@ -28,17 +26,16 @@ import api from "./axios";
  * AI Manager Home에서 필요한 최소 사용자 정보.
  */
 export interface AiManagerUserContext {
-    userId: number;
+  userId: number;
 
-    userName: string;
+  userName: string;
 
-    totalPoints: number;
+  totalPoints: number;
 
-    grade: string | null;
+  grade: string | null;
 
-    profileImageUrl: string | null;
+  profileImageUrl: string | null;
 }
-
 
 /* =========================================================
  * Emotion Context
@@ -50,35 +47,34 @@ export interface AiManagerUserContext {
  * 감정 관측 이력이 없다면 null이 될 수 있다.
  */
 export interface AiManagerEmotionContext {
-    observationId: number;
+  observationId: number;
 
-    eventId: number | null;
+  eventId: number | null;
 
-    modelRunId: number;
+  modelRunId: number;
 
-    requestId: string;
+  requestId: string;
 
-    planId: number | null;
+  planId: number | null;
 
-    fineLabel: string;
+  fineLabel: string;
 
-    fineLabelName: string;
+  fineLabelName: string;
 
-    coarseLabel: string;
+  coarseLabel: string;
 
-    confidence: number;
+  confidence: number;
 
-    modelVersion: string;
+  modelVersion: string;
 
-    policyVersion: string | null;
+  policyVersion: string | null;
 
-    contextMode: string | null;
+  contextMode: string | null;
 
-    fallbackTriggered: boolean;
+  fallbackTriggered: boolean;
 
-    observedAt: string;
+  observedAt: string;
 }
-
 
 /* =========================================================
  * Travel Context
@@ -94,42 +90,37 @@ export interface AiManagerEmotionContext {
  * 앞으로 시작할 여행 중 가장 가까운 여행
  */
 export interface AiManagerFocusTravel {
-    planId: number;
+  planId: number;
 
-    planName: string;
+  planName: string;
 
-    totalBudget: number | null;
+  totalBudget: number | null;
 
-    companionType: string | null;
+  companionType: string | null;
 
-    locationCd: string | null;
+  locationCd: string | null;
 
-    blindYn: string | null;
+  blindYn: string | null;
 
-    startDate: string | null;
+  startDate: string | null;
 
-    endDate: string | null;
+  endDate: string | null;
 
-    state:
-        | "ACTIVE"
-        | "UPCOMING";
+  state: "ACTIVE" | "UPCOMING";
 
-    /**
-     * Backend가 Asia/Seoul 날짜 기준으로 계산한 D-Day.
-     *
-     * ACTIVE 여행에서는 null일 수 있다.
-     */
-    daysUntilStart: number | null;
+  /**
+   * Backend가 Asia/Seoul 날짜 기준으로 계산한 D-Day.
+   *
+   * ACTIVE 여행에서는 null일 수 있다.
+   */
+  daysUntilStart: number | null;
 }
-
 
 export interface AiManagerTravelContext {
-    totalPlanCount: number;
+  totalPlanCount: number;
 
-    focusPlan:
-        AiManagerFocusTravel | null;
+  focusPlan: AiManagerFocusTravel | null;
 }
-
 
 /* =========================================================
  * Quest Context
@@ -147,29 +138,26 @@ export interface AiManagerTravelContext {
  * AI_MANAGER_EVENTS이다.
  */
 export interface AiManagerRecentCompletedQuest {
-    logId: number;
+  logId: number;
 
-    questId: number;
+  questId: number;
 
-    questName: string;
+  questName: string;
 
-    rewardPoint: number;
+  rewardPoint: number;
 
-    clearDate: string;
+  clearDate: string;
 }
-
 
 export interface AiManagerQuestContext {
-    activeCount: number;
+  activeCount: number;
 
-    completedCount: number;
+  completedCount: number;
 
-    failedCount: number;
+  failedCount: number;
 
-    recentCompleted:
-        AiManagerRecentCompletedQuest[];
+  recentCompleted: AiManagerRecentCompletedQuest[];
 }
-
 
 /* =========================================================
  * Activity Context
@@ -204,64 +192,57 @@ export interface AiManagerQuestContext {
  * Frontend는 이 데이터를 그대로 표시하면 된다.
  */
 export interface AiManagerActivityEvent {
-    eventId: number;
+  eventId: number;
 
-    /**
-     * 현재 Backend가 제공하는 Domain.
-     *
-     * 앞으로 Domain이 추가될 수 있으므로
-     * 마지막에 string을 허용하지 않고
-     * 여기에서 지원 범위를 명시적으로 관리한다.
-     */
-    domain:
-        | "travel"
-        | "quest"
-        | "emotion"
-        | "finance"
-        | "diary"
-        | "system";
+  /**
+   * 현재 Backend가 제공하는 Domain.
+   *
+   * 앞으로 Domain이 추가될 수 있으므로
+   * 마지막에 string을 허용하지 않고
+   * 여기에서 지원 범위를 명시적으로 관리한다.
+   */
+  domain: "travel" | "quest" | "emotion" | "finance" | "diary" | "system";
 
-    /**
-     * 실제 저장된 EVENT_TYPE.
-     *
-     * 예:
-     *
-     * EMOTION_ANALYZED
-     * QUEST_COMPLETED
-     */
-    eventType: string;
+  /**
+   * 실제 저장된 EVENT_TYPE.
+   *
+   * 예:
+   *
+   * EMOTION_ANALYZED
+   * QUEST_COMPLETED
+   */
+  eventType: string;
 
-    /**
-     * Event를 발생시킨 원본 Domain/System.
-     *
-     * 예:
-     *
-     * EMOTION_API
-     * QUEST
-     */
-    sourceType: string | null;
+  /**
+   * Event를 발생시킨 원본 Domain/System.
+   *
+   * 예:
+   *
+   * EMOTION_API
+   * QUEST
+   */
+  sourceType: string | null;
 
-    /**
-     * 원본 Domain Entity 또는 Request 식별자.
-     */
-    sourceId: string | null;
+  /**
+   * 원본 Domain Entity 또는 Request 식별자.
+   */
+  sourceId: string | null;
 
-    /**
-     * Backend가 사용자 화면용으로 변환한 제목.
-     */
-    title: string;
+  /**
+   * Backend가 사용자 화면용으로 변환한 제목.
+   */
+  title: string;
 
-    /**
-     * Backend가 사용자 화면용으로 변환한 설명.
-     */
-    description: string;
+  /**
+   * Backend가 사용자 화면용으로 변환한 설명.
+   */
+  description: string;
 
-    /**
-     * 실제 사건 발생 시간.
-     */
-    occurredAt: string | null;
+  /**
+   * 실제 사건 발생 시간.
+   */
+  occurredAt: string | null;
 }
-
 
 /* =========================================================
  * Home Response
@@ -270,48 +251,42 @@ export interface AiManagerActivityEvent {
  * 사용자의 이번 달 금융 현황.
  */
 export interface AiFinanceMonthlySummary {
-    summaryId: number;
-    periodStart: string;
-    periodEnd: string;
-    totalIncome: number;
-    totalExpense: number;
-    netAmount: number;
-    topCategory: string | null;
-    expensesByCategory: Record<string, number>;
-    sourceRecordCount: number;
+  summaryId: number;
+  periodStart: string;
+  periodEnd: string;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number;
+  topCategory: string | null;
+  expensesByCategory: Record<string, number>;
+  sourceRecordCount: number;
 }
 
 /**
  * AI Manager 메인 화면 전체 응답.
  */
 export interface AiManagerHomeResponse {
-    generatedAt: string;
+  generatedAt: string;
 
-    user:
-        AiManagerUserContext;
+  user: AiManagerUserContext;
 
-    emotion:
-        AiManagerEmotionContext | null;
+  emotion: AiManagerEmotionContext | null;
 
-    travel:
-        AiManagerTravelContext;
+  travel: AiManagerTravelContext;
 
-    quests:
-        AiManagerQuestContext;
+  quests: AiManagerQuestContext;
 
-    /**
-     * AI_MANAGER_EVENTS 기반 공식 Timeline.
-     */
-    activities:
-        AiManagerActivityEvent[];
+  /**
+   * AI_MANAGER_EVENTS 기반 공식 Timeline.
+   */
+  activities: AiManagerActivityEvent[];
 
-    /**
-     * 금융 정보 활용을 허용한 사용자에게만 제공된다.
-     * 허용하지 않았거나 기록이 없으면 null이다.
-     */
-    finance: AiFinanceMonthlySummary | null;
+  /**
+   * 금융 정보 활용을 허용한 사용자에게만 제공된다.
+   * 허용하지 않았거나 기록이 없으면 null이다.
+   */
+  finance: AiFinanceMonthlySummary | null;
 }
-
 
 /* =========================================================
  * API
@@ -323,13 +298,8 @@ export interface AiManagerHomeResponse {
  * JWT Authorization Header는
  * 공통 axios interceptor가 담당한다.
  */
-export async function getAiManagerHomeApi():
-    Promise<AiManagerHomeResponse> {
+export async function getAiManagerHomeApi(): Promise<AiManagerHomeResponse> {
+  const response = await api.get<AiManagerHomeResponse>("/api/ai-manager/home");
 
-    const response =
-        await api.get<AiManagerHomeResponse>(
-            "/api/ai-manager/home",
-        );
-
-    return response.data;
+  return response.data;
 }

@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +163,51 @@ public class ManagerSlmClient {
 				)
 		);
 
-		// 2. Qwen3 Non-Thinking 요청
+		return complete(messages, userContent);
+	}
+
+	/**
+	 * 감정 채팅 전용 다중 턴 호출. 각 역할은 실제 Chat Completions
+	 * 메시지로 전달하고 마지막 사용자 입력을 별도로 검증한다.
+	 */
+	public String generateWithHistory(
+			String systemPrompt,
+			List<ChatTurn> turns
+	) {
+		if (turns == null || turns.isEmpty() || turns.size() > 12) {
+			throw new IllegalArgumentException("대화 이력은 1~12개여야 합니다.");
+		}
+		ChatTurn last = turns.get(turns.size() - 1);
+		if (last == null || !"user".equals(last.role())) {
+			throw new IllegalArgumentException("마지막 메시지는 사용자 입력이어야 합니다.");
+		}
+		validateInput(systemPrompt, last.content());
+		List<Map<String, String>> messages = new ArrayList<>();
+		messages.add(Map.of("role", "system", "content", systemPrompt));
+		int totalChars = systemPrompt.length();
+		for (ChatTurn turn : turns) {
+			if (turn == null || turn.content() == null || turn.content().isBlank()
+					|| (!"user".equals(turn.role()) && !"assistant".equals(turn.role()))
+					|| turn.content().length() > 2000) {
+				throw new IllegalArgumentException("대화 이력 형식이 올바르지 않습니다.");
+			}
+			totalChars += turn.content().length();
+			if (totalChars > 14000) {
+				throw new IllegalArgumentException("대화 맥락 길이 제한을 초과했습니다.");
+			}
+			messages.add(Map.of("role", turn.role(), "content", turn.content()));
+		}
+		return complete(messages, last.content());
+	}
+
+	public record ChatTurn(String role, String content) {
+	}
+
+	private String complete(
+			List<Map<String, String>> messages,
+			String userContent
+	) {
+		// Qwen3 Non-Thinking 요청
 		Map<String, Object> request =
 				new LinkedHashMap<>();
 

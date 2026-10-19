@@ -1,197 +1,171 @@
 import api from "./axios";
 
-
 /* =====================================================
  * Emotion
  * ===================================================== */
 
 export interface LatestEmotionResponse {
-    observationId: number;
+  observationId: number;
 
-    eventId: number | null;
+  eventId: number | null;
 
-    modelRunId: number;
+  modelRunId: number;
 
-    requestId: string;
+  requestId: string;
 
-    planId: number | null;
+  planId: number | null;
 
-    fineLabel: string;
+  fineLabel: string;
 
-    fineLabelName: string;
+  fineLabelName: string;
 
-    coarseLabel: string;
+  coarseLabel: string;
 
-    confidence: number;
+  confidence: number;
 
-    modelVersion: string;
+  modelVersion: string;
 
-    policyVersion: string;
+  policyVersion: string;
 
-    contextMode:
-        | "FIRST2"
-        | "FULL_FALLBACK";
+  contextMode: "FIRST2" | "FULL_FALLBACK";
 
-    fallbackTriggered: boolean;
+  fallbackTriggered: boolean;
 
-    observedAt: string;
+  observedAt: string;
 }
-
 
 /**
  * 기존 감정 단독 조회 API.
  *
  * 다른 화면에서도 사용할 수 있으므로 삭제하지 않는다.
  */
-export async function getLatestEmotionApi():
-    Promise<LatestEmotionResponse | null> {
+export async function getLatestEmotionApi(): Promise<LatestEmotionResponse | null> {
+  const response = await api.get<LatestEmotionResponse>("/ai/emotion/latest");
 
-    const response =
-        await api.get<LatestEmotionResponse>(
-            "/ai/emotion/latest",
-        );
+  if (response.status === 204) {
+    return null;
+  }
 
-    if (response.status === 204) {
-        return null;
-    }
-
-    return response.data ?? null;
+  return response.data ?? null;
 }
-
 
 /**
  * 로그인 사용자의 대화를 AI 모델로 분석하고 Oracle에 기록한다.
  * JWT 인증과 사용자 ID 검증은 기존 Backend가 담당한다.
  */
 export interface EmotionAnalysisRequest {
-    planId: number | null;
-    humanTurns: string[];
+  planId: number | null;
+  humanTurns: string[];
 }
 
 export interface EmotionAnalysisResponse {
-    requestId: string;
-    modelRunId: number;
-    eventId: number;
-    observationId: number;
-    fineLabel: string;
-    fineLabelName: string;
-    coarseLabel: string;
-    confidence: number;
-    first2Confidence: number;
-    first2Margin: number;
-    contextMode: "FIRST2" | "FULL_FALLBACK";
-    fallbackTriggered: boolean;
-    humanTurnCount: number;
-    turnsUsed: number;
-    policyVersion: string;
-    modelVersion: string;
-    latencyMs: number;
+  requestId: string;
+  modelRunId: number;
+  eventId: number;
+  observationId: number;
+  fineLabel: string;
+  fineLabelName: string;
+  coarseLabel: string;
+  confidence: number;
+  first2Confidence: number;
+  first2Margin: number;
+  contextMode: "FIRST2" | "FULL_FALLBACK";
+  fallbackTriggered: boolean;
+  humanTurnCount: number;
+  turnsUsed: number;
+  policyVersion: string;
+  modelVersion: string;
+  latencyMs: number;
 }
 
 export async function analyzeEmotionApi(
-    request: EmotionAnalysisRequest,
+  request: EmotionAnalysisRequest,
 ): Promise<EmotionAnalysisResponse> {
-    const response = await api.post<EmotionAnalysisResponse>(
-        "/ai/emotion/predict",
-        request,
-    );
+  const response = await api.post<EmotionAnalysisResponse>(
+    "/ai/emotion/predict",
+    request,
+  );
 
-    return response.data;
+  return response.data;
 }
-
 
 /* =====================================================
  * AI Manager Home
  * ===================================================== */
 
 export interface AiManagerUserContext {
-    userId: number;
+  userId: number;
 
-    userName: string;
+  userName: string;
 
-    totalPoints: number;
+  totalPoints: number;
 
-    grade: string | null;
+  grade: string | null;
 
-    profileImageUrl: string | null;
+  profileImageUrl: string | null;
 }
-
 
 export interface AiManagerFocusTravel {
-    planId: number;
+  planId: number;
 
-    planName: string;
+  planName: string;
 
-    totalBudget: number;
+  totalBudget: number;
 
-    companionType: string | null;
+  companionType: string | null;
 
-    locationCd: string | null;
+  locationCd: string | null;
 
-    blindYn: string;
+  blindYn: string;
 
-    startDate: string | null;
+  startDate: string | null;
 
-    endDate: string | null;
+  endDate: string | null;
 
-    state:
-        | "ACTIVE"
-        | "UPCOMING";
+  state: "ACTIVE" | "UPCOMING";
 
-    daysUntilStart:
-        number | null;
+  daysUntilStart: number | null;
 }
-
 
 export interface AiManagerTravelContext {
-    totalPlanCount: number;
+  totalPlanCount: number;
 
-    focusPlan:
-        AiManagerFocusTravel | null;
+  focusPlan: AiManagerFocusTravel | null;
 }
-
 
 export interface AiManagerRecentCompletedQuest {
-    logId: number;
+  logId: number;
 
-    questId: number;
+  questId: number;
 
-    questName: string;
+  questName: string;
 
-    rewardPoint: number;
+  rewardPoint: number;
 
-    clearDate: string;
+  clearDate: string;
 }
-
 
 export interface AiManagerQuestContext {
-    activeCount: number;
+  activeCount: number;
 
-    completedCount: number;
+  completedCount: number;
 
-    failedCount: number;
+  failedCount: number;
 
-    recentCompleted:
-        AiManagerRecentCompletedQuest[];
+  recentCompleted: AiManagerRecentCompletedQuest[];
 }
-
 
 export interface AiManagerHomeResponse {
-    generatedAt: string;
+  generatedAt: string;
 
-    user:
-        AiManagerUserContext;
+  user: AiManagerUserContext;
 
-    emotion:
-        LatestEmotionResponse | null;
+  emotion: LatestEmotionResponse | null;
 
-    travel:
-        AiManagerTravelContext;
+  travel: AiManagerTravelContext;
 
-    quests:
-        AiManagerQuestContext;
+  quests: AiManagerQuestContext;
 }
-
 
 /**
  * AI Manager Home 통합 Context API.
@@ -206,13 +180,8 @@ export interface AiManagerHomeResponse {
  * 네 요청을 각각 호출하지 않고
  * Backend AI Manager가 조립한 결과를 한 번에 받는다.
  */
-export async function getAiManagerHomeApi():
-    Promise<AiManagerHomeResponse> {
+export async function getAiManagerHomeApi(): Promise<AiManagerHomeResponse> {
+  const response = await api.get<AiManagerHomeResponse>("/api/ai-manager/home");
 
-    const response =
-        await api.get<AiManagerHomeResponse>(
-            "/api/ai-manager/home",
-        );
-
-    return response.data;
+  return response.data;
 }

@@ -129,6 +129,29 @@ public class AiManagerSettingsService {
 		return getSettings(userId);
 	}
 
+	/** 감정 관측 동의를 사용자 명시적 선택에 따라서만 변경한다. */
+	@Transactional
+	public AiManagerSettingsResponse changeEmotionConsent(
+			Long userId,
+			boolean enabled
+	) {
+		validateUserId(userId);
+		userRepository.findByIdForUpdate(userId)
+				.orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+
+		String value = enabled ? "Y" : "N";
+		if (aiUserSettingsRepository.existsById(userId)) {
+			if (aiUserSettingsRepository.updateEmotionConsent(userId, value) != 1) {
+				throw new IllegalStateException("감정 분석 설정을 변경하지 못했습니다.");
+			}
+		} else if (enabled) {
+			if (aiUserSettingsRepository.insertEmotionConsent(userId, value) != 1) {
+				throw new IllegalStateException("감정 분석 설정을 저장하지 못했습니다.");
+			}
+		}
+		return getSettings(userId);
+	}
+
 	/**
 	 * 요청한 사용자가 올바른지 확인한다.
 	 */

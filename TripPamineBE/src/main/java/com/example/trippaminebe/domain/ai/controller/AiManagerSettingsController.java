@@ -2,6 +2,7 @@
 package com.example.trippaminebe.domain.ai.controller;
 
 import com.example.trippaminebe.domain.ai.dto.AiFinanceConsentRequest;
+import com.example.trippaminebe.domain.ai.dto.AiEmotionConsentRequest;
 import com.example.trippaminebe.domain.ai.dto.AiManagerSettingsResponse;
 import com.example.trippaminebe.domain.ai.service.AiManagerSettingsService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
@@ -67,6 +68,18 @@ public class AiManagerSettingsController {
 			AiFinanceConsentRequest request
 	) {
 		return aiManagerSettingsService.changeFinanceConsent(
+				authenticatedUserId(userDetails),
+				request.enabled()
+		);
+	}
+
+	/** 현재 로그인 사용자의 감정 분석 동의만 변경한다. */
+	@PutMapping("/emotion")
+	public AiManagerSettingsResponse changeEmotionConsent(
+			@AuthenticationPrincipal CustomUserDetails userDetails,
+			@Valid @RequestBody AiEmotionConsentRequest request
+	) {
+		return aiManagerSettingsService.changeEmotionConsent(
 				authenticatedUserId(userDetails),
 				request.enabled()
 		);

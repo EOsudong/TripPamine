@@ -4,10 +4,22 @@
 
 // 좌측에 표시할 3단계 설명 (조건 입력 → AI 추천 → 축제 연계)
 const steps = [
-  { num: "01", title: "조건 입력", desc: "인원, 일정, 예산, 테마를 한 번에 선택하세요" },
-  { num: "02", title: "AI 코스 추천", desc: "조건에 맞는 여행지와 일자별 코스를 자동으로 생성해요" },
-  { num: "03", title: "축제·행사 연계", desc: "추천 지역의 진행 중·예정 축제 정보를 함께 보여드려요" },
-]
+  {
+    num: "01",
+    title: "조건 입력",
+    desc: "인원, 일정, 예산, 테마를 한 번에 선택하세요",
+  },
+  {
+    num: "02",
+    title: "AI 코스 추천",
+    desc: "조건에 맞는 여행지와 일자별 코스를 자동으로 생성해요",
+  },
+  {
+    num: "03",
+    title: "축제·행사 연계",
+    desc: "추천 지역의 진행 중·예정 축제 정보를 함께 보여드려요",
+  },
+];
 
 export default function AiPlannerCard() {
   return (
@@ -22,11 +34,13 @@ export default function AiPlannerCard() {
             How the AI works
           </p>
           <h2 className="font-display text-3xl font-bold leading-tight tracking-tight md:text-5xl">
-            조건만 말하면,<br />
+            조건만 말하면,
+            <br />
             <span className="tp-gradient-text">코스는 AI가 완성</span>
           </h2>
           <p className="mb-10 mt-4 max-w-md text-sm leading-relaxed text-white/60">
-            복잡한 검색 없이 조건만 입력하면, AI가 나만의 국내 여행 코스와 주변 축제 정보까지 한 번에 만들어드립니다.
+            복잡한 검색 없이 조건만 입력하면, AI가 나만의 국내 여행 코스와 주변
+            축제 정보까지 한 번에 만들어드립니다.
           </p>
 
           <div className="relative space-y-3">
@@ -43,7 +57,9 @@ export default function AiPlannerCard() {
                 </span>
                 <div>
                   <p className="mb-0.5 text-sm font-bold">{step.title}</p>
-                  <p className="text-xs leading-relaxed text-white/55">{step.desc}</p>
+                  <p className="text-xs leading-relaxed text-white/55">
+                    {step.desc}
+                  </p>
                 </div>
               </div>
             ))}
@@ -54,8 +70,18 @@ export default function AiPlannerCard() {
             href="#ai-planner"
             className="mt-10 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-night-950 transition hover:shadow-[0_0_40px_rgba(167,139,250,0.7)]"
           >
-            <svg className="h-4 w-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <svg
+              className="h-4 w-4 text-violet-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
             </svg>
             지금 AI 추천받기
           </a>
@@ -68,8 +94,18 @@ export default function AiPlannerCard() {
           <div className="relative animate-float rounded-3xl border border-white/15 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl">
             <div className="mb-5 flex items-center gap-3 border-b border-white/10 pb-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl tp-gradient-bg">
-                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="h-5 w-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
@@ -87,17 +123,27 @@ export default function AiPlannerCard() {
                 { day: "DAY 2", plan: "한라산 영실 코스 → 천지연 폭포" },
                 { day: "DAY 3", plan: "협재 해수욕장 → 오설록 티뮤지엄" },
               ].map((item) => (
-                <li key={item.day} className="flex gap-3 rounded-xl bg-white/[0.04] p-3 text-sm">
+                <li
+                  key={item.day}
+                  className="flex gap-3 rounded-xl bg-white/[0.04] p-3 text-sm"
+                >
                   <span className="h-fit shrink-0 rounded-md bg-white/10 px-2 py-0.5 font-display text-[10px] font-bold tracking-wider text-violet-200">
                     {item.day}
                   </span>
-                  <span className="leading-relaxed text-white/80">{item.plan}</span>
+                  <span className="leading-relaxed text-white/80">
+                    {item.plan}
+                  </span>
                 </li>
               ))}
             </ul>
 
             <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4 text-xs text-white/50">
-              <svg className="h-3.5 w-3.5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="h-3.5 w-3.5 text-cyan-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -111,5 +157,5 @@ export default function AiPlannerCard() {
         </div>
       </div>
     </section>
-  )
+  );
 }

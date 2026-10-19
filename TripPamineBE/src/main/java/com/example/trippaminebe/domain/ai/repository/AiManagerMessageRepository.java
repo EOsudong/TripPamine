@@ -18,4 +18,9 @@ public interface AiManagerMessageRepository
 	long countByConversation_ConversationId(
 			Long conversationId
 	);
+
+	long countByConversation_ConversationIdAndRole(
+			Long conversationId,
+			com.example.trippaminebe.domain.ai.entity.AiManagerMessageRole role
+	);
 }
