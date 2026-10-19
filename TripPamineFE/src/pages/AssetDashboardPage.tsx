@@ -308,6 +308,14 @@ const [
 ] = useState<number | null>(null)
 
 // ===================================================
+// 미래자산 시뮬레이터 - 사용자가 설정하는 월 저축액
+// ===================================================
+
+const [
+  customMonthlySaving,
+  setCustomMonthlySaving,
+] = useState("")
+// ===================================================
 // 여행 목표 수정
 // ===================================================
 
@@ -783,6 +791,251 @@ if (
   forecastRefreshKey,
 ])
 
+// ===================================================
+// Forecast가 처음 로딩되면
+// 기존 월 예상 저축액을 입력창의 기본값으로 사용
+// ===================================================
+
+useEffect(() => {
+
+  if (
+      forecast?.monthlySaving == null
+  ) {
+    return
+  }
+
+
+  setCustomMonthlySaving(
+      String(
+          forecast.monthlySaving,
+      ),
+  )
+
+}, [
+  forecast?.goalId,
+  forecast?.monthlySaving,
+])
+// ===================================================
+// 사용자가 설정한 월 저축액을 기준으로
+// 미래 자산 / 목표 달성 시점 다시 계산
+// ===================================================
+
+const simulatedForecast =
+    useMemo(() => {
+
+      if (!forecast) {
+        return null
+      }
+
+
+      // 입력창 값
+      const parsedSaving =
+          Number(
+              customMonthlySaving
+                  .replace(
+                      /,/g,
+                      "",
+                  ),
+          )
+
+
+      // 음수 방지
+      const monthlySaving =
+          Number.isFinite(
+              parsedSaving,
+          )
+
+              ? Math.max(
+                  0,
+                  parsedSaving,
+              )
+
+              : 0
+
+
+      // =========================================
+      // 미래 총자산
+      // =========================================
+
+      const after3Months =
+          forecast.currentAsset
+          +
+          monthlySaving * 3
+
+
+      const after6Months =
+          forecast.currentAsset
+          +
+          monthlySaving * 6
+
+
+      const after12Months =
+          forecast.currentAsset
+          +
+          monthlySaving * 12
+
+
+      // =========================================
+      // 여행 목표까지 남은 금액
+      // =========================================
+
+      const remainingAmount =
+          Math.max(
+              0,
+              Number(
+                  forecast.goalRemainingAmount
+                  ?? 0,
+              ),
+          )
+
+
+      let monthsToGoal:
+          number | null =
+          null
+
+
+      let expectedGoalDate:
+          string | null =
+          null
+
+
+      // =========================================
+      // 목표 달성까지 필요한 개월 수
+      // =========================================
+
+      if (
+          forecast.goalName
+          &&
+          remainingAmount <= 0
+      ) {
+
+        monthsToGoal = 0
+
+      } else if (
+          forecast.goalName
+          &&
+          monthlySaving > 0
+          &&
+          remainingAmount > 0
+      ) {
+
+        monthsToGoal =
+            Math.ceil(
+                remainingAmount
+                /
+                monthlySaving,
+            )
+      }
+
+
+      // =========================================
+      // 예상 달성 날짜
+      // =========================================
+
+      if (
+          monthsToGoal !== null
+      ) {
+
+        const date =
+            new Date()
+
+
+        date.setMonth(
+            date.getMonth()
+            +
+            monthsToGoal,
+        )
+
+
+        const year =
+            date.getFullYear()
+
+
+        const month =
+            String(
+                date.getMonth() + 1,
+            ).padStart(
+                2,
+                "0",
+            )
+
+
+        const day =
+            String(
+                date.getDate(),
+            ).padStart(
+                2,
+                "0",
+            )
+
+
+        expectedGoalDate =
+            `${year}-${month}-${day}`
+      }
+
+
+      // =========================================
+      // ASSET COACH 메시지
+      // =========================================
+
+      let forecastMessage:
+          string
+
+
+      if (!forecast.goalName) {
+
+        forecastMessage =
+            `월 ${monthlySaving.toLocaleString("ko-KR")}원을 저축하면 `
+            +
+            `1년 후 예상 자산은 `
+            +
+            `${after12Months.toLocaleString("ko-KR")}원입니다.`
+
+      } else if (
+          remainingAmount <= 0
+      ) {
+
+        forecastMessage =
+            `${forecast.goalName} 목표 금액을 이미 달성했습니다.`
+
+      } else if (
+          monthlySaving <= 0
+      ) {
+
+        forecastMessage =
+            "월 저축액이 0원이므로 현재 설정으로는 목표 달성 시점을 계산할 수 없습니다."
+
+      } else {
+
+        forecastMessage =
+            `매월 ${monthlySaving.toLocaleString("ko-KR")}원을 저축하면 `
+            +
+            `약 ${monthsToGoal}개월 후 `
+            +
+            `${forecast.goalName} 목표를 달성할 수 있습니다.`
+      }
+
+
+      return {
+
+        ...forecast,
+
+        monthlySaving,
+
+        after3Months,
+        after6Months,
+        after12Months,
+
+        monthsToGoal,
+        expectedGoalDate,
+
+        forecastMessage,
+      }
+
+    }, [
+      forecast,
+      customMonthlySaving,
+    ])
 
   // ===================================================
   // 기간별 자산 흐름 API
@@ -2458,22 +2711,77 @@ const periodSummary =
         </div>
 
 
-        {forecast?.monthlySaving != null && (
+       {forecast?.monthlySaving != null && (
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+    <div className="min-w-[250px] rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
 
-              <p className="text-[10px] text-white/40">
-                월 예상 저축
-              </p>
+      <div className="flex items-center justify-between gap-3">
 
-              <strong className="mt-1 block font-display text-xl text-emerald-300">
-                +{formatMoney(forecast.monthlySaving)}
-              </strong>
+        <p className="text-[10px] font-bold text-white/50">
+          월 저축 설정
+        </p>
 
-            </div>
 
-        )}
+        <button
+            type="button"
+            onClick={() =>
+                setCustomMonthlySaving(
+                    String(
+                        forecast.monthlySaving,
+                    ),
+                )
+            }
+            className="cursor-pointer text-[10px] font-bold text-violet-300 transition hover:text-violet-200"
+        >
+          추천값으로
+        </button>
 
+      </div>
+
+
+      <div className="mt-2 flex items-center gap-2">
+
+        <input
+            type="number"
+            min="0"
+            step="10000"
+            value={
+              customMonthlySaving
+            }
+            onChange={(event) => {
+
+              setCustomMonthlySaving(
+                  event.target.value,
+              )
+
+            }}
+            className="w-full rounded-xl border border-white/10 bg-white px-3 py-2 text-right text-sm font-bold text-slate-900 outline-none focus:border-violet-400"
+        />
+
+        <span className="shrink-0 text-xs font-bold text-white/60">
+          원
+        </span>
+
+      </div>
+
+
+      <div className="mt-2 flex items-center justify-between gap-3">
+
+        <span className="text-[10px] text-white/35">
+          기본 추천
+        </span>
+
+        <span className="text-[10px] font-semibold text-white/55">
+          {formatMoney(
+              forecast.monthlySaving,
+          )}
+        </span>
+
+      </div>
+
+    </div>
+
+)}
       </div>
         {/* ================================================= */}
 {/* 여행 목표 선택 */}
@@ -2576,7 +2884,9 @@ const periodSummary =
                 </span>
 
                 <strong className="mt-2 block font-display text-xl font-bold md:text-2xl">
-                  {formatMoney(forecast.after3Months)}
+                  {formatMoney(
+                      simulatedForecast?.after3Months,
+                  )}
                 </strong>
 
               </div>
@@ -2589,7 +2899,9 @@ const periodSummary =
                 </span>
 
                 <strong className="mt-2 block font-display text-xl font-bold text-violet-100 md:text-2xl">
-                  {formatMoney(forecast.after6Months)}
+                  {formatMoney(
+                      simulatedForecast?.after6Months,
+                  )}
                 </strong>
 
               </div>
@@ -2602,7 +2914,9 @@ const periodSummary =
                 </span>
 
                 <strong className="mt-2 block font-display text-xl font-bold md:text-2xl">
-                  {formatMoney(forecast.after12Months)}
+                  {formatMoney(
+                    simulatedForecast?.after12Months,
+                )}
                 </strong>
 
               </div>
@@ -2677,7 +2991,7 @@ const periodSummary =
                     </p>
 
 
-                    {forecast.monthsToGoal !== null ? (
+                   {simulatedForecast?.monthsToGoal !== null ? (
 
                         <>
 
@@ -2686,17 +3000,17 @@ const periodSummary =
                           </p>
 
                           <p className="mt-1 font-display text-3xl font-bold text-emerald-300 md:text-4xl">
-                            약 {forecast.monthsToGoal}개월 후
+                            약 {simulatedForecast?.monthsToGoal}개월 후
                           </p>
 
 
-                          {forecast.expectedGoalDate && (
+                          {simulatedForecast?.expectedGoalDate && (
 
                               <p className="mt-2 text-xs text-white/40">
 
                                 예상 달성일 ·{" "}
 
-                                {forecast.expectedGoalDate}
+                                {simulatedForecast?.expectedGoalDate}
 
                               </p>
 
@@ -2732,8 +3046,8 @@ const periodSummary =
                 </p>
 
                 <p className="mt-1.5 text-sm leading-relaxed text-white/70">
-                  {forecast.forecastMessage}
-                </p>
+                {simulatedForecast?.forecastMessage}
+              </p>
 
               </div>
 
