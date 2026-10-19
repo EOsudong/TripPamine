@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserAccessToken } from "../auth/session";
-import { getMyInfoApi } from "../api/auth";
+import { USER_UPDATED_EVENT, getMyInfoApi } from "../api/auth";
 import BrandMark from "./BrandMark";
 
 interface HeaderProps {
@@ -113,6 +113,11 @@ export default function Header({
 
 
         fetchCurrentUser();
+
+        // [닉네임 변경] 마이페이지에서 닉네임을 바꾸면 헤더 이름도 바로 갱신
+        window.addEventListener(USER_UPDATED_EVENT, fetchCurrentUser);
+
+        return () => window.removeEventListener(USER_UPDATED_EVENT, fetchCurrentUser);
 
     }, [isLoggedIn]);
 
@@ -371,3 +376,5 @@ export default function Header({
         </header>
     );
 }
+
+

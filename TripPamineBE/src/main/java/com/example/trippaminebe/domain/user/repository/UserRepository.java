@@ -17,6 +17,9 @@ public interface UserRepository extends JpaRepository <User, Long> {
 
   boolean existsByUserName(String userName);
 
+  // [닉네임 변경] 나를 제외한 다른 회원이 이미 쓰고 있는 닉네임인지
+  boolean existsByUserNameAndIdNot(String userName, Long id);
+
   // [마스코트 첫 포획 보상] 같은 사용자의 포획 확정 요청이 동시에 들어와도
   // "첫 포획 여부 확인 → 포인트 지급"
   @Lock(LockModeType.PESSIMISTIC_WRITE)

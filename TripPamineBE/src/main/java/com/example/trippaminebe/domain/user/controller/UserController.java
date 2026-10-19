@@ -1,5 +1,8 @@
 package com.example.trippaminebe.domain.user.controller;
 
+import com.example.trippaminebe.domain.user.dto.request.NicknameUpdateRequestDto;
+import com.example.trippaminebe.domain.user.dto.response.NicknameCheckResponseDto;
+
 import com.example.trippaminebe.domain.user.dto.request.LoginRequestDto;
 import com.example.trippaminebe.domain.user.dto.request.SignUpRequestDto;
 import com.example.trippaminebe.domain.user.dto.response.LoginResponseDto;
@@ -97,6 +100,27 @@ public class UserController {
     }
 
     return ResponseEntity.ok("로그아웃되었습니다.");
+  }
+
+
+  // [닉네임 변경] 닉네임 사용 가능 여부 확인 (형식 + 중복).
+  // 로그인 상태면 내 현재 닉네임은 "사용 가능"으로 본다.
+  @GetMapping("/auth/check-nickname")
+  @Operation(summary = "닉네임 사용 가능 여부 확인")
+  public ResponseEntity<NicknameCheckResponseDto> checkNickname(
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @RequestParam String userName) {
+    Long userId = (userDetails != null && userDetails.getUser() != null) ? userDetails.getUser().getId() : null;
+    return ResponseEntity.ok(userService.checkNickname(userName, userId));
+  }
+
+  // [닉네임 변경] 내 닉네임 변경
+  @PatchMapping("/me/nickname")
+  @Operation(summary = "내 닉네임 변경")
+  public ResponseEntity<UserResponseDto> changeNickname(
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @RequestBody NicknameUpdateRequestDto request) {
+    return ResponseEntity.ok(userService.changeNickname(userDetails.getUser().getId(), request));
   }
 
 }//class

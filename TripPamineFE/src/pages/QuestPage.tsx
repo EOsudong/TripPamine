@@ -12,6 +12,7 @@ import {
 import AppLayout from "../layout/AppLayout";
 import QuestWorldMap from "../components/QuestWorldMap";
 import RpgStatsBar from "../components/RpgStatsBar";
+import TitleSelectModal from "../components/TitleSelectModal";
 
 type QuestViewStatus = "NOT_STARTED" | UserQuestLogResponse["status"];
 
@@ -53,6 +54,8 @@ export default function QuestPage() {
   const [quests, setQuests] = useState<QuestResponse[]>([]);
   const [myLogs, setMyLogs] = useState<UserQuestLogResponse[]>([]);
   const [stats, setStats] = useState<RpgStatsResponse | null>(null);
+  // [칭호 변경] 모달 열림 상태
+  const [titleModalOpen, setTitleModalOpen] = useState(false);
   const [chapters, setChapters] = useState<QuestChapterResponse[]>([]);
   const [selectedChapterId, setSelectedChapterId] = useState<number | null>(
       null,
@@ -143,7 +146,16 @@ export default function QuestPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <RpgStatsBar stats={stats} />
+                <div className="flex flex-col gap-1.5">
+                  <RpgStatsBar stats={stats} />
+                  <button
+                      type="button"
+                      onClick={() => setTitleModalOpen(true)}
+                      className="self-end text-xs font-bold text-amber-300 hover:underline"
+                  >
+                    🎖️ 칭호 변경
+                  </button>
+                </div>
                 <Stat
                     label="보유 포인트"
                     value={`${(profile?.totalPoints ?? 0).toLocaleString()} P`}
@@ -320,6 +332,9 @@ export default function QuestPage() {
             )}
           </section>
         </div>
+        {titleModalOpen && (
+            <TitleSelectModal onClose={() => setTitleModalOpen(false)} onChanged={setStats} />
+        )}
       </AppLayout>
   );
 }
