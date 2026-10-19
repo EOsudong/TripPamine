@@ -122,7 +122,7 @@ public final class AiManagerFeatureCatalog {
         String normalized = normalize(latestMessage);
         if (!normalized.contains("sos") && !normalized.contains("여행에스오에스")) return null;
 
-        if (List.of("다쳤", "사고", "구급", "긴급구조", "응급", "119", "112")
+        if (List.of("다쳤", "사고", "구급", "긴급", "위급", "위험", "살려", "구조", "응급", "119", "112")
                 .stream().anyMatch(normalized::contains)) {
             return "위급한 상황이라면 트립파민의 여행 SOS가 아닌 실제 긴급 신고를 이용해 주세요. "
                     + "구급·구조는 119, 경찰 신고는 112입니다. "
