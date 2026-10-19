@@ -2640,33 +2640,40 @@ const periodSummary =
                   </div>
 
                   <ol className="space-y-4">
-                    {spendingRanking.items.map((item, index) => (
-                        <li key={item.key}>
-                          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
-                            <span className="flex items-center gap-2 font-semibold text-slate-800">
-                              <span className="w-4 text-xs font-bold text-slate-400">{index + 1}</span>
-                              {item.label}
-                            </span>
-                            <span className="shrink-0 text-slate-500">
-                              <b className="font-bold text-slate-900">{formatMoney(item.amount)}</b>
-                              <span className="ml-1.5 inline-block w-11 text-right text-xs">
-                                {item.share.toFixed(0)}%
-                              </span>
-                            </span>
-                          </div>
+                    {spendingRanking.items.map((item, index) => {
 
-                          <div className="ml-6 h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                                className="h-full rounded-full transition-[width] duration-700"
-                                style={{
-                                  width: `${Math.max(item.width, 2)}%`,
-                                  // 1위만 진하게, 나머지는 같은 색의 옅은 단계 — 순위가 색이 아니라 길이로 읽히도록
-                                  backgroundColor: index === 0 ? COLOR_ASSET : "rgba(98, 80, 214, 0.45)",
-                                }}
-                            />
-                          </div>
-                        </li>
-                    ))}
+              const barColor =
+                  CATEGORY_COLORS[item.key] ?? "#94a3b8"
+
+              return (
+                <li key={item.key}>
+                  <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+                    <span className="flex items-center gap-2 font-semibold text-slate-800">
+                      <span className="w-4 text-xs font-bold text-slate-400">{index + 1}</span>
+                      {item.label}
+                    </span>
+
+                    <span className="shrink-0 text-slate-500">
+                      <b className="font-bold text-slate-900">{formatMoney(item.amount)}</b>
+                      <span className="ml-1.5 inline-block w-11 text-right text-xs">
+                        {item.share.toFixed(0)}%
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="ml-6 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-700"
+                      style={{
+                        width: `${Math.max(item.width, 2)}%`,
+                        backgroundColor: barColor,
+                      }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+                  
                   </ol>
                 </>
             ) : (
