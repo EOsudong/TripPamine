@@ -17,7 +17,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -132,4 +136,101 @@ public class AssetAdviceController {
                 .status(HttpStatus.CREATED)
                 .body(goalId);
     }
+// =====================================================
+// 여행 목표 삭제
+// =====================================================
+//
+// DELETE
+// /api/assets/advice/travel-goal/6
+//
+// =====================================================
+
+    @DeleteMapping("/travel-goal/{goalId}")
+    public ResponseEntity<Void> deleteTravelGoal(
+
+            @AuthenticationPrincipal
+            CustomUserDetails userDetails,
+
+            @PathVariable
+            Long goalId
+
+    ) {
+
+        // 로그인 확인
+        if (userDetails == null) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+
+        Long userId =
+                userDetails
+                        .getUser()
+                        .getId();
+
+
+        assetAdviceService
+                .deleteTravelGoal(
+                        userId,
+                        goalId
+                );
+
+
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
+// =====================================================
+// 여행 목표 수정
+// =====================================================
+//
+// PUT /api/assets/advice/travel-goal/{goalId}
+//
+// =====================================================
+
+    @PutMapping("/travel-goal/{goalId}")
+    public ResponseEntity<Void> updateTravelGoal(
+
+            @AuthenticationPrincipal
+            CustomUserDetails userDetails,
+
+            @PathVariable
+            Long goalId,
+
+            @Valid
+            @RequestBody
+            TravelGoalRequestDto request
+
+    ) {
+
+        if (userDetails == null) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+
+        Long userId =
+                userDetails
+                        .getUser()
+                        .getId();
+
+
+        assetAdviceService
+                .updateTravelGoal(
+                        userId,
+                        goalId,
+                        request
+                );
+
+
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
+    
+
 }

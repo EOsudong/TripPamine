@@ -6,6 +6,7 @@ import com.example.trippaminebe.domain.account.repository.AccountRepository;
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
+import com.example.trippaminebe.domain.asset.dto.AssetForecastResponseDto;
 import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
 import com.example.trippaminebe.domain.asset.entity.AssetGoal;
 import com.example.trippaminebe.domain.asset.entity.AssetSnapshot;
@@ -223,6 +224,431 @@ public class AssetDashboardService {
         );
     }
 
+// =====================================================
+// 미래 자산 시뮬레이션
+// =====================================================
+
+    public AssetForecastResponseDto getAssetForecast(
+            Long userId,
+            Long goalId
+
+    ) {
+
+        // =================================================
+        // 1. 로그인 사용자 확인
+        // =================================================
+
+        String username =
+                findUsername(userId);
+
+
+        LocalDate today =
+                LocalDate.now();
+
+
+        // =================================================
+        // 2. 최근 3개월 거래 조회
+        // =================================================
+        //
+        // 미래 예측에 한 달치 데이터만 사용하는 것보다
+        // 최근 3개월 평균값을 사용하는 편이 안정적이다.
+        // =================================================
+
+        LocalDateTime startDate =
+                today
+                        .minusMonths(3)
+                        .atStartOfDay();
+
+
+        LocalDateTime endDate =
+                today
+                        .plusDays(1)
+                        .atStartOfDay();
+
+
+        List<TransactionEntity> recentTransactions =
+                accountBookRepository
+                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                username,
+                                startDate,
+                                endDate
+                        );
+
+
+        // =================================================
+        // 3. 최근 3개월 총수입 / 총지출
+        // =================================================
+
+        long totalIncome =
+                sumByType(
+                        recentTransactions,
+                        "income"
+                );
+
+
+        long totalExpense =
+                sumByType(
+                        recentTransactions,
+                        "expense"
+                );
+
+
+        // =================================================
+        // 4. 월 평균 수입 / 지출
+        // =================================================
+
+        long averageMonthlyIncome =
+                totalIncome / 3;
+
+
+        long averageMonthlyExpense =
+                totalExpense / 3;
+
+
+        // =================================================
+        // 5. 월 예상 저축 가능 금액
+        // =================================================
+
+        long monthlySaving =
+                averageMonthlyIncome
+                        - averageMonthlyExpense;
+
+
+        // =================================================
+        // 6. 현재 총자산
+        // =================================================
+        //
+        // 기존 Dashboard에서 사용하고 있는
+        // BalanceCalculator를 그대로 재사용한다.
+        // =================================================
+
+        BalanceCalculator balance =
+                createBalanceCalculator(
+                        userId,
+                        username,
+                        startDate
+                );
+
+
+        long currentAsset =
+                balance.currentTotal();
+
+
+        // =================================================
+        // 7. 미래 예상 자산
+        // =================================================
+
+        long after3Months =
+                currentAsset
+                        + (monthlySaving * 3);
+
+
+        long after6Months =
+                currentAsset
+                        + (monthlySaving * 6);
+
+
+        long after12Months =
+                currentAsset
+                        + (monthlySaving * 12);
+
+
+        // =================================================
+// 8. 선택한 여행 목표 조회
+// =================================================
+
+        AssetGoal goal = null;
+
+
+// 사용자가 화면에서 여행 목표를 선택한 경우
+        if (goalId != null) {
+
+            goal =
+                    assetGoalRepository
+                            .findByGoalIdAndUserId(
+                                    goalId,
+                                    userId
+                            )
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "선택한 여행 목표를 찾을 수 없습니다."
+                                            )
+                            );
+
+
+            // 여행 목표인지 확인
+            if (
+                    goal.getGoalType() == null
+                            ||
+                            !"TRAVEL".equalsIgnoreCase(
+                                    goal.getGoalType()
+                            )
+            ) {
+
+                throw new IllegalArgumentException(
+                        "여행 목표만 분석할 수 있습니다."
+                );
+            }
+
+
+            // 진행 중인 목표인지 확인
+            if (
+                    goal.getStatus() != null
+                            &&
+                            !"ACTIVE".equalsIgnoreCase(
+                                    goal.getStatus()
+                            )
+            ) {
+
+                throw new IllegalArgumentException(
+                        "진행 중인 여행 목표만 분석할 수 있습니다."
+                );
+            }
+
+        }
+
+
+// =================================================
+// 9. 선택한 목표가 없으면 기본 여행 목표 조회
+// =================================================
+
+        else {
+
+            List<AssetGoal> travelGoals =
+                    assetGoalRepository
+                            .findByUserIdAndGoalTypeAndStatus(
+                                    userId,
+                                    "TRAVEL",
+                                    "ACTIVE"
+                            );
+
+
+            // 여행 목표 자체가 없는 경우
+            if (travelGoals.isEmpty()) {
+
+                String message;
+
+
+                if (monthlySaving > 0) {
+
+                    message =
+                            "현재 소비 패턴을 유지하면 매달 약 "
+                                    + String.format("%,d", monthlySaving)
+                                    + "원을 저축할 수 있습니다. "
+                                    + "여행 목표를 등록하면 예상 달성 시기를 계산해드립니다.";
+
+                } else {
+
+                    message =
+                            "현재 평균 지출이 수입보다 높거나 비슷합니다. "
+                                    + "지출을 줄인 뒤 여행 목표를 등록해보세요.";
+                }
+
+
+                return new AssetForecastResponseDto(
+
+                        currentAsset,
+
+                        averageMonthlyIncome,
+
+                        averageMonthlyExpense,
+
+                        monthlySaving,
+
+                        after3Months,
+
+                        after6Months,
+
+                        after12Months,
+
+                        null,
+
+                        null,
+
+                        null,
+
+                        null,
+
+                        null,
+
+                        null,
+
+                        null,
+
+                        message
+                );
+            }
+
+
+            // 아무것도 선택하지 않았을 경우 첫 여행을 기본 선택
+            goal =
+                    travelGoals.get(0);
+        }
+        long targetAmount =
+                goal.getTargetAmount() != null
+                        ? goal.getTargetAmount()
+                        : 0L;
+
+
+        long currentGoalAmount =
+                goal.getCurrentAmount() != null
+                        ? goal.getCurrentAmount()
+                        : 0L;
+
+
+        // =================================================
+        // 11. 목표까지 남은 금액
+        // =================================================
+
+        long remainingAmount =
+                Math.max(
+                        0L,
+                        targetAmount - currentGoalAmount
+                );
+
+
+        // =================================================
+        // 12. 목표 달성 예상 개월 수
+        // =================================================
+
+        Integer monthsToGoal = null;
+
+        LocalDate expectedGoalDate = null;
+
+
+        if (remainingAmount == 0) {
+
+            monthsToGoal = 0;
+
+            expectedGoalDate =
+                    today;
+
+        } else if (monthlySaving > 0) {
+
+            monthsToGoal =
+                    (int) Math.ceil(
+                            (double) remainingAmount
+                                    /
+                                    monthlySaving
+                    );
+
+
+            expectedGoalDate =
+                    today.plusMonths(
+                            monthsToGoal
+                    );
+        }
+
+
+        // =================================================
+        // 13. 사용자에게 보여줄 분석 메시지
+        // =================================================
+
+        String forecastMessage;
+
+
+        if (remainingAmount == 0) {
+
+            forecastMessage =
+                    goal.getGoalName()
+                            + " 목표를 이미 달성했습니다!";
+
+
+        } else if (monthlySaving <= 0) {
+
+            forecastMessage =
+                    goal.getGoalName()
+                            + " 목표를 달성하려면 현재보다 지출을 줄여 "
+                            + "월 저축 가능 금액을 먼저 확보하는 것이 좋습니다.";
+
+
+        } else if (
+                monthsToGoal != null
+                        &&
+                        monthsToGoal > 1
+        ) {
+
+            // =============================================
+            // 목표를 한 달 앞당기려면 필요한 월 저축액
+            // =============================================
+
+            long fasterMonthlySaving =
+                    (long) Math.ceil(
+                            (double) remainingAmount
+                                    /
+                                    (monthsToGoal - 1)
+                    );
+
+
+            long additionalSaving =
+                    Math.max(
+                            0L,
+                            fasterMonthlySaving
+                                    - monthlySaving
+                    );
+
+
+            forecastMessage =
+                    "현재 소비 패턴을 유지하면 약 "
+                            + monthsToGoal
+                            + "개월 후 "
+                            + goal.getGoalName()
+                            + " 목표를 달성할 수 있습니다. "
+                            + "목표를 약 1개월 앞당기고 싶다면 "
+                            + "매달 약 "
+                            + String.format(
+                            "%,d",
+                            additionalSaving
+                    )
+                            + "원을 추가로 절약해보세요.";
+
+
+        } else {
+
+            forecastMessage =
+                    "현재 소비 패턴을 유지하면 "
+                            + goal.getGoalName()
+                            + " 목표를 약 1개월 안에 달성할 수 있습니다.";
+        }
+
+        // =================================================
+        // 14. 결과 반환
+        // =================================================
+
+        return new AssetForecastResponseDto(
+
+                currentAsset,
+
+                averageMonthlyIncome,
+
+                averageMonthlyExpense,
+
+                monthlySaving,
+
+                after3Months,
+
+                after6Months,
+
+                after12Months,
+
+                goal.getGoalId(),
+
+                goal.getGoalName(),
+
+                targetAmount,
+
+                currentGoalAmount,
+
+                remainingAmount,
+
+                monthsToGoal,
+
+                expectedGoalDate,
+
+                forecastMessage
+        );
+    }
 
     // =====================================================
     // 오늘 Snapshot 갱신 (스케줄러용)

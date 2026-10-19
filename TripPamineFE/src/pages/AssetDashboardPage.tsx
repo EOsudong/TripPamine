@@ -112,6 +112,39 @@ interface AssetHistoryInfo {
   totalIncome: number
   totalExpense: number
 }
+// =====================================================
+// 기간별 자산 흐름 API 응답
+// =====================================================
+
+interface AssetHistoryPoint {
+  date: string
+  amount: number
+}
+
+interface CashFlowPoint {
+  date: string
+  income: number
+  expense: number
+}
+
+interface AssetHistoryResponseData {
+  period: string
+  startDate: string
+  endDate: string
+
+  startAsset: number
+  currentAsset: number
+
+  changeAmount: number
+  changeRate: number
+
+  totalIncome: number
+  totalExpense: number
+  netCashFlow: number
+
+  assetHistory: AssetHistoryPoint[]
+  cashFlow: CashFlowPoint[]
+}
 
 type AssetHistoryPeriod =
     | "WEEK"
@@ -149,7 +182,27 @@ interface DashboardData {
   budgets: BudgetInfo[]
   goals: GoalInfo[]
 }
+interface AssetForecastData {
+  currentAsset: number
+  averageMonthlyIncome: number
+  averageMonthlyExpense: number
+  monthlySaving: number
 
+  after3Months: number
+  after6Months: number
+  after12Months: number
+
+  goalId: number | null
+  goalName: string | null
+  goalTargetAmount: number | null
+  goalCurrentAmount: number | null
+  goalRemainingAmount: number | null
+
+  monthsToGoal: number | null
+  expectedGoalDate: string | null
+
+  forecastMessage: string
+}
 
 // =====================================================
 // 카테고리 이름
@@ -231,6 +284,69 @@ export default function AssetDashboardPage() {
     error,
     setError,
   ] = useState<string | null>(null)
+  // ===================================================
+// 미래 자산 시뮬레이터
+// ===================================================
+
+const [
+  forecast,
+  setForecast,
+] = useState<AssetForecastData | null>(null)
+
+const [
+  forecastLoading,
+  setForecastLoading,
+] = useState(false)
+
+const [
+  forecastError,
+  setForecastError,
+] = useState<string | null>(null)
+const [
+  selectedTravelGoalId,
+  setSelectedTravelGoalId,
+] = useState<number | null>(null)
+
+// ===================================================
+// 여행 목표 수정
+// ===================================================
+
+const [
+  editingGoalId,
+  setEditingGoalId,
+] = useState<number | null>(null)
+
+const [
+  editGoalName,
+  setEditGoalName,
+] = useState("")
+
+const [
+  editTargetAmount,
+  setEditTargetAmount,
+] = useState("")
+
+const [
+  editCurrentAmount,
+  setEditCurrentAmount,
+] = useState("")
+
+const [
+  editTargetDate,
+  setEditTargetDate,
+] = useState("")
+
+const [
+  updatingGoal,
+  setUpdatingGoal,
+] = useState(false)
+
+
+// 수정 후 미래자산 시뮬레이터 재조회용
+const [
+  forecastRefreshKey,
+  setForecastRefreshKey,
+] = useState(0)
 
   const [
     assetHistoryPeriod,
@@ -257,7 +373,75 @@ export default function AssetDashboardPage() {
   const dashboardReady =
       dashboard !== null
 
+// ===================================================
+// 선택 가능한 여행 목표
+// ===================================================
 
+const travelGoals =
+    useMemo(() => {
+
+      return (dashboard?.goals ?? [])
+          .filter((goal) => {
+
+            const goalType =
+                goal.goalType?.toUpperCase()
+
+            const status =
+                goal.status?.toUpperCase()
+
+
+            return (
+                goalType === "TRAVEL"
+                &&
+                (
+                    status == null
+                    || status === "ACTIVE"
+                )
+            )
+          })
+
+    }, [
+      dashboard?.goals,
+    ])
+    // ===================================================
+// 기본 여행 목표 선택
+// ===================================================
+
+useEffect(() => {
+
+  if (travelGoals.length === 0) {
+
+    setSelectedTravelGoalId(null)
+
+    return
+  }
+
+
+  setSelectedTravelGoalId(
+      (previousGoalId) => {
+
+        // 기존에 선택한 여행이 목록에 남아있으면 그대로 유지
+        if (
+            previousGoalId != null
+            &&
+            travelGoals.some(
+                (goal) =>
+                    goal.goalId === previousGoalId,
+            )
+        ) {
+
+          return previousGoalId
+        }
+
+
+        // 처음 들어왔으면 첫 번째 여행 선택
+        return travelGoals[0].goalId
+      },
+  )
+
+}, [
+  travelGoals,
+])
   // ===================================================
   // 현재 년 / 월
   // ===================================================
@@ -448,6 +632,157 @@ export default function AssetDashboardPage() {
     month,
   ])
 
+  // ===================================================
+// 미래 자산 Forecast API
+// ===================================================
+
+useEffect(() => {
+
+  if (
+      !isLoggedIn
+      || userId == null
+  ) {
+
+    setForecast(null)
+    return
+  }
+  // Dashboard가 먼저 로딩될 때까지 기다림
+if (!dashboardReady) {
+
+  return
+}
+
+
+// 여행 목표가 있는데 아직 기본 목표 선택 전이라면 잠시 기다림
+if (
+    travelGoals.length > 0
+    &&
+    selectedTravelGoalId == null
+) {
+
+  return
+}
+
+
+  const fetchForecast =
+      async () => {
+
+        try {
+
+          setForecastLoading(true)
+          setForecastError(null)
+
+
+          const accessToken =
+              localStorage.getItem(
+                  "accessToken",
+              )
+
+
+          if (!accessToken) {
+
+            throw new Error(
+                "로그인 토큰을 확인할 수 없습니다.",
+            )
+          }
+
+
+          const forecastUrl =
+          selectedTravelGoalId != null
+
+              ? `${API_BASE_URL}/api/assets/dashboard/forecast?goalId=${selectedTravelGoalId}`
+
+              : `${API_BASE_URL}/api/assets/dashboard/forecast`
+
+
+         const response =
+             await fetch(
+
+              forecastUrl,
+
+              {
+                    method: "GET",
+
+                    headers: {
+                      Accept:
+                          "application/json",
+
+                      Authorization:
+                          `Bearer ${accessToken}`,
+                    },
+                  },
+              )
+
+
+          if (!response.ok) {
+
+            const errorText =
+                await response.text()
+
+
+            console.error(
+                "Asset Forecast API Error =",
+                errorText,
+            )
+
+
+            throw new Error(
+                "미래 자산 예측 정보를 불러오지 못했습니다.",
+            )
+          }
+
+
+          const data: AssetForecastData =
+              await response.json()
+
+
+          console.log(
+              "Asset Forecast 응답 =",
+              data,
+          )
+
+
+          setForecast(data)
+
+        } catch (error) {
+
+          console.error(
+              "Asset Forecast Error =",
+              error,
+          )
+
+
+          setForecast(null)
+
+
+          setForecastError(
+
+              error instanceof Error
+
+                  ? error.message
+
+                  : "미래 자산 예측 정보를 불러오지 못했습니다.",
+
+          )
+
+        } finally {
+
+          setForecastLoading(false)
+        }
+      }
+
+
+  fetchForecast()
+
+}, [
+  userId,
+  isLoggedIn,
+  dashboardReady,
+  selectedTravelGoalId,
+  travelGoals.length,
+  forecastRefreshKey,
+])
+
 
   // ===================================================
   // 기간별 자산 흐름 API
@@ -487,11 +822,91 @@ export default function AssetDashboardPage() {
           throw new Error("자산 흐름 정보를 불러오지 못했습니다.")
         }
 
-        const data: AssetHistoryInfo[] = await response.json()
+       const data: AssetHistoryResponseData =
+    await response.json()
 
-        setPeriodAssetHistory(
-            Array.isArray(data) ? data : [],
+
+console.log(
+    "Asset History 응답 =",
+    data,
+)
+
+
+// ===================================================
+// cashFlow를 날짜별로 빠르게 찾기 위한 Map
+// ===================================================
+
+const cashFlowMap =
+    new Map<
+        string,
+        CashFlowPoint
+    >()
+
+
+for (
+    const item
+    of data.cashFlow ?? []
+) {
+
+  cashFlowMap.set(
+      item.date,
+      item,
+  )
+}
+
+
+// ===================================================
+// 백엔드의 assetHistory + cashFlow를
+// 기존 Chart 형식으로 합친다.
+// ===================================================
+
+const mergedHistory: AssetHistoryInfo[] =
+    (data.assetHistory ?? [])
+        .map(
+            (assetPoint) => {
+
+              const cashFlow =
+                  cashFlowMap.get(
+                      assetPoint.date,
+                  )
+
+
+              return {
+
+                snapshotDate:
+                    assetPoint.date,
+
+                totalAsset:
+                    Number(
+                        assetPoint.amount
+                        ?? 0,
+                    ),
+
+                totalIncome:
+                    Number(
+                        cashFlow?.income
+                        ?? 0,
+                    ),
+
+                totalExpense:
+                    Number(
+                        cashFlow?.expense
+                        ?? 0,
+                    ),
+              }
+            },
         )
+
+
+console.log(
+    "그래프 변환 데이터 =",
+    mergedHistory,
+)
+
+
+setPeriodAssetHistory(
+    mergedHistory,
+)
       } catch (error) {
         console.error("Asset History Error =", error)
         setPeriodAssetHistory([])
@@ -536,6 +951,523 @@ export default function AssetDashboardPage() {
   }
 
 
+// ===================================================
+// 여행 목표 삭제
+// ===================================================
+
+const handleDeleteGoal =
+    async (
+        goalId: number,
+        goalName: string,
+    ) => {
+
+      const confirmed =
+          window.confirm(
+              `"${goalName}" 여행 목표를 삭제하시겠습니까?`,
+          )
+
+
+      if (!confirmed) {
+        return
+      }
+
+
+      try {
+
+        const accessToken =
+            localStorage.getItem(
+                "accessToken",
+            )
+
+
+        if (!accessToken) {
+
+          throw new Error(
+              "로그인 토큰을 확인할 수 없습니다.",
+          )
+        }
+
+
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/assets/advice/travel-goal/${goalId}`,
+                {
+                  method: "DELETE",
+
+                  headers: {
+                    Authorization:
+                        `Bearer ${accessToken}`,
+                  },
+                },
+            )
+
+
+        if (!response.ok) {
+
+          const errorText =
+              await response.text()
+
+
+          console.error(
+              "여행 목표 삭제 실패 =",
+              errorText,
+          )
+
+
+          throw new Error(
+              "여행 목표를 삭제하지 못했습니다.",
+          )
+        }
+
+
+        // =========================================
+        // 화면의 자산 목표 목록에서도 제거
+        // =========================================
+
+        setDashboard(
+            (previous) => {
+
+              if (!previous) {
+                return previous
+              }
+
+
+              return {
+                ...previous,
+
+                goals:
+                    previous.goals.filter(
+                        (goal) =>
+                            goal.goalId !== goalId,
+                    ),
+              }
+            },
+        )
+
+
+        // =========================================
+        // 현재 시뮬레이터에서 선택 중인 목표를
+        // 삭제한 경우 선택 초기화
+        // =========================================
+
+        if (
+            selectedTravelGoalId === goalId
+        ) {
+
+          setSelectedTravelGoalId(
+              null,
+          )
+
+          setForecast(
+              null,
+          )
+        }
+
+
+        alert(
+            "여행 목표가 삭제되었습니다.",
+        )
+
+      } catch (error) {
+
+        console.error(
+            error,
+        )
+
+
+        alert(
+            error instanceof Error
+                ? error.message
+                : "여행 목표 삭제 중 문제가 발생했습니다.",
+        )
+      }
+    }
+
+// ===================================================
+// 여행 목표 수정 시작
+// ===================================================
+
+const handleStartEdit =
+    (
+        goal: GoalInfo,
+    ) => {
+
+      setEditingGoalId(
+          goal.goalId,
+      )
+
+      setEditGoalName(
+          goal.goalName,
+      )
+
+      setEditTargetAmount(
+          String(
+              goal.targetAmount
+              ?? 0,
+          ),
+      )
+
+      setEditCurrentAmount(
+          String(
+              goal.currentAmount
+              ?? 0,
+          ),
+      )
+
+      setEditTargetDate(
+          goal.targetDate
+          ?? "",
+      )
+    }
+
+
+// ===================================================
+// 여행 목표 수정 취소
+// ===================================================
+
+const handleCancelEdit =
+    () => {
+
+      setEditingGoalId(null)
+
+      setEditGoalName("")
+      setEditTargetAmount("")
+      setEditCurrentAmount("")
+      setEditTargetDate("")
+    }
+
+
+// ===================================================
+// 여행 목표 수정 저장
+// ===================================================
+
+const handleUpdateGoal =
+    async (
+        goalId: number,
+    ) => {
+
+      // =========================================
+      // 1. 입력값 검사
+      // =========================================
+
+      if (
+          editGoalName.trim() === ""
+      ) {
+
+        alert(
+            "여행 이름을 입력해주세요.",
+        )
+
+        return
+      }
+
+
+      if (
+          Number(editTargetAmount) <= 0
+      ) {
+
+        alert(
+            "목표 금액은 1원 이상이어야 합니다.",
+        )
+
+        return
+      }
+
+
+      if (
+          Number(editCurrentAmount) < 0
+      ) {
+
+        alert(
+            "현재 모은 금액은 0원 이상이어야 합니다.",
+        )
+
+        return
+      }
+
+
+      if (!editTargetDate) {
+
+        alert(
+            "목표 날짜를 선택해주세요.",
+        )
+
+        return
+      }
+
+
+      try {
+
+        setUpdatingGoal(true)
+
+
+        // =========================================
+        // 2. JWT 토큰
+        // =========================================
+
+        const accessToken =
+            localStorage.getItem(
+                "accessToken",
+            )
+
+
+        if (!accessToken) {
+
+          throw new Error(
+              "로그인 토큰을 확인할 수 없습니다.",
+          )
+        }
+
+
+        // =========================================
+        // 3. 수정된 값을 숫자로 변환
+        // =========================================
+
+        const newTargetAmount =
+            Number(
+                editTargetAmount,
+            )
+
+
+        const newCurrentAmount =
+            Number(
+                editCurrentAmount,
+            )
+
+
+        // =========================================
+        // 4. 새로운 목표 달성률 계산
+        //
+        // 현재금액 ÷ 목표금액 × 100
+        // =========================================
+
+        const newProgressRate =
+
+            newTargetAmount > 0
+
+                ? Math.min(
+                    100,
+                    Math.max(
+                        0,
+                        (
+                            newCurrentAmount
+                            /
+                            newTargetAmount
+                        ) * 100,
+                    ),
+                )
+
+                : 0
+
+
+        console.log(
+            "새 목표 금액 =",
+            newTargetAmount,
+        )
+
+        console.log(
+            "새 현재 금액 =",
+            newCurrentAmount,
+        )
+
+        console.log(
+            "새 달성률 =",
+            newProgressRate,
+        )
+
+
+        // =========================================
+        // 5. 백엔드 PUT 요청
+        // =========================================
+
+        const response =
+            await fetch(
+
+                `${API_BASE_URL}/api/assets/advice/travel-goal/${goalId}`,
+
+                {
+                  method: "PUT",
+
+                  headers: {
+
+                    Accept:
+                        "application/json",
+
+                    "Content-Type":
+                        "application/json",
+
+                    Authorization:
+                        `Bearer ${accessToken}`,
+                  },
+
+
+                  body:
+                      JSON.stringify({
+
+                        goalName:
+                            editGoalName.trim(),
+
+                        targetAmount:
+                            newTargetAmount,
+
+                        currentAmount:
+                            newCurrentAmount,
+
+                        targetDate:
+                            editTargetDate,
+                      }),
+                },
+            )
+
+
+        console.log(
+            "여행 목표 수정 HTTP 상태 =",
+            response.status,
+        )
+
+
+        // =========================================
+        // 6. PUT 실패
+        // =========================================
+
+        if (!response.ok) {
+
+          const errorText =
+              await response.text()
+
+
+          console.error(
+              "여행 목표 수정 실패 =",
+              errorText,
+          )
+
+
+          throw new Error(
+              `여행 목표 수정 실패 (${response.status})`,
+          )
+        }
+
+
+        // =========================================
+        // ★ 7. 화면의 Dashboard를 즉시 변경
+        //
+        // 여기가 이번 수정의 핵심입니다.
+        // 새로고침하지 않아도 React 화면이 즉시 바뀝니다.
+        // =========================================
+
+        setDashboard(
+            (previous) => {
+
+              if (!previous) {
+
+                return previous
+              }
+
+
+              return {
+
+                ...previous,
+
+
+                goals:
+                    previous.goals.map(
+                        (goal) => {
+
+
+                          // 수정한 목표가 아니면
+                          // 그대로 유지
+                          if (
+                              goal.goalId
+                              !== goalId
+                          ) {
+
+                            return goal
+                          }
+
+
+                          // 수정한 여행 목표라면
+                          // 새로운 값으로 교체
+                          return {
+
+                            ...goal,
+
+
+                            goalName:
+                                editGoalName.trim(),
+
+
+                            targetAmount:
+                                newTargetAmount,
+
+
+                            currentAmount:
+                                newCurrentAmount,
+
+
+                            targetDate:
+                                editTargetDate,
+
+
+                            progressRate:
+                                newProgressRate,
+                          }
+                        },
+                    ),
+              }
+            },
+        )
+
+
+        // =========================================
+        // 8. 미래자산 시뮬레이터 다시 계산
+        // =========================================
+
+        setForecastRefreshKey(
+            (previous) =>
+                previous + 1,
+        )
+
+
+        // =========================================
+        // 9. 수정창 닫기
+        // =========================================
+
+        handleCancelEdit()
+
+
+        // =========================================
+        // 10. 완료
+        // =========================================
+
+        alert(
+            "여행 목표가 수정되었습니다.",
+        )
+
+
+      } catch (error) {
+
+        console.error(
+            "여행 목표 수정 오류 =",
+            error,
+        )
+
+
+        alert(
+
+            error instanceof Error
+
+                ? error.message
+
+                : "여행 목표 수정 중 문제가 발생했습니다.",
+
+        )
+
+
+      } finally {
+
+        setUpdatingGoal(false)
+      }
+    }
   // ===================================================
   // 그래프 금액 표시
   // ===================================================
@@ -922,8 +1854,8 @@ export default function AssetDashboardPage() {
         boxPadding: 4,
         usePointStyle: true,
         callbacks: {
-          label: (context) =>
-              ` ${context.dataset.label}(월 누적) ${formatMoney(Number(context.raw ?? 0))}`,
+         label: (context) =>
+              ` ${context.dataset.label} ${formatMoney(Number(context.raw ?? 0))}`,
         },
       },
     },
@@ -954,30 +1886,92 @@ export default function AssetDashboardPage() {
 
 
   // 선택 기간의 합계 / 시작 대비 변화 (그래프 위 요약 숫자)
-  const periodSummary =
-      useMemo(() => {
+const periodSummary =
+    useMemo(() => {
 
-        if (assetHistory.length === 0) {
-          return null
-        }
+      if (
+          assetHistory.length === 0
+      ) {
 
-        const first = assetHistory[0]
-        const last = assetHistory[assetHistory.length - 1]
-
-        return {
-          latestAsset: last.totalAsset ?? 0,
-          assetDiff: (last.totalAsset ?? 0) - (first.totalAsset ?? 0),
-          // Snapshot의 수입/지출은 "그 달 1일부터 해당 날짜까지의 누적값"이라
-          // 여러 날을 더하면 중복 합산된다 → 가장 최근 기록의 값만 사용한다.
-          income: last.totalIncome ?? 0,
-          expense: last.totalExpense ?? 0,
-          latestDate: last.snapshotDate,
-        }
-      }, [
-        assetHistory,
-      ])
+        return null
+      }
 
 
+      const first =
+          assetHistory[0]
+
+      const last =
+          assetHistory[
+              assetHistory.length - 1
+          ]
+
+
+      const totalIncome =
+          assetHistory.reduce(
+
+              (
+                  sum,
+                  item,
+              ) =>
+
+                  sum
+                  + Number(
+                      item.totalIncome
+                      ?? 0,
+                  ),
+
+              0,
+          )
+
+
+      const totalExpense =
+          assetHistory.reduce(
+
+              (
+                  sum,
+                  item,
+              ) =>
+
+                  sum
+                  + Number(
+                      item.totalExpense
+                      ?? 0,
+                  ),
+
+              0,
+          )
+
+
+      return {
+
+        latestAsset:
+            last.totalAsset
+            ?? 0,
+
+        assetDiff:
+            (
+                last.totalAsset
+                ?? 0
+            )
+            -
+            (
+                first.totalAsset
+                ?? 0
+            ),
+
+        income:
+            totalIncome,
+
+        expense:
+            totalExpense,
+
+        latestDate:
+            last.snapshotDate,
+      }
+
+    }, [
+      assetHistory,
+    ])
   // ===================================================
   // 공통 Layout
   //
@@ -1343,9 +2337,9 @@ export default function AssetDashboardPage() {
                   <div className="border-t border-slate-100 pt-5">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-bold text-slate-500">수입 · 지출 (월 누적)</p>
+                        <p className="text-xs font-bold text-slate-500">일별 수입 · 지출</p>
                         <p className="mt-0.5 text-[10px] text-slate-400">
-                          각 날짜에 그 달 1일부터 쌓인 금액이에요 · 숫자는 {periodSummary.latestDate} 기준
+                          선택 기간의 날짜별 수입과 지출을 보여드려요.
                         </p>
                       </div>
 
@@ -1439,116 +2433,658 @@ export default function AssetDashboardPage() {
 
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
 
-          {/* Budget */}
-          <article className={CARD}>
-            <div className={CARD_HEADER}>
-              <div>
-                <span className={CARD_KICKER}>BUDGET</span>
-                <h2 className={CARD_TITLE}>월간 예산</h2>
-                <p className={CARD_DESC}>카테고리별 예산을 확인하세요.</p>
-              </div>
+           <article className="relative overflow-hidden rounded-[2rem] bg-night-950 p-6 text-white shadow-[0_35px_70px_-45px_rgba(79,70,229,0.8)] md:p-8">
+
+    <div className="absolute inset-0 tp-aurora opacity-70" />
+
+    <div className="relative z-10">
+
+      <div className="mb-7 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+
+        <div>
+
+          <span className="text-[10px] font-black tracking-[0.2em] text-violet-300">
+            FUTURE ASSET
+          </span>
+
+          <h2 className="mt-2 font-display text-2xl font-bold md:text-3xl">
+            🔮 미래 자산 시뮬레이터
+          </h2>
+
+          <p className="mt-2 text-xs leading-relaxed text-white/50">
+            최근 소비와 수입 패턴을 분석해 앞으로의 자산을 예상합니다.
+          </p>
+
+        </div>
+
+
+        {forecast?.monthlySaving != null && (
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+
+              <p className="text-[10px] text-white/40">
+                월 예상 저축
+              </p>
+
+              <strong className="mt-1 block font-display text-xl text-emerald-300">
+                +{formatMoney(forecast.monthlySaving)}
+              </strong>
+
             </div>
 
-            {dashboard.budgets.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {dashboard.budgets.map((budget) => {
-                    const key = (budget.categoryId ?? budget.categoryName)?.toUpperCase()
+        )}
 
-                    return (
-                        <div
-                            key={budget.budgetId}
-                            className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white px-4 py-3.5"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span
-                                className="h-9 w-1.5 rounded-full"
-                                style={{ backgroundColor: CATEGORY_COLORS[key] ?? "#94a3b8" }}
-                            />
-                            <div>
-                              <span className="block text-[10px] text-slate-400">카테고리</span>
-                              <strong className="text-sm text-slate-800">
-                                {CATEGORY_NAMES[key] ?? budget.categoryName}
-                              </strong>
-                            </div>
-                          </div>
-                          <strong className="font-display text-[15px] font-bold text-slate-900">
-                            {formatMoney(budget.budgetAmount)}
-                          </strong>
-                        </div>
-                    )
-                  })}
-                </div>
-            ) : (
-                <div className={EMPTY}>등록된 월간 예산이 없습니다.</div>
-            )}
-          </article>
+      </div>
+        {/* ================================================= */}
+{/* 여행 목표 선택 */}
+{/* ================================================= */}
 
-          {/* Goal */}
-          <article className={CARD}>
-            <div className={CARD_HEADER}>
-              <div>
-                <span className={CARD_KICKER}>GOAL</span>
-                <h2 className={CARD_TITLE}>자산 목표</h2>
-                <p className={CARD_DESC}>여행과 자산 목표를 관리하세요.</p>
+<div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.05] p-4 md:p-5">
+
+  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+    <div>
+
+      <p className="text-[10px] font-black tracking-[0.15em] text-sky-300">
+        SELECT TRAVEL GOAL
+      </p>
+
+      <p className="mt-1 text-sm font-bold text-white">
+        분석할 여행 목표
+      </p>
+
+    </div>
+
+
+    {travelGoals.length > 0 ? (
+
+        <select
+            value={
+              selectedTravelGoalId
+              ?? ""
+            }
+            onChange={(event) => {
+
+              setSelectedTravelGoalId(
+                  Number(
+                      event.target.value,
+                  ),
+              )
+
+            }}
+            className="min-w-[240px] cursor-pointer rounded-xl border border-white/10 bg-white px-4 py-3 text-sm font-bold text-slate-900 outline-none"
+        >
+
+          {travelGoals.map(
+              (goal) => (
+
+                  <option
+                      key={goal.goalId}
+                      value={goal.goalId}
+                  >
+                    {goal.goalName}
+                  </option>
+
+              ),
+          )}
+
+        </select>
+
+    ) : (
+
+        <span className="text-xs text-white/50">
+          등록된 여행 목표가 없습니다.
+        </span>
+
+    )}
+
+  </div>
+
+</div>
+
+
+      {forecastLoading ? (
+
+          <div className="flex min-h-[220px] items-center justify-center">
+
+            <p className="text-sm text-white/50">
+              미래 자산을 계산하고 있습니다...
+            </p>
+
+          </div>
+
+      ) : forecastError ? (
+
+          <div className="flex min-h-[220px] items-center justify-center">
+
+            <p className="text-sm text-rose-300">
+              {forecastError}
+            </p>
+
+          </div>
+
+      ) : forecast ? (
+
+          <>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-5">
+
+                <span className="text-xs text-white/40">
+                  3개월 후 내 예측 자산
+                </span>
+
+                <strong className="mt-2 block font-display text-xl font-bold md:text-2xl">
+                  {formatMoney(forecast.after3Months)}
+                </strong>
+
               </div>
+
+
+              <div className="rounded-2xl border border-violet-400/20 bg-violet-400/[0.08] p-5">
+
+                <span className="text-xs text-violet-200">
+                  6개월 후 내 예측 자산
+                </span>
+
+                <strong className="mt-2 block font-display text-xl font-bold text-violet-100 md:text-2xl">
+                  {formatMoney(forecast.after6Months)}
+                </strong>
+
+              </div>
+
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-5">
+
+                <span className="text-xs text-white/40">
+                  1년 후 내 예측 자산
+                </span>
+
+                <strong className="mt-2 block font-display text-xl font-bold md:text-2xl">
+                  {formatMoney(forecast.after12Months)}
+                </strong>
+
+              </div>
+
             </div>
 
-            {dashboard.goals.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {dashboard.goals.map((goal) => {
-                    const calculatedRate =
-                        goal.targetAmount > 0
-                            ? Math.min(
-                                100,
-                                Math.max(
-                                    0,
-                                    (goal.currentAmount / goal.targetAmount) * 100,
-                                ),
-                            )
-                            : 0
 
-                    const progressRate =
-                        goal.progressRate
-                        ?? calculatedRate
+            {forecast.goalName && (
 
-                    return (
-                        <div
-                            key={goal.goalId}
-                            className="rounded-2xl border border-slate-100 bg-white p-4"
-                        >
-                          <div className="mb-3 flex items-start justify-between gap-5">
-                            <div>
-                              <span className="block text-[10px] text-slate-400">목표</span>
-                              <strong className="text-sm text-slate-900">{goal.goalName}</strong>
-                            </div>
-                            <strong className="font-display text-2xl font-bold tracking-tight tp-gradient-text">
-                              {Math.round(progressRate)}%
-                            </strong>
-                          </div>
+                <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.3fr]">
 
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                            <div
-                                className="h-full rounded-full tp-gradient-bg transition-[width] duration-700"
-                                style={{ width: `${Math.min(100, progressRate)}%` }}
-                            />
-                          </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-5">
 
-                          <div className="mt-2.5 flex flex-col items-start justify-between gap-1 text-[11px] text-slate-500 sm:flex-row sm:items-center">
-                            <span>현재 {formatMoney(goal.currentAmount)}</span>
-                            <span>
-                              목표 {formatMoney(goal.targetAmount)}
-                              {goal.targetDate && ` · ${goal.targetDate}`}
-                            </span>
-                          </div>
-                        </div>
-                    )
-                  })}
+                    <p className="text-[10px] font-black tracking-[0.15em] text-sky-300">
+                      TRAVEL GOAL
+                    </p>
+
+                    <h3 className="mt-2 text-lg font-bold">
+                      ✈️ {forecast.goalName}
+                    </h3>
+
+
+                    <div className="mt-5 space-y-3 text-sm">
+
+                      <div className="flex justify-between gap-4">
+
+                        <span className="text-white/45">
+                          목표 금액
+                        </span>
+
+                        <strong>
+                          {formatMoney(forecast.goalTargetAmount)}
+                        </strong>
+
+                      </div>
+
+
+                      <div className="flex justify-between gap-4">
+
+                        <span className="text-white/45">
+                          현재 모은 금액
+                        </span>
+
+                        <strong>
+                          {formatMoney(forecast.goalCurrentAmount)}
+                        </strong>
+
+                      </div>
+
+
+                      <div className="flex justify-between gap-4">
+
+                        <span className="text-white/45">
+                          남은 금액
+                        </span>
+
+                        <strong className="text-violet-200">
+                          {formatMoney(forecast.goalRemainingAmount)}
+                        </strong>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.06] p-5 md:p-6">
+
+                    <p className="text-[10px] font-black tracking-[0.15em] text-emerald-300">
+                      EXPECTED ACHIEVEMENT
+                    </p>
+
+
+                    {forecast.monthsToGoal !== null ? (
+
+                        <>
+
+                          <p className="mt-3 text-sm text-white/55">
+                            현재 소비패턴을 유지하면
+                          </p>
+
+                          <p className="mt-1 font-display text-3xl font-bold text-emerald-300 md:text-4xl">
+                            약 {forecast.monthsToGoal}개월 후
+                          </p>
+
+
+                          {forecast.expectedGoalDate && (
+
+                              <p className="mt-2 text-xs text-white/40">
+
+                                예상 달성일 ·{" "}
+
+                                {forecast.expectedGoalDate}
+
+                              </p>
+
+                          )}
+
+                        </>
+
+                    ) : (
+
+                        <p className="mt-4 text-sm text-white/60">
+                          현재 소비패턴으로는 목표 달성 시점을 계산하기 어렵습니다.
+                        </p>
+
+                    )}
+
+                  </div>
+
                 </div>
-            ) : (
-                <div className={EMPTY}>등록된 자산 목표가 없습니다.</div>
+
             )}
-          </article>
+
+
+            <div className="mt-5 flex items-start gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/[0.07] p-4 md:p-5">
+
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl tp-gradient-bg text-xs font-black">
+                AI
+              </span>
+
+              <div>
+
+                <p className="text-[10px] font-black tracking-[0.14em] text-violet-200">
+                  ASSET COACH
+                </p>
+
+                <p className="mt-1.5 text-sm leading-relaxed text-white/70">
+                  {forecast.forecastMessage}
+                </p>
+
+              </div>
+
+            </div>
+
+          </>
+
+      ) : (
+
+          <div className="flex min-h-[220px] items-center justify-center">
+
+            <p className="text-sm text-white/50">
+              미래 자산 예측 데이터가 없습니다.
+            </p>
+
+          </div>
+
+      )}
+
+    </div>
+
+  </article>
+
+        {/* ================================================= */}
+{/* Goal */}
+{/* ================================================= */}
+
+<article className={CARD}>
+
+  <div className={CARD_HEADER}>
+
+    <div>
+
+      <span className={CARD_KICKER}>
+        GOAL
+      </span>
+
+      <h2 className={CARD_TITLE}>
+        자산 목표
+      </h2>
+
+      <p className={CARD_DESC}>
+        등록한 여행 목표를 관리하세요.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  {travelGoals.length > 0 ? (
+
+      <div className="flex flex-col gap-3">
+
+        {travelGoals.map(
+            (goal) => {
+
+              const calculatedRate =
+                  goal.targetAmount > 0
+
+                      ? Math.min(
+                          100,
+                          Math.max(
+                              0,
+                              (
+                                  goal.currentAmount
+                                  / goal.targetAmount
+                              ) * 100,
+                          ),
+                      )
+
+                      : 0
+
+
+              const progressRate =
+                    calculatedRate
+
+
+              return (
+
+                  <div
+                      key={goal.goalId}
+                      className="rounded-2xl border border-slate-100 bg-white p-4"
+                  >
+
+                    {/* ================================= */}
+                    {/* 목표 이름 + 달성률 + 삭제 버튼 */}
+                    {/* ================================= */}
+
+                    <div className="mb-3 flex items-start justify-between gap-5">
+
+                      <div>
+
+                        <span className="block text-[10px] text-slate-400">
+                          여행 목표
+                        </span>
+
+                        <strong className="text-sm text-slate-900">
+                          {goal.goalName}
+                        </strong>
+
+                      </div>
+
+
+                     <div className="flex items-center gap-2">
+
+                  <strong className="font-display text-2xl font-bold tracking-tight tp-gradient-text">
+                    {Math.round(progressRate)}%
+                  </strong>
+
+
+                  <button
+                      type="button"
+
+                      onClick={() =>
+                          handleStartEdit(
+                              goal,
+                          )
+                      }
+
+                      className="cursor-pointer rounded-lg border border-sky-100 bg-sky-50 px-2.5 py-1.5 text-[11px] font-bold text-sky-600 transition hover:bg-sky-100"
+                  >
+                    수정
+                  </button>
+
+
+                  <button
+                      type="button"
+
+                      onClick={() =>
+                          handleDeleteGoal(
+                              goal.goalId,
+                              goal.goalName,
+                          )
+                      }
+
+                      className="cursor-pointer rounded-lg border border-rose-100 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-500 transition hover:bg-rose-100"
+                  >
+                    삭제
+                  </button>
+
+                </div>
+
+                    </div>
+                  {editingGoalId === goal.goalId && (
+
+                    <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50/50 p-4">
+
+                      <p className="mb-3 text-xs font-bold text-sky-700">
+                        여행 목표 수정
+                      </p>
+
+
+                      <div className="grid grid-cols-1 gap-3">
+
+                        {/* 여행 이름 */}
+                        <div>
+
+                          <label className="mb-1 block text-[11px] font-bold text-slate-500">
+                            여행 이름
+                          </label>
+
+                          <input
+                              type="text"
+                              value={editGoalName}
+                              onChange={(event) =>
+                                  setEditGoalName(
+                                      event.target.value,
+                                  )
+                              }
+                              placeholder="예: 일본 도쿄 여행"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-400"
+                          />
+
+                        </div>
+
+
+                        {/* 목표 금액 */}
+                        <div>
+
+                          <label className="mb-1 block text-[11px] font-bold text-slate-500">
+                            목표 금액
+                          </label>
+
+                          <input
+                              type="number"
+                              value={editTargetAmount}
+                              onChange={(event) =>
+                                  setEditTargetAmount(
+                                      event.target.value,
+                                  )
+                              }
+                              placeholder="예: 3000000"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-400"
+                          />
+
+                        </div>
+
+
+                        {/* 현재 모은 금액 */}
+                        <div>
+
+                          <label className="mb-1 block text-[11px] font-bold text-slate-500">
+                            현재 모은 금액
+                          </label>
+
+                          <input
+                              type="number"
+                              value={editCurrentAmount}
+                              onChange={(event) =>
+                                  setEditCurrentAmount(
+                                      event.target.value,
+                                  )
+                              }
+                              placeholder="예: 1000000"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-400"
+                          />
+
+                        </div>
+
+
+                        {/* 목표 날짜 */}
+                        <div>
+
+                          <label className="mb-1 block text-[11px] font-bold text-slate-500">
+                            목표 날짜
+                          </label>
+
+                          <input
+                              type="date"
+                              value={editTargetDate}
+                              onChange={(event) =>
+                                  setEditTargetDate(
+                                      event.target.value,
+                                  )
+                              }
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-400"
+                          />
+
+                        </div>
+
+                      </div>
+
+
+                      {/* 취소 / 저장 */}
+                      <div className="mt-4 flex justify-end gap-2">
+
+                        <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            disabled={updatingGoal}
+                            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          취소
+                        </button>
+
+
+                        <button
+                            type="button"
+                            disabled={updatingGoal}
+                            onClick={() =>
+                                handleUpdateGoal(
+                                    goal.goalId,
+                                )
+                            }
+                            className="cursor-pointer rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {updatingGoal
+                              ? "저장 중..."
+                              : "저장"}
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                )}        
+
+                    {/* ================================= */}
+                    {/* 진행률 */}
+                    {/* ================================= */}
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+
+                      <div
+                          className="h-full rounded-full tp-gradient-bg transition-[width] duration-700"
+
+                          style={{
+                            width:
+                                `${Math.min(
+                                    100,
+                                    progressRate,
+                                )}%`,
+                          }}
+                      />
+
+                    </div>
+
+
+                    {/* ================================= */}
+                    {/* 금액 */}
+                    {/* ================================= */}
+
+                    <div className="mt-2.5 flex flex-col items-start justify-between gap-1 text-[11px] text-slate-500 sm:flex-row sm:items-center">
+
+                      <span>
+                        현재{" "}
+                        {formatMoney(
+                            goal.currentAmount,
+                        )}
+                      </span>
+
+
+                      <span>
+
+                        목표{" "}
+
+                        {formatMoney(
+                            goal.targetAmount,
+                        )}
+
+                        {goal.targetDate
+                            && ` · ${goal.targetDate}`}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+              )
+
+            },
+        )}
+
+      </div>
+
+  ) : (
+
+      <div className={EMPTY}>
+        등록된 여행 목표가 없습니다.
+      </div>
+
+  )}
+
+</article>
+
+
         </section>
+
+
       </div>,
   )
 }

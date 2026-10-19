@@ -1,9 +1,11 @@
 package com.example.trippaminebe.domain.asset.controller;
 
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
+import com.example.trippaminebe.domain.asset.dto.AssetForecastResponseDto;
+import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
 import com.example.trippaminebe.domain.asset.service.AssetDashboardService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
-import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -13,8 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 
 @RestController
@@ -29,12 +29,7 @@ public class AssetDashboardController {
     // Dashboard 전체 조회
     // =====================================================
     //
-    // 요청 예:
-    //
     // GET /api/assets/dashboard?year=2026&month=10
-    //
-    // Authorization:
-    // Bearer JWT_TOKEN
     //
     // =====================================================
 
@@ -44,9 +39,11 @@ public class AssetDashboardController {
             @AuthenticationPrincipal
             CustomUserDetails userDetails,
 
-            @RequestParam Integer year,
+            @RequestParam
+            Integer year,
 
-            @RequestParam Integer month
+            @RequestParam
+            Integer month
 
     ) {
 
@@ -77,7 +74,7 @@ public class AssetDashboardController {
 
 
         // =========================================
-        // 3. 개발 확인용 로그
+        // 3. 로그
         // =========================================
 
         System.out.println(
@@ -114,15 +111,117 @@ public class AssetDashboardController {
         // =========================================
 
         AssetDashboardResponseDto response =
-                assetDashboardService.getDashboard(
-                        userId,
-                        year,
-                        month
-                );
+                assetDashboardService
+                        .getDashboard(
+                                userId,
+                                year,
+                                month
+                        );
 
 
         // =========================================
-        // 5. 결과 반환
+        // 5. 반환
+        // =========================================
+
+        return ResponseEntity.ok(
+                response
+        );
+    }
+
+
+    // =====================================================
+    // 미래 자산 시뮬레이션
+    // =====================================================
+    //
+    // 기본 요청
+    //
+    // GET /api/assets/dashboard/forecast
+    //
+    //
+    // 특정 여행 목표 선택
+    //
+    // GET /api/assets/dashboard/forecast?goalId=6
+    //
+    // =====================================================
+
+    @GetMapping("/forecast")
+    public ResponseEntity<AssetForecastResponseDto> getAssetForecast(
+
+            @AuthenticationPrincipal
+            CustomUserDetails userDetails,
+
+            @RequestParam(required = false)
+            Long goalId
+
+    ) {
+
+        // =========================================
+        // 1. 로그인 사용자 확인
+        // =========================================
+
+        if (userDetails == null) {
+
+            System.out.println(
+                    "[Asset Forecast] 로그인 사용자 정보 없음"
+            );
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+
+        // =========================================
+        // 2. 로그인 사용자 ID
+        // =========================================
+
+        Long userId =
+                userDetails
+                        .getUser()
+                        .getId();
+
+
+        // =========================================
+        // 3. 로그
+        // =========================================
+
+        System.out.println(
+                "========================================="
+        );
+
+        System.out.println(
+                "[Asset Forecast Controller]"
+        );
+
+        System.out.println(
+                "로그인 사용자 ID = "
+                        + userId
+        );
+
+        System.out.println(
+                "선택한 여행 목표 ID = "
+                        + goalId
+        );
+
+        System.out.println(
+                "========================================="
+        );
+
+
+        // =========================================
+        // 4. 미래 자산 계산
+        // =========================================
+
+        AssetForecastResponseDto response =
+                assetDashboardService
+                        .getAssetForecast(
+                                userId,
+                                goalId
+                        );
+
+
+        // =========================================
+        // 5. 반환
         // =========================================
 
         return ResponseEntity.ok(
@@ -147,24 +246,21 @@ public class AssetDashboardController {
     // YEAR
     // 최근 1년
     //
-    // 요청 예:
-    //
-    // GET /api/assets/dashboard/history?period=WEEK
-    //
     // GET /api/assets/dashboard/history?period=MONTH
-    //
-    // GET /api/assets/dashboard/history?period=QUARTER
-    //
-    // GET /api/assets/dashboard/history?period=YEAR
     //
     // =====================================================
 
     @GetMapping("/history")
-    public ResponseEntity<AssetHistoryResponseDto>
-    getAssetHistory(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(defaultValue = "MONTH") String period
+    public ResponseEntity<AssetHistoryResponseDto> getAssetHistory(
+
+            @AuthenticationPrincipal
+            CustomUserDetails userDetails,
+
+            @RequestParam(defaultValue = "MONTH")
+            String period
+
     ) {
+
         // =========================================
         // 1. 로그인 사용자 확인
         // =========================================
@@ -183,7 +279,7 @@ public class AssetDashboardController {
 
 
         // =========================================
-        // 2. 현재 로그인 사용자 ID
+        // 2. 로그인 사용자 ID
         // =========================================
 
         Long userId =
@@ -193,7 +289,7 @@ public class AssetDashboardController {
 
 
         // =========================================
-        // 3. 개발 확인용 로그
+        // 3. 로그
         // =========================================
 
         System.out.println(
@@ -235,8 +331,9 @@ public class AssetDashboardController {
                                 period
                         );
 
+
         // =========================================
-        // 5. 결과 반환
+        // 5. 반환
         // =========================================
 
         return ResponseEntity.ok(

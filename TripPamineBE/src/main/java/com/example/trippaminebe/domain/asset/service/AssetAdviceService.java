@@ -72,6 +72,62 @@ public class AssetAdviceService {
         // =========================================
         return savedGoal.getGoalId();
     }
+
+
+    // =====================================================
+// 여행 목표 수정
+// =====================================================
+
+    @Transactional
+    public void updateTravelGoal(
+            Long userId,
+            Long goalId,
+            TravelGoalRequestDto request
+    ) {
+
+        AssetGoal goal =
+                assetGoalRepository
+                        .findByGoalIdAndUserId(
+                                goalId,
+                                userId
+                        )
+                        .orElseThrow(
+                                () -> new IllegalArgumentException(
+                                        "수정할 여행 목표를 찾을 수 없습니다."
+                                )
+                        );
+
+
+        if (
+                goal.getGoalType() == null
+                        ||
+                        !"TRAVEL".equalsIgnoreCase(
+                                goal.getGoalType()
+                        )
+        ) {
+
+            throw new IllegalArgumentException(
+                    "여행 목표만 수정할 수 있습니다."
+            );
+        }
+
+
+        goal.setGoalName(
+                request.getGoalName()
+        );
+
+        goal.setTargetAmount(
+                request.getTargetAmount()
+        );
+
+        goal.setCurrentAmount(
+                request.getCurrentAmount()
+        );
+
+        goal.setTargetDate(
+                request.getTargetDate()
+        );
+    }
     // =========================================================
     // 여행자금 자산관리 가이드
     // =========================================================
@@ -767,6 +823,49 @@ public class AssetAdviceService {
         return (long) Math.ceil(
                 (double) remainingAmount
                         / remainingMonths
+        );
+    }
+    // =====================================================
+// 여행 목표 삭제
+// =====================================================
+
+    @Transactional
+    public void deleteTravelGoal(
+            Long userId,
+            Long goalId
+    ) {
+
+        AssetGoal goal =
+                assetGoalRepository
+                        .findByGoalIdAndUserId(
+                                goalId,
+                                userId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "삭제할 여행 목표를 찾을 수 없습니다."
+                                        )
+                        );
+
+
+        // 여행 목표만 삭제 가능
+        if (
+                goal.getGoalType() == null
+                        ||
+                        !"TRAVEL".equalsIgnoreCase(
+                                goal.getGoalType()
+                        )
+        ) {
+
+            throw new IllegalArgumentException(
+                    "여행 목표만 삭제할 수 있습니다."
+            );
+        }
+
+
+        assetGoalRepository.delete(
+                goal
         );
     }
 }
