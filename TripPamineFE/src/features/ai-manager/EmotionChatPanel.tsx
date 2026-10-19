@@ -7,6 +7,32 @@ import {
   RefreshCw,
 } from "lucide-react";
 import axios from "axios";
+import { Link } from "react-router-dom";
+
+/**
+ * 백엔드는 기능 ID만 반환한다.
+ * 개발용 화면 주소는 모델 프롬프트나 대화 말풍선에 넣지 않고
+ * 프론트엔드 라우터가 사용 가능한 이동 버튼으로만 표현한다.
+ */
+const FEATURE_ACTIONS: Record<string, { label: string; to: string }> = {
+  TRAVEL_PLAN: { label: "여행 플래너", to: "/travel" },
+  TRAVEL_SOS: { label: "여행 플래너에서 SOS 확인", to: "/travel" },
+  WEATHER: { label: "여행 날씨 확인", to: "/travel" },
+  TRAVEL_RECOMMENDATION: { label: "AI 여행 추천", to: "/ai-recommend" },
+  ASSET_DASHBOARD: { label: "자산관리", to: "/assets" },
+  ASSET_GOAL: { label: "자산 목표", to: "/assets" },
+  ACCOUNT_BOOK: { label: "가계부·계좌", to: "/mypage" },
+  FINANCIAL_PRODUCTS: { label: "금융상품", to: "/finance" },
+  QUEST: { label: "여행 퀘스트", to: "/quests" },
+  RPG: { label: "퀘스트·포인트", to: "/quests" },
+  MASCOT: { label: "마스코트 탐험", to: "/mascots" },
+  MASCOT_DEX: { label: "마스코트 도감", to: "/mascots/dex" },
+  MYSTERY_TOUR: { label: "여행 플래너", to: "/travel" },
+  TOUR_INFORMATION: { label: "관광 여행지", to: "/tour/destinations" },
+  AI_PHOTO: { label: "AI 사진 편집", to: "/ai-photo-editor" },
+  COMMUNITY: { label: "게시판", to: "/boards" },
+  EMOTION: { label: "마음 메이트", to: "/ai/emotion" },
+};
 
 import {
   getEmotionChatMessagesApi,
@@ -39,6 +65,7 @@ export default function EmotionChatPanel({
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emotionName, setEmotionName] = useState<string | null>(null);
+  const [relatedFeatureIds, setRelatedFeatureIds] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
 
@@ -70,6 +97,7 @@ export default function EmotionChatPanel({
     setConversationId(null);
     setSaveHistory(false);
     setEmotionName(null);
+    setRelatedFeatureIds([]);
     setInput("");
   }, [userId]);
 
@@ -99,6 +127,7 @@ export default function EmotionChatPanel({
     setConversationId(null);
     setMessages([]);
     setEmotionName(null);
+    setRelatedFeatureIds([]);
     setError(null);
   };
 
@@ -121,6 +150,7 @@ export default function EmotionChatPanel({
       );
       setConversationId(id);
       setEmotionName(null);
+      setRelatedFeatureIds([]);
     } catch {
       setError("이전 대화를 불러오지 못했어요.");
     } finally {
@@ -154,7 +184,9 @@ export default function EmotionChatPanel({
         ...current,
         { role: "assistant", content: result.answer },
       ]);
-      if (result.emotionName) setEmotionName(result.emotionName);
+      // 감정 모델이 실행되지 않은 중립 대화에서는 오래된 감정 라벨을 유지하지 않는다.
+      setEmotionName(result.emotionName);
+      setRelatedFeatureIds(result.relatedFeatureIds ?? []);
     } catch (cause) {
       // 사용자 메시지는 다시 전송할 수 있도록 입력칸에 복구한다.
       setMessages(previous);
@@ -188,6 +220,7 @@ export default function EmotionChatPanel({
             setMessages([]);
             setConversationId(null);
             setEmotionName(null);
+            setRelatedFeatureIds([]);
           }}
           disabled={loading}
           title="새로운 대화"
@@ -272,6 +305,27 @@ export default function EmotionChatPanel({
             </p>
           </div>
         ))}
+        {relatedFeatureIds.length > 0 && !loading && (
+          <nav className="flex flex-wrap gap-2" aria-label="관련 서비스 바로가기">
+            {relatedFeatureIds
+              .map((id) => FEATURE_ACTIONS[id])
+              .filter((item): item is { label: string; to: string } => !!item)
+              .filter(
+                (item, index, items) =>
+                  items.findIndex((candidate) => candidate.to === item.to) === index,
+              )
+              .slice(0, 3)
+              .map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-50"
+                >
+                  {item.label} 바로가기
+                </Link>
+              ))}
+          </nav>
+        )}
         {loading && (
           <p className="flex items-center gap-2 text-xs text-slate-500">
             <Loader2 size={14} className="animate-spin" /> 마음 메이트가 답변을
