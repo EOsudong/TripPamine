@@ -1,6 +1,31 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CloudSun,
+  Compass,
+  Gift,
+  LifeBuoy,
+  Loader2,
+  LocateFixed,
+  Map,
+  MapPin,
+  Plus,
+  RefreshCw,
+  Route,
+  Sparkles,
+  Users,
+  Wallet,
+} from "lucide-react";
 import type { TravelPlan } from "../types";
+import { useAuth } from "../context/AuthContext";
+import AppLayout from "../layout/AppLayout";
 import { getTravelPlansApi } from "../api/travel";
 import {
   getAiRecommendationApi,
@@ -9,771 +34,1087 @@ import {
   saveCustomRecommendationApi,
   type AiRecommendationResponse,
 } from "../api/recommendation";
-import aiTravelBg from "../assets/images/ai-travel-bg.png";
 import { KakaoMapModal, type PlaceItem } from "../components/KakaoMapModal";
 import TravelReplanningModal from "../components/TravelReplanningModal";
 import {
   getTripWeatherApi,
-  type TripDayWeather,
   getUltraShortForecastApi,
+  type TripDayWeather,
   type UltraShortForecastResult,
 } from "../api/weather";
-import PageHero from "../components/PageHero";
+import "./AiRecommendPage.css";
 
+interface RecommendedPlace {
+  name: string;
+  description: string;
+  estimatedCost: number;
+}
+interface ParsedRecommendation {
+  title: string;
+  summary: string;
+  estimatedCost: number;
+  days: { day: number; places: RecommendedPlace[] }[];
+}
+interface RecommendationResult {
+  response: AiRecommendationResponse;
+  parsed: ParsedRecommendation;
+}
+type PendingAction = "load" | "regenerate" | "save" | null;
+
+/** 메인과 같은 헤더·사이드바를 사용하고 계정 전환 시 여행 상태를 초기화한다. */
 export default function AiRecommendPage() {
-  const navigate = useNavigate();
+  const { isLoggedIn, userId } = useAuth();
+  return (
+    <AppLayout pageClassName="ar-theme" appearance="dark" showFooter={false}>
+      <RecommendationWorkspace
+        key={userId ?? "guest"}
+        isLoggedIn={isLoggedIn}
+      />
+    </AppLayout>
+  );
+}
 
+function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<TravelPlan | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [recommendation, setRecommendation] =
-    useState<AiRecommendationResponse | null>(null);
-  const [parsedRecommendation, setParsedRecommendation] =
-    useState<ParsedRecommendation | null>(null);
+  const [loading, setLoading] = useState(isLoggedIn);
+  const [planError, setPlanError] = useState("");
+  const [reloadCount, setReloadCount] = useState(0);
+  const [result, setResult] = useState<RecommendationResult | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [recommendError, setRecommendError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(true);
   const [tripWeather, setTripWeather] = useState<TripDayWeather[] | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState("");
   const [ultraShort, setUltraShort] = useState<UltraShortForecastResult | null>(
     null,
   );
-
-  const [recommendLoading, setRecommendLoading] = useState(false);
-  const [recommendError, setRecommendError] = useState("");
-
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isSosOpen, setIsSosOpen] = useState(false);
-  const [sosNotice, setSosNotice] = useState(false);
-  const [isWeatherOpen, setIsWeatherOpen] = useState(false);
+  const selectionRef = useRef(0);
+  const selectedIdRef = useRef<number | null>(null);
+  const pendingRef = useRef<PendingAction>(null);
+  const geoRequestRef = useRef(0);
+  const weatherRequestRef = useRef(0);
+  const geoBusyRef = useRef(false);
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    const loadPlans = async () => {
-      try {
-        const data = await getTravelPlansApi();
-        setPlans(data);
-      } catch (error) {
-        console.error("여행 계획 조회 실패:", error);
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    if (!isLoggedIn) return;
+    setLoading(true);
+    setPlanError("");
+    void getTravelPlansApi()
+      .then((data) => {
+        if (!cancelled) setPlans(data);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setPlanError("여행 목록을 불러오지 못했어요. 다시 시도해 주세요.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
+  }, [isLoggedIn, reloadCount]);
 
-    loadPlans();
-  }, []);
+  useEffect(
+    () => () => {
+      selectionRef.current += 1;
+      geoRequestRef.current += 1;
+    },
+    [],
+  );
 
-  const companionLabel = (type: string | null) => {
-    switch (type) {
-      case "ALONE":
-        return "혼자";
-      case "FRIEND":
-        return "친구";
-      case "FAMILY":
-        return "가족";
-      case "COUPLE":
-        return "연인";
-      default:
-        return type || "미선택";
+  // 지도와 SOS는 공통 헤더보다 위에 열고, 닫으면 호출한 버튼으로 포커스를 돌려준다.
+  useEffect(() => {
+    if (!isMapOpen && !isSosOpen) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        previousFocus.focus({ preventScroll: true });
+    };
+  }, [isMapOpen, isSosOpen]);
+
+  const loadWeather = async (planId: number, selection: number) => {
+    const request = ++weatherRequestRef.current;
+    setWeatherLoading(true);
+    setWeatherError("");
+    try {
+      const weather = await getTripWeatherApi(planId);
+      if (
+        selection === selectionRef.current &&
+        request === weatherRequestRef.current
+      )
+        setTripWeather(weather);
+    } catch {
+      if (
+        selection === selectionRef.current &&
+        request === weatherRequestRef.current
+      )
+        setWeatherError(
+          "여행지 날씨를 불러오지 못했어요. 추천 일정은 계속 확인할 수 있어요.",
+        );
+    } finally {
+      if (
+        selection === selectionRef.current &&
+        request === weatherRequestRef.current
+      )
+        setWeatherLoading(false);
     }
   };
 
-  const handleSelectPlan = async (plan: TravelPlan) => {
-    setIsSosOpen(false);
-    setSosNotice(false);
+  const handleSelectPlan = async (plan: TravelPlan, retry = false) => {
+    if (pendingRef.current === "save" || pendingRef.current === "regenerate")
+      return;
+    if (
+      selectedIdRef.current === plan.planId &&
+      (pendingRef.current === "load" || (!retry && result))
+    )
+      return;
+    const selection = ++selectionRef.current;
+    selectedIdRef.current = plan.planId;
+    pendingRef.current = "load";
+    geoRequestRef.current += 1;
+    geoBusyRef.current = false;
     setSelectedPlan(plan);
-    setRecommendation(null);
-    setParsedRecommendation(null);
+    setResult(null);
     setRecommendError("");
-    setRecommendLoading(true);
+    setNotice("");
+    setPendingAction("load");
     setTripWeather(null);
     setUltraShort(null);
-    setIsWeatherOpen(false);
-
+    setGeoError("");
+    setGeoLoading(false);
+    setConfirmRegenerate(false);
+    setPickerOpen(false);
+    setIsMapOpen(false);
+    setIsSosOpen(false);
+    void loadWeather(plan.planId, selection);
     try {
-      const data = await getAiRecommendationApi(plan.planId);
-
-      setRecommendation(data);
-
-      try {
-        const parsed = JSON.parse(data.recommendJson);
-        setParsedRecommendation(parsed);
-      } catch (parseError) {
-        console.error("AI 추천 JSON 파싱 실패:", parseError);
-        setRecommendError("AI 추천 결과 형식을 읽는 중 문제가 발생했습니다.");
-      }
+      const response = await getAiRecommendationApi(plan.planId);
+      if (selection !== selectionRef.current) return;
+      setResult({
+        response,
+        parsed: parseRecommendation(response.recommendJson),
+      });
     } catch (error) {
-      console.error("AI 추천 조회 실패:", error);
-      setRecommendError("AI 여행 추천을 생성하는 중 문제가 발생했습니다.");
+      if (selection === selectionRef.current)
+        setRecommendError(
+          error instanceof SyntaxError
+            ? "추천 일정의 형식을 읽지 못했어요. 다시 불러오거나 새 추천을 요청해 주세요."
+            : "추천 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+        );
     } finally {
-      setRecommendLoading(false);
+      if (selection === selectionRef.current) {
+        pendingRef.current = null;
+        setPendingAction(null);
+      }
     }
-
-    // 날씨는 추천과 별개로 불러온다. 실패해도 일정 화면은 그대로 보여준다.
-    try {
-      const weather = await getTripWeatherApi(plan.planId);
-      setTripWeather(weather);
-    } catch (error) {
-      console.error("날씨 조회 실패:", error);
-      setTripWeather(null);
-    }
-    loadUltraShort();
   };
 
   const handleRegenerate = async () => {
-    if (!selectedPlan) return;
-
-    setRecommendLoading(true);
+    if (!selectedPlan || pendingRef.current) return;
+    const selection = selectionRef.current;
+    pendingRef.current = "regenerate";
+    setPendingAction("regenerate");
+    setConfirmRegenerate(false);
     setRecommendError("");
-
+    setNotice("");
+    setResult(null);
     try {
-      const data = await regenerateAiRecommendationApi(selectedPlan.planId);
-
-      setRecommendation(data);
-
-      try {
-        const parsed = JSON.parse(data.recommendJson);
-        setParsedRecommendation(parsed);
-      } catch (parseError) {
-        console.error("재추천 JSON 파싱 실패:", parseError);
-        setRecommendError("새 추천 결과 형식을 읽는 중 문제가 발생했습니다.");
-      }
+      const response = await regenerateAiRecommendationApi(selectedPlan.planId);
+      if (selection !== selectionRef.current) return;
+      setResult({
+        response,
+        parsed: parseRecommendation(response.recommendJson),
+      });
+      setNotice("새 추천 일정이 준비됐어요.");
+      void loadWeather(selectedPlan.planId, selection);
     } catch (error) {
-      console.error("추천 다시 받기 실패:", error);
-      setRecommendError("추천을 다시 생성하는 중 문제가 발생했습니다.");
+      if (selection === selectionRef.current)
+        setRecommendError(
+          error instanceof SyntaxError
+            ? "새 추천 일정의 형식을 읽지 못했어요. 다시 불러오거나 새 추천을 요청해 주세요."
+            : "새 추천 결과를 확인하지 못했어요. 다시 불러오기를 눌러 저장된 결과를 확인해 주세요.",
+        );
     } finally {
-      setRecommendLoading(false);
+      if (selection === selectionRef.current) {
+        pendingRef.current = null;
+        setPendingAction(null);
+      }
     }
   };
 
+  // 위치 권한은 사용자가 현재 위치 날씨를 요청한 경우에만 묻는다.
   const loadUltraShort = () => {
-    if (!navigator.geolocation) return; // GPS를 지원하지 않는 브라우저면 중단
-
+    if (geoBusyRef.current) return;
+    if (!navigator.geolocation) {
+      setGeoError("이 환경에서는 현재 위치를 확인할 수 없어요.");
+      return;
+    }
+    const request = ++geoRequestRef.current;
+    const selection = selectionRef.current;
+    geoBusyRef.current = true;
+    setGeoLoading(true);
+    setGeoError("");
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (
+          request !== geoRequestRef.current ||
+          selection !== selectionRef.current
+        )
+          return;
         try {
-          const result = await getUltraShortForecastApi(
-            position.coords.latitude, // 위도
-            position.coords.longitude, // 경도
+          const weather = await getUltraShortForecastApi(
+            position.coords.latitude,
+            position.coords.longitude,
           );
-          setUltraShort(result);
-        } catch (error) {
-          console.error("초단기예보 조회 실패:", error);
-          setUltraShort(null); // 실패해도 일정 화면은 그대로 보여준다
+          if (
+            request === geoRequestRef.current &&
+            selection === selectionRef.current
+          )
+            setUltraShort(weather);
+        } catch {
+          if (
+            request === geoRequestRef.current &&
+            selection === selectionRef.current
+          )
+            setGeoError(
+              "현재 위치의 날씨를 불러오지 못했어요. 다시 시도해 주세요.",
+            );
+        } finally {
+          if (
+            request === geoRequestRef.current &&
+            selection === selectionRef.current
+          ) {
+            geoBusyRef.current = false;
+            setGeoLoading(false);
+          }
         }
       },
       (error) => {
-        console.warn("GPS 확인 실패:", error);
+        if (
+          request !== geoRequestRef.current ||
+          selection !== selectionRef.current
+        )
+          return;
+        geoBusyRef.current = false;
+        setGeoLoading(false);
+        setGeoError(
+          error.code === error.PERMISSION_DENIED
+            ? "위치 접근이 허용되지 않았어요. 브라우저의 위치 권한을 확인해 주세요."
+            : "현재 위치를 확인하지 못했어요. 다시 시도해 주세요.",
+        );
       },
+      { timeout: 10000, maximumAge: 300000 },
     );
   };
 
-  interface ParsedRecommendation {
-    title: string;
-    summary: string;
-    estimatedCost: number;
-    days: {
-      day: number;
-      places: {
-        name: string;
-        description: string;
-        estimatedCost: number;
-      }[];
-    }[];
-  }
-
-  // 모달에서 수정 완료 시 실행할 경로 저장 핸들러
   const handleSavePlaces = async (updatedPlaces: PlaceItem[]) => {
-    if (!parsedRecommendation || !selectedPlan) return;
-
-    // 1. 모달에서 넘어온 장소 데이터를 Day별로 재그룹화
-    const dayMap: {
-      [key: number]: {
-        name: string;
-        description: string;
-        estimatedCost: number;
-      }[];
-    } = {};
-
-    updatedPlaces.forEach((p) => {
-      const day = p.day || 1;
-      if (!dayMap[day]) dayMap[day] = [];
-
-      const existingPlace = parsedRecommendation.days
-        .flatMap((d) => d.places)
-        .find((orig) => orig.name === p.name);
-
-      dayMap[day].push({
-        name: p.name,
+    if (!result || !selectedPlan || pendingRef.current) return;
+    const selection = selectionRef.current;
+    pendingRef.current = "save";
+    setPendingAction("save");
+    setRecommendError("");
+    setNotice("");
+    setIsMapOpen(false);
+    const dayMap: Record<number, RecommendedPlace[]> = {};
+    updatedPlaces.forEach((place) => {
+      const day = place.day || 1;
+      const existing = result.parsed.days
+        .flatMap((item) => item.places)
+        .find((item) => item.name === place.name);
+      (dayMap[day] ??= []).push({
+        name: place.name,
         description:
-          existingPlace?.description || p.address || "사용자 추가 장소",
-        estimatedCost: existingPlace?.estimatedCost || 0,
+          existing?.description || place.address || "사용자 추가 장소",
+        estimatedCost: existing?.estimatedCost || 0,
       });
     });
-
-    const newDays = Object.keys(dayMap).map((dayStr) => ({
-      day: Number(dayStr),
-      places: dayMap[Number(dayStr)],
-    }));
-
-    const newTitle = parsedRecommendation.title.startsWith("(수정)")
-      ? parsedRecommendation.title
-      : `(수정) ${parsedRecommendation.title}`;
-
     const updatedParsed: ParsedRecommendation = {
-      ...parsedRecommendation,
-      title: newTitle,
-      days: newDays,
+      ...result.parsed,
+      title: result.parsed.title.startsWith("(수정)")
+        ? result.parsed.title
+        : `(수정) ${result.parsed.title}`,
+      days: Object.keys(dayMap).map((day) => ({
+        day: Number(day),
+        places: dayMap[Number(day)],
+      })),
     };
-
+    let saved = false;
     try {
-      setRecommendLoading(true); // 로딩 스피너 활성화
-      setIsMapOpen(false); // 지도는 먼저 닫기
-
-      // 2. 백엔드 API 호출하여 DB에 실제 저장
-      const responseData = await saveCustomRecommendationApi(
+      const response = await saveCustomRecommendationApi(
         selectedPlan.planId,
         JSON.stringify(updatedParsed),
       );
-
-      // 3. 여행 계획 목록 전체 재조회 (새로고침 효과)
+      saved = true;
+      if (selection !== selectionRef.current) return;
+      const parsed = parseRecommendation(response.recommendJson);
       const updatedPlans = await getTravelPlansApi();
+      if (selection !== selectionRef.current) return;
       setPlans(updatedPlans);
-
-      // 4. 방금 생성된 새로운 '(수정)' 플랜을 자동으로 선택된 상태로 만들기
-      const newlyCreatedPlan = updatedPlans.find(
-        (p) => p.planId === responseData.planId,
+      const newPlan = updatedPlans.find(
+        (plan) => plan.planId === response.planId,
       );
-      if (newlyCreatedPlan) {
-        setSelectedPlan(newlyCreatedPlan);
-        setRecommendation(responseData);
-        setParsedRecommendation(JSON.parse(responseData.recommendJson));
+      if (!newPlan) throw new Error("저장된 여행을 목록에서 찾지 못했습니다.");
+      selectedIdRef.current = newPlan.planId;
+      setSelectedPlan(newPlan);
+      setResult({ response, parsed });
+      setNotice("수정한 경로를 새 여행으로 저장했어요.");
+      setTripWeather(null);
+      void loadWeather(newPlan.planId, selection);
+    } catch {
+      if (selection !== selectionRef.current) return;
+      if (saved) {
+        selectedIdRef.current = null;
+        setSelectedPlan(null);
+        setResult(null);
+        setPickerOpen(true);
+        setPlanError(
+          "경로는 저장했지만 여행 목록을 갱신하지 못했어요. 목록을 다시 불러와 주세요.",
+        );
+        setNotice("수정 경로 저장은 완료됐어요. 다시 저장할 필요는 없어요.");
+      } else {
+        setRecommendError(
+          "경로 저장을 확인하지 못했어요. 여행 목록에서 저장 여부를 확인한 뒤 다시 시도해 주세요.",
+        );
       }
-
-      alert("성공적으로 여행 경로가 추가(수정) 되었습니다!");
-    } catch (error) {
-      console.error("경로 DB 저장 실패:", error);
-      alert("경로 저장 중 오류가 발생했습니다.");
     } finally {
-      setRecommendLoading(false);
+      if (selection === selectionRef.current) {
+        pendingRef.current = null;
+        setPendingAction(null);
+      }
     }
   };
-
-  const mapPlaces =
-    parsedRecommendation?.days.flatMap((d) =>
-      d.places.map((p) => ({
-        name: p.name,
-        address: p.name,
-        day: d.day,
-      })),
-    ) || [];
 
   const handleRegenerateDay = async (
     dayNum: number,
     currentPlaces: PlaceItem[],
   ): Promise<PlaceItem[]> => {
     if (!selectedPlan) return [];
-
-    const placeNames = currentPlaces.map((p) => p.name);
-    const result = await regenerateDayRecommendationApi(
+    const response = await regenerateDayRecommendationApi(
       selectedPlan.planId,
       dayNum,
-      placeNames,
+      currentPlaces.map((place) => place.name),
     );
-
-    // 백엔드 결과를 PlaceItem 배열로 전환
-    return result.places.map((p) => ({
-      name: p.name,
-      address: p.description,
+    return response.places.map((place) => ({
+      name: place.name,
+      address: place.description,
       day: dayNum,
     }));
   };
+  const mapPlaces = useMemo(
+    () =>
+      result?.parsed.days.flatMap((day) =>
+        day.places.map((place) => ({
+          name: place.name,
+          address: place.name,
+          day: day.day,
+        })),
+      ) ?? [],
+    [result],
+  );
+  const mutating = pendingAction === "regenerate" || pendingAction === "save";
+  const canUseItinerary = Boolean(result && !pendingAction);
+  const openLogin = () => navigate("/login", { state: { from: location } });
 
   return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-fixed"
-      style={{
-        backgroundImage: `url(${aiTravelBg})`,
-      }}
-    >
-      <div className="min-h-screen bg-[#f6f6fb]/85 p-4 backdrop-blur-sm md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <PageHero
-            className="mb-8"
-            tone="cyan"
-            eyebrow="AI Travel Planner"
-            icon="✨"
-            title={
-              <>
-                AI가 짜주는 <span className="tp-gradient-text">여행 코스</span>
-              </>
-            }
-            description="등록된 여행을 선택하면 AI가 조건에 맞는 여행 일정을 추천해드립니다."
-            aside={
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/20"
-              >
-                🏠 메인으로 돌아가기
-              </button>
-            }
-          />
+    <>
+      <div className="ar-page">
+        <nav className="ar-breadcrumb" aria-label="현재 위치">
+          <Link to="/">AI 매니저</Link>
+          <ChevronRight size={13} aria-hidden="true" />
+          <span aria-current="page">AI 여행 추천</span>
+        </nav>
+        <section className="ar-hero" aria-labelledby="ar-heading">
+          <div className="ar-hero-copy">
+            <p className="ar-eyebrow">
+              <Sparkles size={14} aria-hidden="true" />
+              AI TRAVEL PLANNER
+            </p>
+            <h1 id="ar-heading">
+              여행의 다음 장면을,
+              <br />
+              <span>AI와 함께.</span>
+            </h1>
+            <p className="ar-hero-description">
+              여행을 고르면 예산과 일정에 맞는 코스를 확인할 수 있어요.
+              <br className="ar-desktop-break" /> 마음에 드는 장소를 지도에서
+              살펴보고, 나만의 경로로 다듬어 보세요.
+            </p>
+          </div>
+          <div className="ar-hero-aside">
+            <div className="ar-orbit" aria-hidden="true">
+              <span />
+              <span />
+              <Compass size={60} strokeWidth={1} />
+            </div>
+            <button
+              type="button"
+              className="ar-button ar-button--secondary"
+              onClick={() => navigate("/travel")}
+            >
+              <Plus size={15} aria-hidden="true" />
+              여행 계획 관리
+              <ArrowUpRight size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+        <ol className="ar-steps" aria-label="여행 추천 이용 순서">
+          <li data-active={!selectedPlan}>
+            <span>01</span>여행 선택
+          </li>
+          <li data-active={Boolean(selectedPlan)}>
+            <span>02</span>추천 일정 확인
+          </li>
+          <li>
+            <span>03</span>지도에서 경로 조정
+          </li>
+        </ol>
+        {notice && (
+          <p className="ar-notice" role="status">
+            <Check size={16} aria-hidden="true" />
+            {notice}
+          </p>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-            <div className="rounded-3xl border border-white bg-white/85 p-5 shadow-[0_20px_50px_-30px_rgba(60,40,180,0.45)] backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-slate-800">등록된 여행</h2>
-
-                <span className="px-2.5 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                  {plans.length}개
-                </span>
+        {!isLoggedIn ? (
+          <section className="ar-empty ar-sign-in">
+            <Compass size={36} aria-hidden="true" />
+            <h2>나의 여행으로 시작해 볼까요?</h2>
+            <p>로그인하면 등록한 여행의 추천 일정을 확인할 수 있어요.</p>
+            <button
+              className="ar-button ar-button--primary"
+              type="button"
+              onClick={openLogin}
+            >
+              로그인하고 시작하기
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+          </section>
+        ) : (
+          <div className="ar-workspace">
+            <aside
+              className="ar-plan-picker"
+              aria-labelledby="ar-plans-heading"
+            >
+              <div className="ar-panel-heading">
+                <h2 id="ar-plans-heading">
+                  나의 여행{" "}
+                  <span>{loading || planError ? "—" : plans.length}</span>
+                </h2>
+                <button
+                  className="ar-picker-toggle"
+                  type="button"
+                  aria-expanded={pickerOpen}
+                  aria-controls="ar-plan-list"
+                  onClick={() => setPickerOpen((value) => !value)}
+                >
+                  {pickerOpen ? "목록 접기" : "여행 바꾸기"}
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
               </div>
-
-              {loading ? (
-                <div className="py-10 text-center text-sm text-slate-400">
-                  여행 목록을 불러오는 중...
-                </div>
-              ) : plans.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-400">
-                  등록된 여행이 없습니다.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {plans.map((plan) => (
+              {selectedPlan && (
+                <p className="ar-picker-selection">
+                  선택한 여행 · <strong>{selectedPlan.planName}</strong>
+                </p>
+              )}
+              <div
+                id="ar-plan-list"
+                className={`ar-plan-list ${pickerOpen ? "" : "ar-plan-list--collapsed"}`}
+                aria-busy={loading}
+              >
+                {loading ? (
+                  <p className="ar-list-state" role="status">
+                    <Loader2
+                      size={18}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                    여행 목록을 불러오고 있어요…
+                  </p>
+                ) : planError ? (
+                  <div className="ar-list-state">
+                    <p role="alert">{planError}</p>
+                    <button
+                      type="button"
+                      className="ar-button ar-button--secondary"
+                      onClick={() => setReloadCount((value) => value + 1)}
+                    >
+                      <RefreshCw size={14} aria-hidden="true" />
+                      목록 다시 불러오기
+                    </button>
+                  </div>
+                ) : !plans.length ? (
+                  <div className="ar-list-state">
+                    <MapPin size={25} aria-hidden="true" />
+                    <strong>등록된 여행이 없어요</strong>
+                    <p>여행 계획을 먼저 만들어 주세요.</p>
+                    <button
+                      type="button"
+                      className="ar-button ar-button--primary"
+                      onClick={() => navigate("/travel")}
+                    >
+                      <Plus size={15} aria-hidden="true" />
+                      여행 만들기
+                    </button>
+                  </div>
+                ) : (
+                  plans.map((plan) => (
                     <button
                       key={plan.planId}
                       type="button"
-                      onClick={() => handleSelectPlan(plan)}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                        selectedPlan?.planId === plan.planId
-                          ? "border-sky-500 bg-sky-50 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40"
-                      }`}
+                      className="ar-plan"
+                      aria-pressed={selectedPlan?.planId === plan.planId}
+                      disabled={mutating}
+                      onClick={() => {
+                        void handleSelectPlan(plan);
+                        resultHeadingRef.current?.focus({
+                          preventScroll: true,
+                        });
+                      }}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold text-sky-600">
-                          ✈ TRAVEL
+                      <span className="ar-plan-top">
+                        <span>
+                          <MapPin size={12} aria-hidden="true" />
+                          TRAVEL
                         </span>
-
-                        {plan.blindYn === "Y" && (
-                          <span className="text-[10px] font-bold text-purple-600">
-                            🎁 MYSTERY
+                        {plan.blindYn === "Y" ? (
+                          <span>
+                            <Gift size={12} aria-hidden="true" />
+                            미스터리
                           </span>
-                        )}
-                      </div>
-
-                      <h3 className="font-bold text-slate-800">
-                        {plan.planName}
-                      </h3>
-
-                      <div className="mt-2 space-y-1 text-xs text-slate-500">
-                        <p>💰 {Number(plan.totalBudget).toLocaleString()}원</p>
-
-                        <p>👥 {companionLabel(plan.companionType)}</p>
-
-                        <p>
-                          📅{" "}
-                          {plan.startDate
-                            ? plan.startDate.slice(0, 10)
-                            : "미정"}
-                          {" ~ "}
-                          {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
-                        </p>
-                      </div>
+                        ) : selectedPlan?.planId === plan.planId ? (
+                          <Check size={15} aria-hidden="true" />
+                        ) : null}
+                      </span>
+                      <strong>{plan.planName}</strong>
+                      <span className="ar-plan-date">
+                        <CalendarDays size={13} aria-hidden="true" />
+                        {formatDate(plan.startDate)} ~{" "}
+                        {formatDate(plan.endDate)}
+                      </span>
+                      <span className="ar-plan-meta">
+                        <span>
+                          <Wallet size={13} aria-hidden="true" />
+                          {formatWon(plan.totalBudget)}
+                        </span>
+                        <span>
+                          <Users size={13} aria-hidden="true" />
+                          {companionLabel(plan.companionType)}
+                        </span>
+                      </span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+              <p className="ar-picker-help">
+                여행을 선택하면 저장된 추천을 불러와요.
+                <br />
+                추천이 없는 여행은 새로 생성합니다.
+              </p>
+            </aside>
 
-            <div className="rounded-3xl border border-white bg-white/85 p-6 shadow-[0_20px_50px_-30px_rgba(60,40,180,0.45)] backdrop-blur-xl">
+            <section
+              className="ar-results"
+              aria-labelledby="ar-result-heading"
+              aria-busy={Boolean(pendingAction)}
+            >
+              <div className="ar-result-heading">
+                <p className="ar-eyebrow">
+                  <Route size={13} aria-hidden="true" />
+                  YOUR ITINERARY
+                </p>
+                <h2 id="ar-result-heading" ref={resultHeadingRef} tabIndex={-1}>
+                  {selectedPlan?.planName ?? "어떤 여행을 떠나볼까요?"}
+                </h2>
+                {selectedPlan && (
+                  <p>
+                    <CalendarDays size={14} aria-hidden="true" />
+                    {formatDate(selectedPlan.startDate)} ~{" "}
+                    {formatDate(selectedPlan.endDate)}
+                    <span>·</span>
+                    {companionLabel(selectedPlan.companionType)}
+                  </p>
+                )}
+              </div>
               {!selectedPlan ? (
-                <div className="min-h-[420px] flex flex-col items-center justify-center text-center">
-                  <div className="text-5xl mb-4">🤖</div>
-
-                  <h2 className="text-xl font-bold text-slate-800">
-                    여행을 선택해주세요
-                  </h2>
-
-                  <p className="mt-2 text-sm text-slate-400">
-                    왼쪽 목록에서 AI 추천을 받고 싶은 여행을 선택하세요.
+                <div className="ar-empty">
+                  <span className="ar-empty-icon">
+                    <Compass size={44} strokeWidth={1.2} aria-hidden="true" />
+                  </span>
+                  <h3>여행을 선택해 주세요</h3>
+                  <p>
+                    나의 여행 목록에서 계획을 고르면
+                    <br />
+                    이곳에 추천 코스와 예상 비용이 표시돼요.
+                  </p>
+                  <div className="ar-empty-features">
+                    <span>
+                      <Wallet size={15} aria-hidden="true" />
+                      예산에 맞는 코스
+                    </span>
+                    <span>
+                      <Map size={15} aria-hidden="true" />
+                      지도에서 경로 조정
+                    </span>
+                    <span>
+                      <CloudSun size={15} aria-hidden="true" />
+                      여행지 날씨
+                    </span>
+                  </div>
+                </div>
+              ) : pendingAction ? (
+                <div className="ar-empty ar-loading" role="status">
+                  <span className="ar-empty-icon">
+                    <Loader2
+                      size={32}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <h3>
+                    {pendingAction === "save"
+                      ? "수정한 경로를 저장하고 있어요"
+                      : pendingAction === "regenerate"
+                        ? "새로운 코스를 만들고 있어요"
+                        : "여행에 맞는 코스를 확인하고 있어요"}
+                  </h3>
+                  <p>
+                    {pendingAction === "save"
+                      ? "새 여행으로 저장한 뒤 목록을 갱신합니다."
+                      : "새 추천은 생성에 시간이 걸릴 수 있어요."}
                   </p>
                 </div>
               ) : (
-                <div>
-                  <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                    선택된 여행
-                  </span>
-
-                  <h2 className="mt-3 text-2xl font-bold text-slate-800">
-                    {selectedPlan.planName}
-                  </h2>
-
-                  <p className="mt-2 text-sm text-slate-500">
-                    이 여행 정보를 기반으로 AI 추천을 생성할 예정입니다.
-                  </p>
-
-                  <div className="mt-6">
-                    {recommendLoading ? (
-                      <div className="min-h-[300px] flex flex-col items-center justify-center">
-                        <div className="w-10 h-10 border-4 border-sky-100 border-t-sky-500 rounded-full animate-spin" />
-
-                        <p className="mt-4 text-sm font-semibold text-slate-600">
-                          AI가 여행 일정을 만들고 있어요...
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-400">
-                          여행 조건을 분석하고 있습니다.
-                        </p>
+                <>
+                  {recommendError && (
+                    <div className="ar-error">
+                      <p role="alert">{recommendError}</p>
+                      <div className="ar-actions">
+                        <button
+                          className="ar-button ar-button--secondary"
+                          type="button"
+                          onClick={() =>
+                            void handleSelectPlan(selectedPlan, true)
+                          }
+                        >
+                          <RefreshCw size={14} aria-hidden="true" />
+                          추천 다시 불러오기
+                        </button>
+                        {!result && (
+                          <button
+                            className="ar-button ar-button--quiet"
+                            type="button"
+                            onClick={() => setConfirmRegenerate(true)}
+                          >
+                            새 추천 요청
+                          </button>
+                        )}
                       </div>
-                    ) : recommendError ? (
-                      <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-                        <p className="text-sm text-red-500">{recommendError}</p>
+                    </div>
+                  )}
+                  {confirmRegenerate && (
+                    <div
+                      className="ar-confirm"
+                      role="region"
+                      aria-label="추천 다시 생성 확인"
+                    >
+                      <strong>새로운 추천으로 바꿀까요?</strong>
+                      <p>
+                        새 추천이 생성되면 현재 저장된 추천 일정이 바뀝니다.
+                      </p>
+                      <div className="ar-actions">
+                        <button
+                          type="button"
+                          className="ar-button ar-button--primary"
+                          onClick={() => void handleRegenerate()}
+                        >
+                          새 추천 생성
+                        </button>
+                        <button
+                          type="button"
+                          className="ar-button ar-button--secondary"
+                          onClick={() => setConfirmRegenerate(false)}
+                        >
+                          취소
+                        </button>
                       </div>
-                    ) : recommendation ? (
-                      <div className="bg-slate-50 rounded-2xl p-5">
-                        <p className="text-xs font-bold text-sky-500 mb-3">
-                          ✨ AI RECOMMENDATION
+                    </div>
+                  )}
+                  {result && (
+                    <>
+                      <div className="ar-recommendation-intro">
+                        <span className="ar-ready">
+                          <Check size={13} aria-hidden="true" />
+                          추천 일정
+                        </span>
+                        <h3>{result.parsed.title}</h3>
+                        <p>{result.parsed.summary}</p>
+                      </div>
+                      <dl className="ar-trip-facts">
+                        <div>
+                          <dt>예상 총 비용</dt>
+                          <dd>{formatWon(result.parsed.estimatedCost)}</dd>
+                        </div>
+                        <div>
+                          <dt>등록한 예산</dt>
+                          <dd>{formatWon(selectedPlan.totalBudget)}</dd>
+                        </div>
+                        <div>
+                          <dt>추천 구성</dt>
+                          <dd>
+                            {result.parsed.days.length}
+                            <small>일</small> · {mapPlaces.length}
+                            <small>곳</small>
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="ar-itinerary-toolbar">
+                        <button
+                          className="ar-button ar-button--primary"
+                          type="button"
+                          disabled={!mapPlaces.length}
+                          onClick={() => setIsMapOpen(true)}
+                        >
+                          <Map size={16} aria-hidden="true" />
+                          지도로 일정 보기
+                        </button>
+                        <button
+                          className="ar-button ar-button--secondary"
+                          type="button"
+                          onClick={() => setConfirmRegenerate(true)}
+                        >
+                          <RefreshCw size={14} aria-hidden="true" />
+                          추천 다시 받기
+                        </button>
+                        <button
+                          className="ar-button ar-button--sos"
+                          type="button"
+                          disabled={!canUseItinerary}
+                          onClick={() => setIsSosOpen(true)}
+                        >
+                          <LifeBuoy size={16} aria-hidden="true" />
+                          여행 SOS
+                        </button>
+                      </div>
+                      <p className="ar-cost-note">
+                        예상 비용은 실제 지출과 다를 수 있어요. 방문 전
+                        운영시간과 가격을 확인해 주세요.
+                      </p>
+                      <div className="ar-weather-tools">
+                        <div>
+                          <CloudSun size={18} aria-hidden="true" />
+                          <span>
+                            <strong>현재 위치의 날씨</strong>
+                            <small>
+                              위치 확인을 허용하면 앞으로 6시간의 예보를 볼 수
+                              있어요.
+                            </small>
+                          </span>
+                        </div>
+                        <button
+                          className="ar-button ar-button--quiet"
+                          type="button"
+                          disabled={geoLoading}
+                          onClick={loadUltraShort}
+                        >
+                          {geoLoading ? (
+                            <Loader2
+                              size={14}
+                              className="animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <LocateFixed size={14} aria-hidden="true" />
+                          )}
+                          {geoLoading
+                            ? "위치 확인 중…"
+                            : ultraShort
+                              ? "날씨 새로고침"
+                              : "날씨 확인"}
+                        </button>
+                      </div>
+                      {geoError && (
+                        <p className="ar-weather-error" role="alert">
+                          {geoError}
                         </p>
-
-                        {parsedRecommendation && (
-                          <div className="space-y-6">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <span className="px-3 py-1 bg-sky-50 text-sky-600 text-xs font-bold rounded-full">
-                                  ✨ AI 추천 완료
+                      )}
+                      {ultraShort && (
+                        <CurrentWeather
+                          weather={ultraShort}
+                          onSos={() => setIsSosOpen(true)}
+                        />
+                      )}
+                      {weatherLoading && (
+                        <p className="ar-weather-status" role="status">
+                          여행지 날씨를 확인하고 있어요…
+                        </p>
+                      )}
+                      {weatherError && (
+                        <div className="ar-weather-error">
+                          <p role="alert">{weatherError}</p>
+                          <button
+                            className="ar-button ar-button--quiet"
+                            type="button"
+                            disabled={weatherLoading}
+                            onClick={() =>
+                              void loadWeather(
+                                selectedPlan.planId,
+                                selectionRef.current,
+                              )
+                            }
+                          >
+                            날씨 다시 불러오기
+                          </button>
+                        </div>
+                      )}
+                      <div className="ar-days">
+                        {result.parsed.days.length ? (
+                          result.parsed.days.map((day) => (
+                            <article className="ar-day" key={day.day}>
+                              <div className="ar-day-heading">
+                                <span>
+                                  DAY {String(day.day).padStart(2, "0")}
                                 </span>
-
-                                <h2 className="mt-3 text-2xl font-bold text-slate-800">
-                                  {parsedRecommendation.title}
-                                </h2>
-
-                                <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                                  {parsedRecommendation.summary}
-                                </p>
+                                <h3>{day.day}일차 일정</h3>
+                                <small>{day.places.length}곳</small>
                               </div>
-
-                              <div className="flex flex-col sm:flex-row items-end gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsMapOpen(true)}
-                                  className="
-                                                                        px-4 py-2
-                                                                        tp-gradient-bg hover:brightness-110
-                                                                        text-white text-xs font-bold
-                                                                        rounded-xl shadow-md shadow-sky-500/20
-                                                                        transition-all duration-300
-                                                                        hover:scale-105
-                                                                    "
-                                >
-                                  🗺️ 지도로 일정 보기
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={handleRegenerate}
-                                  disabled={recommendLoading}
-                                  className="
-                                                                        px-4 py-2
-                                                                        bg-gradient-to-r from-sky-500 to-indigo-500
-                                                                        hover:from-sky-600 hover:to-indigo-600
-                                                                        disabled:opacity-50
-                                                                        text-white text-xs font-bold
-                                                                        rounded-xl
-                                                                        shadow-lg shadow-sky-500/20
-                                                                        transition-all duration-300
-                                                                        hover:scale-105
-                                                                    "
-                                >
-                                  🔄 추천 다시 받기
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="bg-emerald-50 rounded-2xl p-4">
-                              <p className="text-xs text-emerald-600 font-semibold">
-                                예상 총 비용
-                              </p>
-
-                              <p className="mt-1 text-xl font-bold text-emerald-800">
-                                {Number(
-                                  parsedRecommendation.estimatedCost,
-                                ).toLocaleString()}
-                                원
-                              </p>
-                            </div>
-
-                            {ultraShort && (
-                              <div className="mb-4 rounded-2xl bg-sky-50 px-5 py-4 text-slate-700">
-                                <p className="text-base font-bold">
-                                  {ultraShort.rain.rainExpected
-                                    ? "☔ " + ultraShort.rain.message
-                                    : "☀ 6시간 내에 비 소식은 없어요 · 현재 온도는 " +
-                                      (ultraShort.current.temperature ?? "-") +
-                                      "°"}
-                                </p>
-                                {ultraShort.rain.rainExpected && (
-                                  <p className="mt-2 text-sm font-semibold text-sky-700">
-                                    🆘 일정에 문제가 생긴 경우 여행 SOS를
-                                    활용해보세요 🆘
-                                  </p>
+                              <DayWeather
+                                weather={tripWeather?.find(
+                                  (weather) => weather.day === day.day,
                                 )}
-                                <p className="mt-0.5 text-xs text-slate-400">
-                                  현재 위치 기준 · 앞으로 6시간 동안의
-                                  초단기예보
-                                </p>
-
-                                <button
-                                  onClick={() =>
-                                    setIsWeatherOpen(!isWeatherOpen)
-                                  }
-                                  className="mt-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
-                                >
-                                  {isWeatherOpen ? "접기 ▴" : "날씨 더보기 ▾"}
-                                </button>
-                                {isWeatherOpen && (
-                                  <>
-                                    <div className="mt-4 grid grid-cols-6 gap-2 text-center">
-                                      {ultraShort.hourly.map((h) => (
-                                        <div
-                                          key={h.time}
-                                          className="rounded-xl bg-white px-1 py-2 shadow-sm"
-                                        >
-                                          <p className="text-xs text-slate-400">
-                                            {h.time}
-                                          </p>
-                                          <p className="mt-1 text-lg font-bold text-slate-800">
-                                            {h.temperature}°
-                                          </p>
-                                          <p className="mt-0.5 text-xs text-sky-600">
-                                            💧습도 {h.humidity}%
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    {ultraShort.rain.rainExpected && (
-                                      <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm">
-                                        <p>
-                                          종류:{" "}
-                                          {ultraShort.rain.precipitationType ??
-                                            "-"}
-                                        </p>
-                                        <p>
-                                          예상 시각:{" "}
-                                          {ultraShort.rain.forecastTime ?? "-"}
-                                        </p>
-                                        <p>
-                                          강수확률:{" "}
-                                          {ultraShort.rain.rainProbability !==
-                                          null
-                                            ? ultraShort.rain.rainProbability +
-                                              "%"
-                                            : "-"}
-                                        </p>
-                                        <p>
-                                          강수량:{" "}
-                                          {ultraShort.rain.rainAmount ?? "-"}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="space-y-4">
-                              {parsedRecommendation.days.map((day) => (
-                                <div
-                                  key={day.day}
-                                  className="tp-card rounded-3xl p-5"
-                                >
-                                  <div className="flex items-center gap-2 mb-4">
-                                    <span className="w-8 h-8 flex items-center justify-center rounded-xl bg-sky-500 text-white text-sm font-bold">
-                                      {day.day}
+                              />
+                              <ol className="ar-places">
+                                {day.places.map((place, index) => (
+                                  <li key={`${day.day}-${index}`}>
+                                    <span className="ar-place-number">
+                                      {index + 1}
                                     </span>
-
-                                    <h3 className="font-bold text-slate-800">
-                                      {day.day}일차 일정
-                                    </h3>
-                                  </div>
-
-                                  {/*날씨 표시*/}
-                                  {(() => {
-                                    const w = tripWeather?.find(
-                                      (t) => t.day === day.day,
-                                    );
-                                    if (!w) return null;
-
-                                    const getTodayString = () => {
-                                      const now = new Date();
-                                      const pad = (n: number) =>
-                                        n.toString().padStart(2, "0");
-                                      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                                    };
-                                    const isToday = w.date === getTodayString();
-
-                                    // 날씨를 제공할 수 없는 날(범위 밖 등)은 안내 문구만 보여준다
-                                    if (!w.summary.available) {
-                                      return (
-                                        <p className="mb-3 text-xs text-slate-400">
-                                          {w.summary.notices[0]}
-                                        </p>
-                                      );
-                                    }
-                                    return (
-                                      <div className="mb-3 rounded-xl bg-sky-50 px-4 py-3 text-sm text-slate-700">
-                                        <p className="font-bold">
-                                          최저기온 {w.summary.tempMin}° ,
-                                          최고기온 {w.summary.tempMax}°
-                                        </p>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                          체감온도 {w.summary.feelsLike}° · 습도{" "}
-                                          {w.summary.humidity}% · 풍속{" "}
-                                          {w.summary.windSpeed}m/s
-                                        </p>
-                                        {w.summary.rainProbability !== null &&
-                                          w.summary.rainProbability >= 0 && (
-                                            <p className="mt-1 text-xs text-sky-700">
-                                              ☔ 강수확률 약{" "}
-                                              {w.summary.rainProbability}%
-                                              {w.summary.rainMm !== null &&
-                                                ` · 예상 ${w.summary.rainMm}mm`}
-                                            </p>
-                                          )}
-                                        {w.summary.notices.length > 0 && (
-                                          <ul className="mt-2 space-y-1">
-                                            {w.summary.notices.map((msg, i) => (
-                                              <li
-                                                key={i}
-                                                className="text-xs font-semibold text-amber-600"
-                                              >
-                                                ⚠ {msg}
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        )}
-                                        {isToday && (
-                                          <p className="mt-2 text-xs font-semibold text-sky-700">
-                                            💡 여행 당일은 오늘의 초단기예보가
-                                            더 정확합니다. 초단기예보를
-                                            활용해보세요!
-                                          </p>
-                                        )}
+                                    <div className="ar-place-copy">
+                                      <div>
+                                        <h4>{place.name}</h4>
+                                        <span>
+                                          {formatWon(place.estimatedCost)}
+                                        </span>
                                       </div>
-                                    );
-                                  })()}
-
-                                  <div className="space-y-3">
-                                    {day.places.map((place, index) => (
-                                      <div
-                                        key={`${day.day}-${index}`}
-                                        className="bg-slate-50 rounded-xl p-4"
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div>
-                                            <p className="font-bold text-slate-800">
-                                              📍 {place.name}
-                                            </p>
-
-                                            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                                              {place.description}
-                                            </p>
-                                          </div>
-
-                                          <span className="shrink-0 text-xs font-bold text-sky-600">
-                                            {Number(
-                                              place.estimatedCost || 0,
-                                            ).toLocaleString()}
-                                            원
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                                      <p>{place.description}</p>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ol>
+                              {!day.places.length && (
+                                <p className="ar-weather-status">
+                                  이 날짜에는 등록된 추천 장소가 없어요.
+                                </p>
+                              )}
+                            </article>
+                          ))
+                        ) : (
+                          <div className="ar-empty">
+                            <h3>추천에 포함된 장소가 없어요</h3>
+                            <p>
+                              새 추천을 요청하거나 다른 여행을 선택해 주세요.
+                            </p>
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="bg-slate-50 rounded-2xl p-5">
-                        <p className="text-sm text-slate-400">
-                          AI 추천 결과가 여기에 표시됩니다.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                    </>
+                  )}
+                </>
               )}
-            </div>
+            </section>
           </div>
-        </div>
+        )}
       </div>
+      {(isMapOpen || isSosOpen) &&
+        createPortal(
+          <div className="ar-modal-layer">
+            {isSosOpen && selectedPlan && result && (
+              <TravelReplanningModal
+                plan={selectedPlan}
+                onClose={() => setIsSosOpen(false)}
+              />
+            )}
+            {isMapOpen && (
+              <KakaoMapModal
+                isOpen
+                onClose={() => setIsMapOpen(false)}
+                places={mapPlaces}
+                onSavePlaces={handleSavePlaces}
+                onRegenerateDay={handleRegenerateDay}
+              />
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
-      {/* 선택한 여행의 추천 일정 유무에 따라 SOS 활성/안내 상태를 구분 */}
-      {selectedPlan && (
-        <div className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-7">
+function CurrentWeather({
+  weather,
+  onSos,
+}: {
+  weather: UltraShortForecastResult;
+  onSos: () => void;
+}) {
+  return (
+    <details className="ar-current-weather">
+      <summary>
+        <CloudSun size={17} aria-hidden="true" />
+        <span>
+          <strong>
+            {weather.rain.rainExpected
+              ? weather.rain.message || "현재 위치에 비 소식이 있어요"
+              : `현재 위치 ${weather.current.temperature ?? "—"}° · 6시간 내 비 예보 없음`}
+          </strong>
+          <small>현재 위치 기준 · 여행지 예보와 다를 수 있어요</small>
+        </span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </summary>
+      <div className="ar-hourly">
+        {weather.hourly.map((hour) => (
+          <div key={hour.time}>
+            <span>{hour.time}</span>
+            <strong>{hour.temperature ?? "—"}°</strong>
+            <small>습도 {hour.humidity ?? "—"}%</small>
+          </div>
+        ))}
+      </div>
+      {weather.rain.rainExpected && (
+        <div className="ar-rain-detail">
+          <p>
+            {weather.rain.precipitationType ?? "강수"} ·{" "}
+            {weather.rain.forecastTime ?? "시각 정보 없음"} · 강수확률{" "}
+            {weather.rain.rainProbability === null
+              ? "—"
+              : `${weather.rain.rainProbability}%`}{" "}
+            · 강수량 {weather.rain.rainAmount ?? "—"}
+          </p>
           <button
             type="button"
-            onClick={() => {
-              if (recommendation && parsedRecommendation && !recommendLoading) {
-                setSosNotice(false);
-                setIsSosOpen(true);
-              } else {
-                setSosNotice(true);
-              }
-            }}
-            aria-label="여행 SOS"
-            aria-disabled={
-              !(recommendation && parsedRecommendation && !recommendLoading)
-            }
-            className={`flex items-center gap-3 rounded-full border-2 border-white px-5 py-4 text-base font-extrabold shadow-2xl transition-all focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-red-500 sm:px-6 sm:py-5 ${
-              recommendation && parsedRecommendation && !recommendLoading
-                ? "bg-red-600 text-white shadow-red-900/30 hover:scale-105 hover:bg-red-700"
-                : "cursor-pointer bg-slate-300 text-slate-600 shadow-slate-900/10 hover:bg-slate-400"
-            }`}
+            className="ar-button ar-button--quiet"
+            onClick={onSos}
           >
-            <span className="text-3xl leading-none" aria-hidden="true">
-              🆘
-            </span>
-            <span>여행 SOS</span>
+            <LifeBuoy size={14} aria-hidden="true" />
+            여행 SOS로 대안 찾기
           </button>
-          {sosNotice &&
-            !(recommendation && parsedRecommendation && !recommendLoading) && (
-              <div
-                role="alert"
-                className="relative max-w-[280px] rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-9 text-sm font-semibold leading-relaxed text-slate-700 shadow-xl"
-              >
-                {recommendLoading
-                  ? "AI 추천 일정을 확인하는 중입니다. 잠시 후 다시 시도해 주세요."
-                  : recommendError
-                    ? "AI 추천 일정을 확인할 수 없습니다. 추천 화면의 오류를 확인해 주세요."
-                    : "여행 SOS는 AI 추천 일정이 있어야 이용할 수 있습니다."}
-                <button
-                  type="button"
-                  onClick={() => setSosNotice(false)}
-                  aria-label="안내 닫기"
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-700"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
         </div>
       )}
+    </details>
+  );
+}
 
-      {isSosOpen && selectedPlan && recommendation && parsedRecommendation && (
-        <TravelReplanningModal
-          plan={selectedPlan}
-          onClose={() => setIsSosOpen(false)}
-        />
+function DayWeather({ weather }: { weather: TripDayWeather | undefined }) {
+  if (!weather) return null;
+  const { summary } = weather;
+  if (!summary.available)
+    return (
+      <p className="ar-weather-status">
+        {summary.notices[0] || "이 날짜의 날씨 정보는 아직 제공되지 않아요."}
+      </p>
+    );
+  return (
+    <div className="ar-day-weather">
+      <p>
+        <CloudSun size={15} aria-hidden="true" />
+        <strong>
+          {formatDate(weather.date)} · 최저 {summary.tempMin ?? "—"}° / 최고{" "}
+          {summary.tempMax ?? "—"}°
+        </strong>
+      </p>
+      <p>
+        체감 {summary.feelsLike ?? "—"}° · 습도 {summary.humidity ?? "—"}% ·
+        풍속 {summary.windSpeed ?? "—"}m/s
+        {summary.rainProbability !== null &&
+          summary.rainProbability >= 0 &&
+          ` · 강수 ${summary.rainProbability}%`}
+        {summary.rainMm !== null && ` · ${summary.rainMm}mm`}
+      </p>
+      {summary.notices.length > 0 && (
+        <ul>
+          {summary.notices.map((notice, index) => (
+            <li key={index}>{notice}</li>
+          ))}
+        </ul>
       )}
-
-      {/* KakaoMapModal 호출 시 저장 핸들러(onSavePlaces) 전달 */}
-      <KakaoMapModal
-        isOpen={isMapOpen}
-        onClose={() => setIsMapOpen(false)}
-        places={mapPlaces}
-        onSavePlaces={handleSavePlaces}
-        onRegenerateDay={handleRegenerateDay}
-      />
     </div>
   );
+}
+
+function companionLabel(type: string | null): string {
+  return (
+    (
+      {
+        ALONE: "혼자",
+        FRIEND: "친구",
+        FAMILY: "가족",
+        COUPLE: "연인",
+      } as Record<string, string>
+    )[type ?? ""] ??
+    type ??
+    "동행자 미설정"
+  );
+}
+function formatDate(value: string | null): string {
+  return value ? value.slice(0, 10).replaceAll("-", ".") : "날짜 미정";
+}
+function formatWon(value: number | null): string {
+  return value !== null && Number.isFinite(value)
+    ? `${value.toLocaleString("ko-KR")}원`
+    : "금액 미정";
+}
+
+/** 실제 추천 JSON 규격을 검사해 잘못된 응답이 화면 전체를 중단하지 않게 한다. */
+function parseRecommendation(json: string): ParsedRecommendation {
+  const value: unknown = JSON.parse(json);
+  const record = (item: unknown): item is Record<string, unknown> =>
+    typeof item === "object" && item !== null && !Array.isArray(item);
+  const money = (item: unknown): item is number =>
+    typeof item === "number" && Number.isFinite(item) && item >= 0;
+  if (
+    !record(value) ||
+    typeof value.title !== "string" ||
+    typeof value.summary !== "string" ||
+    !money(value.estimatedCost) ||
+    !Array.isArray(value.days)
+  )
+    throw new SyntaxError("잘못된 추천 형식");
+  const dayNumbers = new Set<number>();
+  for (const day of value.days) {
+    if (
+      !record(day) ||
+      typeof day.day !== "number" ||
+      !Number.isInteger(day.day) ||
+      day.day < 1 ||
+      dayNumbers.has(day.day) ||
+      !Array.isArray(day.places)
+    )
+      throw new SyntaxError("잘못된 일차 형식");
+    dayNumbers.add(day.day);
+    for (const place of day.places) {
+      if (
+        !record(place) ||
+        typeof place.name !== "string" ||
+        typeof place.description !== "string" ||
+        !money(place.estimatedCost)
+      )
+        throw new SyntaxError("잘못된 장소 형식");
+    }
+  }
+  return value as unknown as ParsedRecommendation;
 }

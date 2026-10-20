@@ -1,0 +1,31 @@
+/* 헤더와 동일한 공통 내비게이션 팔레트. */
+.tp-sidebar {
+  background: #0b0b16f5;
+  color: #d4cfe5;
+  border-color: #2c293b;
+  color-scheme: dark;
+}
+.tp-sidebar button {
+  min-height: 44px;
+}
+.tp-sidebar button:focus-visible {
+  outline: 2px solid #c1b5ff;
+  outline-offset: -2px;
+}
+.tp-sidebar nav button[aria-current="page"] {
+  background: #282037;
+  color: #f3f1fc;
+  box-shadow: inset 3px 0 #c1b5ff;
+}
+.tp-sidebar nav button:not([aria-current]):hover {
+  background: #242031;
+  color: #fff;
+}
+@media (max-width: 1023px) {
+  .tp-sidebar[data-open="false"] {
+    visibility: hidden;
+  }
+  .tp-sidebar[data-open="true"] {
+    max-width: calc(100vw - 40px);
+  }
+}

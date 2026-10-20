@@ -1,0 +1,74 @@
+/* 공통 헤더 테마: 특정 페이지의 CSS 로딩 여부에 의존하지 않는다. */
+.tp-header[data-appearance="dark"] button:focus-visible {
+  outline: 2px solid #c1b5ff;
+  outline-offset: 4px;
+}
+.tp-header[data-appearance="dark"] {
+  background: #0b0b16eb;
+  border-color: #2c293b;
+  box-shadow: none;
+}
+.tp-header[data-appearance="dark"] .tp-header-brand {
+  color: #f3f1fc;
+}
+.tp-header[data-appearance="dark"] .tp-header-menu {
+  color: #c1b9d6;
+}
+.tp-header[data-appearance="dark"] .tp-header-menu:hover,
+.tp-header[data-appearance="dark"] .tp-header-profile:hover {
+  color: #fff;
+  background: #242031;
+}
+.tp-header[data-appearance="dark"] .tp-header-badge {
+  background: #221d35;
+  border-color: #44385d;
+  color: #cbbfff;
+}
+.tp-header[data-appearance="dark"] .tp-header-badge .animate-ping {
+  display: none;
+}
+.tp-header[data-appearance="dark"] .tp-header-assets {
+  background: #1d192b;
+  color: #e3ddef;
+  border: 1px solid #4a3a66;
+}
+.tp-header[data-appearance="dark"] .tp-header-assets::before {
+  display: none;
+}
+.tp-header[data-appearance="dark"] .tp-header-profile {
+  color: #d4cfe5;
+}
+.tp-header[data-appearance="dark"] .tp-header-logout {
+  background: #1b1828;
+  color: #d4cfe5;
+  border-color: #3b344d;
+  min-height: 44px;
+}
+.tp-header[data-appearance="dark"] .tp-header-logout:hover {
+  background: #2a243a;
+  border-color: #75618f;
+}
+.tp-header[data-appearance="dark"] .tp-header-home {
+  min-height: 44px;
+}
+@media (max-width: 900px) {
+  .tp-header[data-appearance="dark"] .tp-header-badge {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .tp-header[data-appearance="dark"] {
+    padding-inline: 10px;
+  }
+  .tp-header[data-appearance="dark"] .tp-header-home {
+    margin-left: 2px;
+    gap: 7px;
+  }
+  .tp-header[data-appearance="dark"] .tp-header-brand {
+    font-size: 16px;
+  }
+  .tp-header[data-appearance="dark"] .tp-header-logout {
+    padding-inline: 10px;
+  }
+}

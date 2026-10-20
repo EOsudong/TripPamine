@@ -451,7 +451,7 @@ function EmotionChatSession({
             }
           }}
           aria-describedby={`${messageId}-help`}
-          placeholder="오늘의 기분이나 고민을 이야기해 주세요…"
+          placeholder="메시지를 입력해주세요…"
           className={
             embedded
               ? "am-message-input"

@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { getUserAccessToken } from "../auth/session";
 import { USER_UPDATED_EVENT, getMyInfoApi } from "../api/auth";
 import BrandMark from "./BrandMark";
+import "./Header.css";
 
 interface HeaderProps {
     sidebarOpen: boolean;
@@ -36,7 +37,7 @@ interface CurrentUser {
 export default function Header({
                                    sidebarOpen,
                                    onToggleSidebar,
-                                   appearance = "light",
+                                   appearance = "dark",
                                }: HeaderProps) {
 
     const navigate = useNavigate();
@@ -211,7 +212,7 @@ export default function Header({
         <header
             data-appearance={appearance}
             className="
-        fixed inset-x-0 top-0 z-50
+        tp-header fixed inset-x-0 top-0 z-50
         flex h-16 items-center
         border-b border-white/60
         bg-white/70 px-4
@@ -227,8 +228,9 @@ export default function Header({
                 onClick={onToggleSidebar}
                 aria-label="사이드바 토글"
                 aria-expanded={sidebarOpen}
+                aria-controls="tp-sidebar"
                 className="
-          am-header-menu flex h-11 w-11 shrink-0
+          tp-header-menu flex h-11 w-11 shrink-0
           items-center justify-center
           rounded-xl text-slate-500
           transition
@@ -258,17 +260,17 @@ export default function Header({
             <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="am-header-home ml-2 flex items-center gap-2.5"
+                className="tp-header-home ml-2 flex items-center gap-2.5"
             >
                 <BrandMark />
 
-                <span className="am-header-brand font-display text-lg font-bold tracking-tight text-slate-950">
+                <span className="tp-header-brand font-display text-lg font-bold tracking-tight text-slate-950">
                     TripPamine
                 </span>
 
                 <span
                     className="
-            am-header-badge hidden items-center gap-1.5
+            tp-header-badge hidden items-center gap-1.5
             rounded-full border border-sky-200 bg-sky-50
             px-2.5 py-1
             text-[10px] font-black tracking-[0.14em] text-sky-700
@@ -279,7 +281,7 @@ export default function Header({
                         <span className="absolute inset-0 animate-ping rounded-full bg-cyan-400 opacity-70" />
                         <span className="relative h-1.5 w-1.5 rounded-full bg-cyan-400" />
                     </span>
-                    {appearance === "dark" ? "AI MANAGER" : "AI ONLINE"}
+                    AI WORKSPACE
                 </span>
             </button>
 
@@ -288,7 +290,7 @@ export default function Header({
                     type="button"
                     onClick={() => navigate("/assets")}
                     className="
-            am-header-assets hidden items-center gap-1.5
+            tp-header-assets hidden items-center gap-1.5
             rounded-xl tp-gradient-border
             px-3.5 py-2
             text-xs font-bold text-slate-700
@@ -310,7 +312,7 @@ export default function Header({
                             }
                             title="마이페이지"
                             className="
-                am-header-profile hidden items-center gap-2
+                tp-header-profile hidden items-center gap-2
                 rounded-xl py-1.5 pl-1.5 pr-3
                 text-sm font-semibold text-slate-600
                 transition
@@ -347,7 +349,7 @@ export default function Header({
                             type="button"
                             onClick={handleLogout}
                             className="
-                am-header-logout rounded-xl border border-slate-200
+                tp-header-logout rounded-xl border border-slate-200
                 bg-white/80 px-3.5 py-2
                 text-xs font-bold text-slate-600
                 transition

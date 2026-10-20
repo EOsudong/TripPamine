@@ -65,7 +65,7 @@ export default function AppLayout({
                                       pageClassName = "tp-aurora-light",
                                       mainClassName = "",
                                       showFooter = true,
-                                      appearance = "light",
+                                      appearance = "dark",
                                   }: AppLayoutProps) {
     const [
         sidebarOpen,

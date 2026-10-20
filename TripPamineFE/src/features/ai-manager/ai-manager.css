@@ -78,60 +78,6 @@
   background: #332c47;
 }
 
-.am-home header[data-appearance="dark"] {
-  background: #0b0b16eb;
-  border-color: #2c293b;
-  box-shadow: none;
-}
-.am-home .am-header-brand {
-  color: #f3f1fc;
-}
-.am-home .am-header-menu {
-  color: #c1b9d6;
-}
-.am-home .am-header-menu:hover,
-.am-home .am-header-profile:hover {
-  color: #fff;
-  background: #242031;
-}
-.am-home .am-header-badge {
-  background: #221d35;
-  border-color: #44385d;
-  color: #cbbfff;
-}
-.am-home .am-header-badge .animate-ping {
-  display: none;
-}
-.am-home .am-header-assets {
-  background: #1d192b;
-  color: #e3ddef;
-  border: 1px solid #4a3a66;
-}
-.am-home .am-header-assets::before {
-  display: none;
-}
-.am-home .am-header-profile {
-  color: #d4cfe5;
-}
-.am-home .am-header-logout {
-  background: #1b1828;
-  color: #d4cfe5;
-  border-color: #3b344d;
-  min-height: 44px;
-}
-.am-home .am-header-logout:hover {
-  background: #2a243a;
-  border-color: #75618f;
-}
-.am-home .am-header-home {
-  min-height: 44px;
-}
-@media (max-width: 900px) {
-  .am-home .am-header-badge {
-    display: none;
-  }
-}
-
 .am-dashboard {
   position: relative;
   isolation: isolate;
@@ -832,19 +778,6 @@
   }
 }
 @media (max-width: 520px) {
-  .am-home header[data-appearance="dark"] {
-    padding-inline: 10px;
-  }
-  .am-home .am-header-home {
-    margin-left: 2px;
-    gap: 7px;
-  }
-  .am-home .am-header-brand {
-    font-size: 16px;
-  }
-  .am-home .am-header-logout {
-    padding-inline: 10px;
-  }
   .am-hero {
     padding-inline: 16px;
   }

@@ -40,6 +40,7 @@ public class EmotionChatService {
     private final AiManagerVerifiedAnswerService verifiedAnswerService;
     private final AiManagerGameAnswerService gameAnswerService;
     private final AiManagerReadIntentRouter readIntentRouter;
+    private final AiManagerCompositeAnswerService compositeAnswerService;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -115,9 +116,19 @@ public class EmotionChatService {
                 previousUserMessages
             );
 
-        // 검증된 마스코트 도감 위치 안내
-        String verifiedAnswer =
-            AiManagerFeatureCatalog.getVerifiedMascotDexGuide(message);
+
+        // 복합 질문과 불명확한 후속 질문을 우선 처리한다.
+        String verifiedAnswer = compositeAnswerService.findAnswer(
+            userId,
+            message,
+            previousUserMessages
+        );
+
+        // 기존 마스코트 도감 위치 안내는 유지한다.
+        if (verifiedAnswer == null) {
+            verifiedAnswer =
+                AiManagerFeatureCatalog.getVerifiedMascotDexGuide(message);
+        }
 
         // 실제 DB 조회 기반 직접 응답
         if (verifiedAnswer == null) {

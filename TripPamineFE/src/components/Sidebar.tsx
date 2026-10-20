@@ -12,6 +12,9 @@ import {
 } from "../data/tourCategories";
 
 
+import "./Sidebar.css";
+
+
 interface SidebarProps {
     open: boolean;
     onClose: () => void;
@@ -326,7 +329,11 @@ export default function Sidebar({
          ================================================== */}
 
             <aside
+                id="tp-sidebar"
+                aria-label="주 메뉴"
+                data-open={open}
                 className={`
+          tp-sidebar
           fixed
           bottom-0
           left-0
@@ -446,7 +453,7 @@ export default function Sidebar({
                       mt-0.5
                       truncate
                       text-[10px]
-                      text-white/40
+                      text-[#aaa5bf]
                     "
                                     >
                                         Hyper-Personal AI
@@ -461,14 +468,14 @@ export default function Sidebar({
                                 aria-label="사이드바 닫기"
                                 className="
                   flex
-                  h-8
-                  w-8
+                  h-11
+                  w-11
                   shrink-0
                   items-center
                   justify-center
                   rounded-lg
 
-                  text-white/40
+                  text-[#aaa5bf]
 
                   transition
                   hover:bg-white/10
@@ -533,7 +540,7 @@ export default function Sidebar({
                         uppercase
                         tracking-[0.16em]
 
-                        text-white/40
+                        text-[#aaa5bf]
                       "
                                         >
                                             {group.group}
@@ -632,7 +639,7 @@ export default function Sidebar({
                                       text-white
                                     `
                                                                     : `
-                                      text-white/55
+                                      text-[#c1b9d6]
                                       hover:bg-white/5
                                       hover:text-white
                                     `
@@ -682,7 +689,7 @@ export default function Sidebar({
                                         shadow-[0_0_18px_rgba(124,108,255,0.65)]
                                       `
                                                                         : `
-                                        text-white/40
+                                        text-[#aaa5bf]
                                         group-hover:text-white
                                       `
                                                                 }
@@ -769,6 +776,7 @@ export default function Sidebar({
                             onClick={() =>
                                 handleClick("/mypage")
                             }
+                            aria-label={isLoggedIn ? "마이페이지" : "로그인"}
                             title={
                                 open
                                     ? undefined
@@ -814,7 +822,7 @@ export default function Sidebar({
                   from-violet-500
                   to-cyan-400
 
-                  text-white/55
+                  text-[#c1b9d6]
                 "
                             >
                                 <NavIcon
@@ -846,7 +854,7 @@ export default function Sidebar({
                                             className="
                         mt-0.5
                         text-[10px]
-                        text-white/40
+                        text-[#aaa5bf]
                       "
                                         >
                                             프로필 및 개인 설정
@@ -856,7 +864,7 @@ export default function Sidebar({
                                     <span
                                         className="
                       text-sm
-                      text-white/30
+                      text-[#aaa5bf]
                       transition
                       group-hover:text-cyan-300
                     "
@@ -872,6 +880,7 @@ export default function Sidebar({
                             onClick={() =>
                                 handleClick("/login")
                             }
+                            aria-label={isLoggedIn ? "마이페이지" : "로그인"}
                             title={
                                 open
                                     ? undefined
