@@ -66,6 +66,7 @@ export default function FinanceConsentCard({
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [reloadCount, setReloadCount] = useState(0);
 
   /**
    * 화면을 열었을 때 실제 저장된 설정을 조회한다.
@@ -75,6 +76,9 @@ export default function FinanceConsentCard({
    */
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setEnabled(null);
 
     const load = async () => {
       try {
@@ -99,7 +103,7 @@ export default function FinanceConsentCard({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadCount]);
 
   /**
    * 사용자가 버튼을 눌렀을 때만 변경한다.
@@ -148,9 +152,9 @@ export default function FinanceConsentCard({
     <section
       className="
                 rounded-3xl
-                bg-white/90
+                am-surface-card
                 p-5
-                shadow-[0_20px_50px_-35px_rgba(60,40,180,0.35)]
+
                 md:p-6
             "
     >
@@ -170,7 +174,7 @@ export default function FinanceConsentCard({
                             text-[11px]
                             font-bold
                             tracking-wide
-                            text-sky-600
+                            am-accent
                         "
           >
             나의 자산 관리
@@ -181,7 +185,7 @@ export default function FinanceConsentCard({
                             mt-1
                             text-lg
                             font-bold
-                            text-slate-900
+                            am-text
                         "
           >
             이번 달 수입·지출 한눈에 보기
@@ -192,14 +196,14 @@ export default function FinanceConsentCard({
                             mt-2
                             text-sm
                             leading-6
-                            text-slate-500
+                            am-muted
                         "
           >
             허용하면 가계부에 기록한 수입과 지출을 AI 매니저 화면에서 확인할 수
             있어요. 언제든 사용을 중지할 수 있습니다.
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs am-muted">
             이 설정으로 결제나 계좌이체가 실행되지는 않아요.
           </p>
         </div>
@@ -222,8 +226,8 @@ export default function FinanceConsentCard({
                         disabled:opacity-50
                         ${
                           enabled
-                            ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            : "bg-sky-600 text-white hover:bg-sky-700"
+                            ? "am-secondary-button"
+                            : "am-primary-button"
                         }
                     `}
         >
@@ -238,9 +242,14 @@ export default function FinanceConsentCard({
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 text-sm text-rose-600">
-          {error}
-        </p>
+        <div className="mt-4">
+          <p role="alert" className="text-sm am-error-text">{error}</p>
+          {enabled === null && !loading && (
+            <button type="button" className="am-secondary-button mt-3" onClick={() => setReloadCount((value) => value + 1)}>
+              설정 다시 불러오기
+            </button>
+          )}
+        </div>
       )}
 
       {/* 허용 여부가 확인된 경우에만 금액을 표시한다. */}
@@ -267,7 +276,7 @@ export default function FinanceConsentCard({
             />
 
             <FinanceValue
-              label="현재 등록된 자산"
+              label="이번 달 수입 − 지출"
               value={formatWon(finance.netAmount)}
             />
 
@@ -279,7 +288,7 @@ export default function FinanceConsentCard({
             <p
               className="
                                 text-xs
-                                text-slate-400
+                                am-muted
                                 sm:col-span-2
                                 lg:col-span-4
                             "
@@ -289,7 +298,7 @@ export default function FinanceConsentCard({
             </p>
           </div>
         ) : (
-          <p className="mt-5 text-sm text-slate-500">
+          <p className="mt-5 text-sm am-muted">
             아직 이번 달 수입·지출 요약이 없어요. 가계부 기록을 확인해 주세요.
           </p>
         ))}
@@ -304,8 +313,8 @@ export default function FinanceConsentCard({
  */
 function FinanceValue({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
-      <p className="text-xs text-slate-500">{label}</p>
+    <div className="rounded-2xl am-inset p-4">
+      <p className="text-xs am-muted">{label}</p>
 
       <p
         className="
@@ -313,7 +322,7 @@ function FinanceValue({ label, value }: { label: string; value: string }) {
                     break-words
                     text-lg
                     font-bold
-                    text-slate-900
+                    am-text
                 "
       >
         {value}

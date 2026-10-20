@@ -7,7 +7,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,10 +39,36 @@ class KakaoLocalClientTest {
     @Test
     void 키워드_검색_결과의_y를_위도_x를_경도로_변환한다() {
         server.expect(method(GET))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "KakaoAK test-rest-api-key"))
-                .andExpect(queryParam("query", "경기도 가평군 가평역"))
-                .andExpect(queryParam("size", "5"))
-                .andRespond(withSuccess("""
+            .andExpect(header(
+                HttpHeaders.AUTHORIZATION,
+                "KakaoAK test-rest-api-key"
+            ))
+            .andExpect(request -> {
+
+                var queryParams = UriComponentsBuilder
+                    .fromUri(request.getURI())
+                    .build()
+                    .getQueryParams();
+
+                String encodedQuery =
+                    queryParams.getFirst("query");
+
+                assertThat(encodedQuery).isNotNull();
+
+                // 한글 URL 인코딩을 해제한 후 검색어 비교
+                String decodedQuery = URLDecoder.decode(
+                    encodedQuery,
+                    StandardCharsets.UTF_8
+                );
+
+                assertThat(decodedQuery)
+                    .isEqualTo("경기도 가평군 가평역");
+
+                // searchFirstPlace()는 size=1 사용
+                assertThat(queryParams.getFirst("size"))
+                    .isEqualTo("1");
+            })
+            .andRespond(withSuccess("""
                         {
                           "documents": [
                             {

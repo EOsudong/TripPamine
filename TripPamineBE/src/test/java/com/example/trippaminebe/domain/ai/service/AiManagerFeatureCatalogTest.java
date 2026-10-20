@@ -7,7 +7,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * STEP 1 기능 지식 검색 검증.
+ * 기능 지식 검색 검증.
  * 실제 Oracle DB나 외부 Qwen3 서버를 호출하지 않는 단위 테스트다.
  */
 class AiManagerFeatureCatalogTest {
@@ -41,7 +41,9 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "여행 SOS는 무엇이야?", List.of());
 
-        assertThat(context).contains("응급 신고 기능이 아니다", "/travel");
+        assertThat(context)
+            .contains("응급 신고 기능이 아니다")
+            .doesNotContain("/travel");
     }
 
     @Test
@@ -49,7 +51,9 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "내 자산은 얼마야?", List.of());
 
-        assertThat(context).contains("아직 조회하지 않았다", "/assets");
+        assertThat(context)
+            .contains("아직 조회하지 않았다")
+            .doesNotContain("/assets");
     }
 
     @Test
@@ -57,6 +61,52 @@ class AiManagerFeatureCatalogTest {
         String context = AiManagerFeatureCatalog.buildPromptContext(
                 "트립파민에 무슨 기능이 있어?", List.of());
 
-        assertThat(context).contains("/quests", "/mascots/dex", "/ai-recommend");
+        assertThat(context)
+            .contains("퀘스트", "마스코트 도감", "AI 여행 추천")
+            .doesNotContain("/quests", "/mascots/dex", "/ai-recommend");
+    }
+
+
+    @Test
+    void 마스코트도감_질문에_정확한메뉴안내를반환한다() {
+
+        String answer =
+            AiManagerFeatureCatalog.getVerifiedMascotDexGuide(
+                "마스코트 도감은 어디서 볼 수 있어?"
+            );
+
+        assertThat(answer)
+            .contains("마스코트 탐험")
+            .contains("내 도감")
+            .contains("도감 보기")
+            .doesNotContain("/mascots/dex");
+    }
+
+    @Test
+    void Qwen3답변에서_내부경로를제거한다() {
+
+        String original =
+            "마스코트 도감은 `/mascots/dex` 경로에서 확인할 수 있습니다.";
+
+        String answer =
+            AiManagerFeatureCatalog.toUserFacingAnswer(original);
+
+        assertThat(answer)
+            .contains("마스코트 도감")
+            .doesNotContain("/mascots/dex");
+    }
+
+    @Test
+    void Qwen3프롬프트에_화면경로를넣지않는다() {
+
+        String context =
+            AiManagerFeatureCatalog.buildPromptContext(
+                "마스코트 도감은 어디서 볼 수 있어?",
+                List.of()
+            );
+
+        assertThat(context)
+            .contains("마스코트")
+            .doesNotContain("/mascots/dex");
     }
 }

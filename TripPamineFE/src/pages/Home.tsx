@@ -1,7 +1,6 @@
 import AppLayout from "../layout/AppLayout";
 
 import AiManagerDashboard from "../features/ai-manager/AiManagerDashboard";
-import EmotionChatLauncher from "../features/ai-manager/EmotionChatLauncher";
 
 import LandingPage from "../features/landing/LandingPage";
 
@@ -16,16 +15,15 @@ import { useAuth } from "../context/AuthContext";
  * Header / Sidebar / Footer는 AppLayout이 담당한다.
  */
 export default function Home() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, userId } = useAuth();
 
   if (!isLoggedIn) {
     return <LandingPage />;
   }
 
   return (
-    <AppLayout pageClassName="tp-aurora-light">
-      <AiManagerDashboard />
-      <EmotionChatLauncher />
+    <AppLayout pageClassName="am-home" appearance="dark" showFooter={false}>
+      <AiManagerDashboard key={userId ?? "guest"} />
     </AppLayout>
   );
 }

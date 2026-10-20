@@ -39,6 +39,7 @@ interface AppLayoutProps {
      * false로 지정할 수 있다.
      */
     showFooter?: boolean;
+    appearance?: "light" | "dark";
 }
 
 
@@ -64,6 +65,7 @@ export default function AppLayout({
                                       pageClassName = "tp-aurora-light",
                                       mainClassName = "",
                                       showFooter = true,
+                                      appearance = "light",
                                   }: AppLayoutProps) {
     const [
         sidebarOpen,
@@ -87,6 +89,7 @@ export default function AppLayout({
 
             {/* 공통 상단 Header */}
             <Header
+                appearance={appearance}
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={() =>
                     setSidebarOpen(
