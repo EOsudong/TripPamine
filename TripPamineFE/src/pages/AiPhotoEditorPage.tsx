@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import AppLayout from "../layout/AppLayout";
 
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+// 도메인 배포 환경(상대 경로) 및 로컬 환경 동적 대응
 const getApiBaseUrl = () => {
-    if (import.meta.env.VITE_SPRING_API_URL) {
-        return import.meta.env.VITE_SPRING_API_URL;
+    if (BASE_URL) {
+        return `${BASE_URL}/api/v1/ai-photo`;
     }
     if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
         return "http://localhost:8080/api/v1/ai-photo";

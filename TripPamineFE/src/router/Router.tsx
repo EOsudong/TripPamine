@@ -89,19 +89,6 @@ export default function Router() {
             </ProtectedRoute>
           }
         />
-        {/* OAuth 로그인 Callback */}
-        <Route path="/oauth/callback" element={<OAuthCallback />} />
-        {/* 여행 상세 */}
-        <Route path="/detail/:type/:id" element={<Detail />} />
-        {/* 관광 카테고리 */}
-        <Route path="/tour/:categoryKey" element={<TourCategoryPage />} />
-        {/* 관광 상세 */}
-        <Route
-          path="/tour/:categoryKey/:contentId"
-          element={<TourDetailPage />}
-        />
-        {/* AI 여행 추천 */}
-        <Route path="/ai-recommend" element={<AiRecommendPage />} />
         {/* AI 사진 편집 스튜디오 */}
         <Route
           path="/ai-photo-editor"
