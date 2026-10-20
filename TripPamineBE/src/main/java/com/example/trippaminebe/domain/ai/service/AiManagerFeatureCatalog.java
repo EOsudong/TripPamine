@@ -30,9 +30,9 @@ public final class AiManagerFeatureCatalog {
             feature("FINANCIAL_PRODUCTS", "금융상품", "/finance", "금융상품 정보 조회·비교 및 관심 상품 저장", "금리·가입 조건·수익은 최신 외부 정보 조회 없이 확정할 수 없다.", "금융상품", "금융 상품", "예금", "적금", "금리"),
             feature("QUEST", "여행 퀘스트", "/quests", "퀘스트 목록·진행 이력·GPS 인증·연쇄 단계 조회", "클리어·보상 지급은 실제 서버 결과로만 확인할 수 있다.", "퀘스트", "미션", "임무", "도전과제"),
             feature("RPG", "RPG·포인트·칭호", "/quests", "RPG 레벨·경험치·완료 퀘스트·칭호 조회와 장착", "포인트와 EXP는 다른 값이다. 보유 수치와 보상은 조회해야 한다.", "포인트", "레벨", "경험치", "exp", "칭호", "rpg", "보상"),
-            feature("MASCOT", "마스코트 탐험·도감", "/mascots", "주변 마스코트·GPS 조우·포획 시도 및 수집 도감 /mascots/dex", "포획에는 GPS·서버 검증·확률 판정이 필요하며 AI가 포획을 확정하지 않는다.", "마스코트", "도감", "포획", "캐릭터 잡", "수집"),
+            feature("MASCOT", "마스코트 탐험·도감", "/mascots", "주변 마스코트·GPS 조우·포획 시도 및 지역별 마스코트 도감 확인", "포획에는 GPS·서버 검증·확률 판정이 필요하며 AI가 포획을 확정하지 않는다.", "마스코트", "도감", "포획", "캐릭터 잡", "수집"),
             feature("MYSTERY_TOUR", "미스터리 투어", "/travel", "GPS·사진 미션 진행, 퀘스트 스킵·포기", "진행 화면에는 실제 투어 ID가 필요하며 스킵 보상을 임의로 지급할 수 없다.", "미스터리", "블라인드", "랜덤여행", "랜덤 여행"),
-            feature("TOUR_INFORMATION", "관광·축제 정보", "/tour/destinations", "관광 여행지·축제(/tour/festivals)·관광 산업(/tour/industry) 정보와 북마크", "일정·입장료·운영 여부는 실제 조회로 확인해야 한다.", "축제", "관광지", "관광 정보", "볼거리", "가볼만한"),
+            feature("TOUR_INFORMATION", "관광·축제 정보", "/tour/destinations", "관광 여행지·축제·관광 산업 정보와 북마크", "일정·입장료·운영 여부는 실제 조회로 확인해야 한다.", "축제", "관광지", "관광 정보", "볼거리", "가볼만한"),
             feature("AI_PHOTO", "AI 사진 편집", "/ai-photo-editor", "AI 사진 편집 화면", "대화를 통해 실제 이미지 편집이나 저장을 수행했다고 말하지 않는다.", "사진 편집", "사진편집", "ai 사진", "이미지 편집"),
             feature("COMMUNITY", "커뮤니티", "/boards", "게시글 목록·상세·작성·수정 화면", "챗봇은 게시글을 자동으로 작성·삭제하지 않는다.", "커뮤니티", "게시판", "게시글", "후기 작성"),
             feature("EMOTION", "마음 메이트 감정 대화", "/ai/emotion", "감정 분석 동의 시 감정 모델 예측 결과 안내", "감정 결과는 추정이며 의학적 진단이 아니다.", "감정", "기분", "마음", "우울", "스트레스")
@@ -79,35 +79,126 @@ public final class AiManagerFeatureCatalog {
             String latestMessage, List<String> previousUserMessages) {
         List<String> ids = relevantFeatureIds(latestMessage, previousUserMessages);
         StringBuilder prompt = new StringBuilder("""
-                [TripPamine 실제 구현 기능 안내]
-                다음 내용은 앱의 기능 설명일 뿐 사용자별 현재 상태가 아니다.
-                사용자의 여행 일정·자산·잔액·퀘스트·포인트·마스코트·날씨는 아직 조회하지 않았다.
-                개인 금액·횟수·날씨를 추측하지 말고 데이터 확인이 필요함을 알려라.
-                아래에 없는 화면·기능·API 실행 결과는 만들어내지 않는다.
-                사용자가 관련 질문을 하면 실제 화면 경로와 가능한 다음 행동을 짧게 안내한다.
-                """);
+        [TripPamine 실제 구현 기능 안내]
+        다음 내용은 트립파민에 실제 구현된 기능 설명이다.
+        사용자별 현재 상태나 실시간 API 조회 결과는 아니다.
+        사용자의 여행 일정, 자산, 잔액, 포인트 및 퀘스트 진행 상황은 아직 조회하지 않았다.
+
+        응답 규칙:
+        1. 사용자에게 실제 화면의 한글 메뉴 이름으로 설명한다.
+        2. 내부 라우트, URL 경로, API 엔드포인트를 답변에 출력하지 않는다.
+        3. 확인되지 않은 여행 일정, 자산, 포인트, 날씨를 지어내지 않는다.
+        4. 앱에 없는 기능이나 완료하지 않은 작업을 수행했다고 말하지 않는다.
+        5. 사용자 질문에 맞는 기능과 실제 이용 방법을 자연스러운 한국어로 안내한다.
+        """);
 
         if (ids.isEmpty()) {
             prompt.append("""
-                    [서비스 전체 요약]
-                    여행 플래너 /travel, AI 여행 추천 /ai-recommend, 여행 SOS /travel,
-                    날씨 조회, 자산관리 /assets, 가계부 /mypage, 금융상품 /finance,
-                    퀘스트·RPG·포인트·칭호 /quests, 마스코트 /mascots,
-                    마스코트 도감 /mascots/dex, 미스터리 투어 /travel,
-                    관광지 /tour/destinations, 축제 /tour/festivals,
-                    AI 사진 편집 /ai-photo-editor, 게시판 /boards, 감정 대화 /ai/emotion.
-                    """);
+            [서비스 전체 기능 요약]
+            여행 플래너, AI 여행 추천, 여행 SOS 일정 재계획,
+            현재 날씨 조회, 자산관리, 가계부, 금융상품,
+            여행 퀘스트, RPG, 포인트, 레벨, 경험치, 칭호,
+            마스코트 탐험, 마스코트 도감, 미스터리 투어,
+            관광 여행지, 축제, AI 사진 편집, 게시판,
+            감정 분석과 마음 메이트 대화.
+            """);
+
             return prompt.toString();
         }
 
         for (Feature feature : FEATURES) {
-            if (!ids.contains(feature.id())) continue;
+            if (!ids.contains(feature.id())) {
+                continue;
+            }
+
             prompt.append("\n- 기능: ").append(feature.name())
-                    .append("\n  화면: ").append(feature.route())
-                    .append("\n  확인된 기능: ").append(feature.description())
-                    .append("\n  한계: ").append(feature.limitations());
+                .append("\n  확인된 기능: ").append(feature.description())
+                .append("\n  사용 시 주의사항: ").append(feature.limitations());
         }
+
         return prompt.toString();
+    }
+
+
+    /**
+     * 마스코트 도감 위치를 묻는 질문에는 실제 UI에서 확인된
+     * 이동 방법을 반환한다.
+     *
+     * 마스코트 탐험 화면의 '내 도감' 카드에
+     * '도감 보기' 링크가 실제 구현되어 있다.
+     */
+    public static String getVerifiedMascotDexGuide(String message) {
+
+        if (message == null || message.isBlank()) {
+            return null;
+        }
+
+        String text = normalize(message);
+
+        boolean isMascotDex =
+            text.contains("마스코트") &&
+                text.contains("도감");
+
+        boolean isLocationQuestion =
+            text.contains("어디") ||
+                text.contains("볼수") ||
+                text.contains("보려") ||
+                text.contains("확인") ||
+                text.contains("들어가");
+
+        if (!isMascotDex || !isLocationQuestion) {
+            return null;
+        }
+
+        return "트립파민 왼쪽 메뉴에서 '마스코트 탐험'을 열어보세요. "
+            + "화면 상단의 '내 도감' 카드에서 '도감 보기'를 선택하면 "
+            + "지역별 마스코트와 수집 현황을 확인할 수 있습니다.";
+    }
+
+    /**
+     * 모델이 내부 화면 경로를 출력했더라도
+     * 최종 사용자 응답에서는 한글 기능 이름으로 치환한다.
+     */
+    public static String toUserFacingAnswer(String answer) {
+
+        if (answer == null) {
+            return "";
+        }
+
+        String[][] replacements = {
+            {"/mascots/dex", "마스코트 도감"},
+            {"/mascots", "마스코트 탐험"},
+            {"/ai-recommend", "AI 여행 추천"},
+            {"/ai-photo-editor", "AI 사진 편집"},
+            {"/ai/emotion", "마음 메이트"},
+            {"/assets", "자산관리"},
+            {"/quests", "여행 퀘스트"},
+            {"/travel", "여행 플래너"},
+            {"/mypage", "마이페이지"},
+            {"/finance", "금융상품"},
+            {"/boards", "게시판"},
+            {"/tour/destinations", "관광 여행지"},
+            {"/tour/festivals", "축제·행사"},
+            {"/tour/industry", "관광 산업"}
+        };
+
+        String result = answer;
+
+        for (String[] replacement : replacements) {
+            String route = replacement[0];
+            String label = replacement[1];
+
+            result = result
+                .replace("`" + route + "`", label)
+                .replace(route, label);
+        }
+
+        // 등록하지 않은 일반적인 내부 라우트도 노출 방지.
+        // http:// 또는 https:// 주소의 경로는 이 패턴에서 제외된다.
+        return result.replaceAll(
+            "(?<![\\w/:])/(?:[a-z][a-z0-9-]*)(?:/[a-z0-9-]+)*",
+            "해당 서비스 화면"
+        );
     }
 
     private static Feature feature(String id, String name, String route, String description,
