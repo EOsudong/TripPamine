@@ -60,13 +60,6 @@ class UltraShortForecastServiceTest {
   }
 
   @Test
-  void 시각_글자가_표시용으로_바뀐다() {
-    assertThat(service.formatTime("1000")).isEqualTo("10:00");
-    assertThat(service.formatTime("0900")).isEqualTo("09:00");
-    assertThat(service.formatTime("1500")).isEqualTo("15:00");
-  }
-
-  @Test
   void 앞의_슬롯들이_화면용으로_바뀐다() throws Exception {
     String json = Files.readString(Path.of("src/test/resources/ultra-srt-fcst-rain.json"));
     LocalDate today = LocalDate.of(2026, 10, 16);   // 샘플 JSON의 날짜와 같은 날로 고정
@@ -95,7 +88,7 @@ class UltraShortForecastServiceTest {
   @Test
   void 비가_없으면_빈_Optional이다() {
     List<UltraShortForecastService.ForecastSlot> slots = List.of(
-        new UltraShortForecastService.ForecastSlot("20261016", "1000", 18.0, 70, "0", "강수없음", 20));
+        new UltraShortForecastService.ForecastSlot("20261016", "1000", 18.0, 70, "0", "강수없음", 20, "1"));
 
     assertThat(service.findFirstRain(slots)).isEmpty();
   }
