@@ -43,6 +43,13 @@ public interface AccountBookRepository
 
 
 
+   // AI 금융 요약 자동 생성 전, 해당 월에 실제 거래가 존재하는지 확인한다.
+   boolean existsByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+       String username,
+       LocalDateTime startDate,
+       LocalDateTime endDate
+   );
+
    // [자산관리 수정] 특정 시점 이후의 거래 전체.
    // 자산 대시보드가 "그 시점의 계좌 잔액"을 거꾸로 계산할 때 사용한다.
    // (현재 잔액 − 그 이후 계좌에 반영된 수입 + 그 이후 계좌에 반영된 지출)

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
   Check,
   ChevronDown,
-  ChevronRight,
   CloudSun,
   Compass,
   Gift,
@@ -61,11 +60,11 @@ interface RecommendationResult {
 }
 type PendingAction = "load" | "regenerate" | "save" | null;
 
-/** 메인과 같은 헤더·사이드바를 사용하고 계정 전환 시 여행 상태를 초기화한다. */
+/** 공통 레이아웃을 사용하고 계정 전환 시 여행 상태를 초기화한다. */
 export default function AiRecommendPage() {
   const { isLoggedIn, userId } = useAuth();
   return (
-    <AppLayout pageClassName="ar-theme" appearance="dark" showFooter={false}>
+    <AppLayout pageClassName="ar-theme" appearance="dark">
       <RecommendationWorkspace
         key={userId ?? "guest"}
         isLoggedIn={isLoggedIn}
@@ -88,6 +87,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [notice, setNotice] = useState("");
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(true);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [tripWeather, setTripWeather] = useState<TripDayWeather[] | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState("");
@@ -134,6 +134,14 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
     },
     [],
   );
+
+  // 모바일 목록이 접힌 뒤에도 선택한 일정에서 키보드 탐색을 이어간다.
+  useEffect(() => {
+    if (!selectedPlan) return;
+    resultHeadingRef.current?.focus({ preventScroll: true });
+    if (window.matchMedia("(max-width: 900px)").matches)
+      resultHeadingRef.current?.scrollIntoView({ block: "start" });
+  }, [selectedPlan?.planId]);
 
   // 지도와 SOS는 공통 헤더보다 위에 열고, 닫으면 호출한 버튼으로 포커스를 돌려준다.
   useEffect(() => {
@@ -200,6 +208,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
     setGeoLoading(false);
     setConfirmRegenerate(false);
     setPickerOpen(false);
+    setHelpOpen(false);
     setIsMapOpen(false);
     setIsSosOpen(false);
     void loadWeather(plan.planId, selection);
@@ -434,56 +443,30 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <>
       <div className="ar-page">
-        <nav className="ar-breadcrumb" aria-label="현재 위치">
-          <Link to="/">AI 매니저</Link>
-          <ChevronRight size={13} aria-hidden="true" />
-          <span aria-current="page">AI 여행 추천</span>
-        </nav>
         <section className="ar-hero" aria-labelledby="ar-heading">
+          <div className="absolute inset-0 -z-10 tp-aurora" aria-hidden="true" />
+          <div className="absolute inset-0 -z-10 tp-dot-grid opacity-40" aria-hidden="true" />
           <div className="ar-hero-copy">
             <p className="ar-eyebrow">
               <Sparkles size={14} aria-hidden="true" />
-              AI TRAVEL PLANNER
+              TRIPPAMINE AI TRAVEL
             </p>
-            <h1 id="ar-heading">
-              여행의 다음 장면을,
-              <br />
-              <span>AI와 함께.</span>
-            </h1>
+            <h1 id="ar-heading">AI 여행 추천</h1>
             <p className="ar-hero-description">
-              여행을 고르면 예산과 일정에 맞는 코스를 확인할 수 있어요.
-              <br className="ar-desktop-break" /> 마음에 드는 장소를 지도에서
-              살펴보고, 나만의 경로로 다듬어 보세요.
+              나의 여행을 고르고, 예산과 일정에 맞는 코스를 확인하세요.
+              <br className="ar-desktop-break" /> 지도에서 장소를 바꾸고 새 여행으로 저장할 수 있어요.
             </p>
           </div>
-          <div className="ar-hero-aside">
-            <div className="ar-orbit" aria-hidden="true">
-              <span />
-              <span />
-              <Compass size={60} strokeWidth={1} />
-            </div>
-            <button
-              type="button"
-              className="ar-button ar-button--secondary"
-              onClick={() => navigate("/travel")}
-            >
-              <Plus size={15} aria-hidden="true" />
-              여행 계획 관리
-              <ArrowUpRight size={14} aria-hidden="true" />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="ar-button ar-button--secondary"
+            onClick={() => navigate("/travel")}
+          >
+            <Plus size={15} aria-hidden="true" />
+            여행 계획 관리
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
         </section>
-        <ol className="ar-steps" aria-label="여행 추천 이용 순서">
-          <li data-active={!selectedPlan}>
-            <span>01</span>여행 선택
-          </li>
-          <li data-active={Boolean(selectedPlan)}>
-            <span>02</span>추천 일정 확인
-          </li>
-          <li>
-            <span>03</span>지도에서 경로 조정
-          </li>
-        </ol>
         {notice && (
           <p className="ar-notice" role="status">
             <Check size={16} aria-hidden="true" />
@@ -492,7 +475,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
         )}
 
         {!isLoggedIn ? (
-          <section className="ar-empty ar-sign-in">
+          <section className="ar-empty ar-sign-in tp-card-dark">
             <Compass size={36} aria-hidden="true" />
             <h2>나의 여행으로 시작해 볼까요?</h2>
             <p>로그인하면 등록한 여행의 추천 일정을 확인할 수 있어요.</p>
@@ -508,7 +491,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
         ) : (
           <div className="ar-workspace">
             <aside
-              className="ar-plan-picker"
+              className="ar-plan-picker tp-card-dark"
               aria-labelledby="ar-plans-heading"
             >
               <div className="ar-panel-heading">
@@ -580,17 +563,12 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                       className="ar-plan"
                       aria-pressed={selectedPlan?.planId === plan.planId}
                       disabled={mutating}
-                      onClick={() => {
-                        void handleSelectPlan(plan);
-                        resultHeadingRef.current?.focus({
-                          preventScroll: true,
-                        });
-                      }}
+                      onClick={() => void handleSelectPlan(plan)}
                     >
                       <span className="ar-plan-top">
                         <span>
                           <MapPin size={12} aria-hidden="true" />
-                          TRAVEL
+                          여행 계획
                         </span>
                         {plan.blindYn === "Y" ? (
                           <span>
@@ -629,14 +607,14 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
             </aside>
 
             <section
-              className="ar-results"
+              className="ar-results tp-card-dark"
               aria-labelledby="ar-result-heading"
               aria-busy={Boolean(pendingAction)}
             >
               <div className="ar-result-heading">
                 <p className="ar-eyebrow">
                   <Route size={13} aria-hidden="true" />
-                  YOUR ITINERARY
+                  RECOMMENDED ITINERARY
                 </p>
                 <h2 id="ar-result-heading" ref={resultHeadingRef} tabIndex={-1}>
                   {selectedPlan?.planName ?? "어떤 여행을 떠나볼까요?"}
@@ -791,7 +769,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                           onClick={() => setIsMapOpen(true)}
                         >
                           <Map size={16} aria-hidden="true" />
-                          지도로 일정 보기
+                          지도에서 일정 수정·저장
                         </button>
                         <button
                           className="ar-button ar-button--secondary"
@@ -801,64 +779,11 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                           <RefreshCw size={14} aria-hidden="true" />
                           추천 다시 받기
                         </button>
-                        <button
-                          className="ar-button ar-button--sos"
-                          type="button"
-                          disabled={!canUseItinerary}
-                          onClick={() => setIsSosOpen(true)}
-                        >
-                          <LifeBuoy size={16} aria-hidden="true" />
-                          여행 SOS
-                        </button>
                       </div>
                       <p className="ar-cost-note">
                         예상 비용은 실제 지출과 다를 수 있어요. 방문 전
                         운영시간과 가격을 확인해 주세요.
                       </p>
-                      <div className="ar-weather-tools">
-                        <div>
-                          <CloudSun size={18} aria-hidden="true" />
-                          <span>
-                            <strong>현재 위치의 날씨</strong>
-                            <small>
-                              위치 확인을 허용하면 앞으로 6시간의 예보를 볼 수
-                              있어요.
-                            </small>
-                          </span>
-                        </div>
-                        <button
-                          className="ar-button ar-button--quiet"
-                          type="button"
-                          disabled={geoLoading}
-                          onClick={loadUltraShort}
-                        >
-                          {geoLoading ? (
-                            <Loader2
-                              size={14}
-                              className="animate-spin"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <LocateFixed size={14} aria-hidden="true" />
-                          )}
-                          {geoLoading
-                            ? "위치 확인 중…"
-                            : ultraShort
-                              ? "날씨 새로고침"
-                              : "날씨 확인"}
-                        </button>
-                      </div>
-                      {geoError && (
-                        <p className="ar-weather-error" role="alert">
-                          {geoError}
-                        </p>
-                      )}
-                      {ultraShort && (
-                        <CurrentWeather
-                          weather={ultraShort}
-                          onSos={() => setIsSosOpen(true)}
-                        />
-                      )}
                       {weatherLoading && (
                         <p className="ar-weather-status" role="status">
                           여행지 날씨를 확인하고 있어요…
@@ -932,6 +857,84 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                           </div>
                         )}
                       </div>
+                      <details
+                        className="ar-help"
+                        open={helpOpen}
+                        onToggle={(event) => setHelpOpen(event.currentTarget.open)}
+                      >
+                        <summary>
+                          <LifeBuoy size={18} aria-hidden="true" />
+                          <span>
+                            <strong>여행 중 도움</strong>
+                            <small>일정 대안 찾기 · 현재 위치 날씨</small>
+                          </span>
+                          <ChevronDown size={16} aria-hidden="true" />
+                        </summary>
+                        <div className="ar-help-content">
+                          <div className="ar-weather-tools">
+                            <div>
+                              <LifeBuoy size={18} aria-hidden="true" />
+                              <span>
+                                <strong>계획대로 이동하기 어렵다면</strong>
+                                <small>여행 SOS에서 대체 일정을 찾아보세요.</small>
+                              </span>
+                            </div>
+                            <button
+                              className="ar-button ar-button--sos"
+                              type="button"
+                              disabled={!canUseItinerary}
+                              onClick={() => setIsSosOpen(true)}
+                            >
+                              <LifeBuoy size={16} aria-hidden="true" />
+                              여행 SOS
+                            </button>
+                          </div>
+                          <div className="ar-weather-tools">
+                            <div>
+                              <CloudSun size={18} aria-hidden="true" />
+                              <span>
+                                <strong>현재 위치의 날씨</strong>
+                                <small>
+                                  위치 확인을 허용하면 앞으로 6시간의 예보를 볼 수
+                                  있어요.
+                                </small>
+                              </span>
+                            </div>
+                            <button
+                              className="ar-button ar-button--quiet"
+                              type="button"
+                              disabled={geoLoading}
+                              onClick={loadUltraShort}
+                            >
+                              {geoLoading ? (
+                                <Loader2
+                                  size={14}
+                                  className="animate-spin"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <LocateFixed size={14} aria-hidden="true" />
+                              )}
+                              {geoLoading
+                                ? "위치 확인 중…"
+                                : ultraShort
+                                  ? "날씨 새로고침"
+                                  : "날씨 확인"}
+                            </button>
+                          </div>
+                          {geoError && (
+                            <p className="ar-weather-error" role="alert">
+                              {geoError}
+                            </p>
+                          )}
+                          {ultraShort && (
+                            <CurrentWeather
+                              weather={ultraShort}
+                              onSos={() => setIsSosOpen(true)}
+                            />
+                          )}
+                        </div>
+                      </details>
                     </>
                   )}
                 </>
@@ -1029,14 +1032,18 @@ function DayWeather({ weather }: { weather: TripDayWeather | undefined }) {
       </p>
     );
   return (
-    <div className="ar-day-weather">
-      <p>
+    <details className="ar-day-weather" open={summary.notices.length > 0}>
+      <summary>
         <CloudSun size={15} aria-hidden="true" />
         <strong>
           {formatDate(weather.date)} · 최저 {summary.tempMin ?? "—"}° / 최고{" "}
           {summary.tempMax ?? "—"}°
+          {summary.rainProbability !== null &&
+            summary.rainProbability >= 0 &&
+            ` · 강수 ${summary.rainProbability}%`}
         </strong>
-      </p>
+        <ChevronDown size={14} aria-hidden="true" />
+      </summary>
       <p>
         체감 {summary.feelsLike ?? "—"}° · 습도 {summary.humidity ?? "—"}% ·
         풍속 {summary.windSpeed ?? "—"}m/s
@@ -1052,7 +1059,7 @@ function DayWeather({ weather }: { weather: TripDayWeather | undefined }) {
           ))}
         </ul>
       )}
-    </div>
+    </details>
   );
 }
 

@@ -41,6 +41,8 @@ public class EmotionChatService {
     private final AiManagerGameAnswerService gameAnswerService;
     private final AiManagerReadIntentRouter readIntentRouter;
     private final AiManagerCompositeAnswerService compositeAnswerService;
+    private final AiManagerFinanceAnswerService financeAnswerService;
+    private final AiManagerTravelWeatherAnswerService travelWeatherAnswerService;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -117,12 +119,30 @@ public class EmotionChatService {
             );
 
 
-        // 복합 질문과 불명확한 후속 질문을 우선 처리한다.
-        String verifiedAnswer = compositeAnswerService.findAnswer(
+
+        // 금융정보 조회 및 동의 확인
+        String verifiedAnswer = financeAnswerService.findAnswer(
             userId,
             message,
             previousUserMessages
         );
+
+        // 저장된 여행계획과 실제 날씨 예보 연결
+        if (verifiedAnswer == null) {
+            verifiedAnswer = travelWeatherAnswerService.findAnswer(
+                userId,
+                message
+            );
+        }
+
+        // 기존 복합 질문과 불명확한 후속 질문 처리
+        if (verifiedAnswer == null) {
+            verifiedAnswer = compositeAnswerService.findAnswer(
+                userId,
+                message,
+                previousUserMessages
+            );
+        }
 
         // 기존 마스코트 도감 위치 안내는 유지한다.
         if (verifiedAnswer == null) {

@@ -3,6 +3,7 @@ package com.example.trippaminebe.domain.ai.controller;
 
 import com.example.trippaminebe.domain.ai.dto.AiFinanceMonthlySummaryResponse;
 import com.example.trippaminebe.domain.ai.service.AiFinanceMonthlySummaryService;
+import com.example.trippaminebe.domain.ai.service.AiManagerSettingsService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class AiFinanceMonthlySummaryController {
 			ZoneId.of("Asia/Seoul");
 
 	private final AiFinanceMonthlySummaryService monthlySummaryService;
+	private final AiManagerSettingsService settingsService;
 
 	/**
 	 * 저장된 금융 요약 조회.
@@ -56,7 +58,7 @@ public class AiFinanceMonthlySummaryController {
 			@RequestParam(required = false) Integer year,
 			@RequestParam(required = false) Integer month
 	) {
-		Long userId = authenticatedUserId(userDetails);
+		Long userId = financeAllowedUserId(userDetails);
 		YearMonth period = resolveMonth(year, month);
 
 		return monthlySummaryService
@@ -80,9 +82,23 @@ public class AiFinanceMonthlySummaryController {
 			@RequestParam(required = false) Integer month
 	) {
 		return monthlySummaryService.refreshMonthly(
-				authenticatedUserId(userDetails),
+				financeAllowedUserId(userDetails),
 				resolveMonth(year, month)
 		);
+	}
+
+	/**
+	 * 금융정보 활용 동의를 확인한 후에만 저장 요약을 조회하거나 갱신한다.
+	 */
+	private Long financeAllowedUserId(CustomUserDetails userDetails) {
+		Long userId = authenticatedUserId(userDetails);
+		if (!settingsService.getSettings(userId).financeInsightEnabled()) {
+			throw new ResponseStatusException(
+					HttpStatus.FORBIDDEN,
+					"금융 정보 활용 동의가 필요합니다."
+			);
+		}
+		return userId;
 	}
 
 	/**

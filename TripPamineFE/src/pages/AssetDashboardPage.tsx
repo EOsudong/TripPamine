@@ -2507,7 +2507,7 @@ const periodSummary =
             <div className={CARD_HEADER}>
               <div>
                 <span className={CARD_KICKER}>ASSET FLOW</span>
-                <h2 className={CARD_TITLE}>자산 흐름</h2>
+                <h2 className={CARD_TITLE}>자산 내역</h2>
                 <p className={CARD_DESC}>
                   {assetHistoryPeriodLabel[assetHistoryPeriod]} 동안 총자산과 돈의 흐름이에요.
                 </p>
