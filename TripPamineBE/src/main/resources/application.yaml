@@ -141,6 +141,16 @@ trippamine:
     connect-timeout-ms: ${TRIPPAMINE_AI_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${TRIPPAMINE_AI_READ_TIMEOUT_MS:30000}
 
+  manager:
+    slm:
+      # 대화형 Qwen3 추론 서버 주소
+      # Spring Boot가 실제로 접근할 수 있는 주소여야 한다.
+      # 배포 환경에서는 환경변수로 덮어쓴다.
+      base-url: ${TRIPPAMINE_MANAGER_SLM_BASE_URL:http://127.0.0.1:18002}
+
+      # llama-server의 --alias와 일치해야 한다.
+      model: ${TRIPPAMINE_MANAGER_SLM_MODEL:trippamine-manager-base}
+
 # 5일 전부터 날씨정보를 받아오는 openweathermap api
 openweathermap:
   api:

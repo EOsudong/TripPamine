@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState, } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
-  getAiManagerHomeApi,
-  type AiManagerActivityEvent,
-  type AiManagerFocusTravel,
-  type AiManagerHomeResponse,
+    getAiManagerHomeApi,
+    type AiManagerActivityEvent,
+    type AiManagerFocusTravel,
+    type AiManagerHomeResponse,
 } from "../../api/aiManagerHome";
 
 import { useAuth } from "../../context/AuthContext";
