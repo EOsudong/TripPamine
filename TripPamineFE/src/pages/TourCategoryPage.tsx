@@ -25,11 +25,13 @@ export default function TourCategoryPage() {
       : (category?.subCategories[0] ?? "전체"),
   );
   const [items, setItems] = useState<TourItem[]>([]);
+  const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 사이드바에서 다른 대분류를 눌러 categoryKey 자체가 바뀐 경우, 소분류 탭을 "전체"로 초기화
+  // 사이드바에서 다른 대분류를 눌러 categoryKey 자체가 바뀐 경우, 소분류 탭과 검색결과를 "전체"로 초기화
   useEffect(() => {
+    setKeyword("");
     if (filterParam && category?.subCategories.includes(filterParam)) {
       setActiveSub(filterParam);
     } else {
@@ -60,6 +62,16 @@ export default function TourCategoryPage() {
       cancelled = true;
     };
   }, [category, activeSub]);
+
+  // 검색 기능
+  const trimmed = keyword.trim().toLowerCase(); // 앞뒤 띄어쓰기 삭제
+  const filteredItems = items.filter((item) => {
+    if (trimmed === "") {
+      return true;
+    }
+    // '강원한돈페스타'가 강릉에서 열릴 경우, '강릉'을 검색하면 강원한돈페스타도 표시되도록 함
+    return item.title.toLowerCase().includes(trimmed) || (item.address ?? "").toLowerCase().includes(trimmed);
+  });
 
   return (
     <div className="min-h-screen tp-aurora-light">
@@ -109,6 +121,14 @@ export default function TourCategoryPage() {
                     </button>
                   ))}
                 </div>
+                {/* 검색창 */}
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="이름이나 지역으로 검색"
+                  className="mt-4 w-full rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/40 sm:max-w-md"
+                />
               </PageHero>
 
               {/* 목록 상태별 렌더링 */}
@@ -116,11 +136,11 @@ export default function TourCategoryPage() {
                 <LoadingGrid />
               ) : error ? (
                 <StateMessage label={error} />
-              ) : items.length === 0 ? (
-                <StateMessage label="조건에 맞는 결과가 없어요" />
+              ) : filteredItems.length === 0 ? (
+                <StateMessage label={trimmed !== "" ? "검색 결과가 없어요" : "조건에 맞는 결과가 없어요"} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {items.map((item) => (
+                  {filteredItems.map((item) => (
                     <TourItemCard
                       key={item.contentId}
                       item={item}
