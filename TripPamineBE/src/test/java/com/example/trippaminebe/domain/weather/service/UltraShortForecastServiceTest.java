@@ -59,11 +59,20 @@ class UltraShortForecastServiceTest {
     assertThat(slots.get(2).rainProbability()).isEqualTo(60); // 12시의 POP
   }
 
+
   @Test
   void 시각_글자가_표시용으로_바뀐다() {
-    assertThat(service.formatTime("1000")).isEqualTo("10:00");
-    assertThat(service.formatTime("0900")).isEqualTo("09:00");
-    assertThat(service.formatTime("1500")).isEqualTo("15:00");
+    // 테스트 기준 날짜를 고정하여 실행 시점과 무관하게 검증
+    LocalDate today = LocalDate.of(2026, 10, 16);
+
+    assertThat(service.formatTime("20261016", "1000", today))
+        .isEqualTo("10:00");
+
+    assertThat(service.formatTime("20261016", "0900", today))
+        .isEqualTo("09:00");
+
+    assertThat(service.formatTime("20261016", "1500", today))
+        .isEqualTo("15:00");
   }
 
   @Test
@@ -92,10 +101,21 @@ class UltraShortForecastServiceTest {
     assertThat(rain.get().time()).isEqualTo("1200");
   }
 
+
   @Test
   void 비가_없으면_빈_Optional이다() {
     List<UltraShortForecastService.ForecastSlot> slots = List.of(
-        new UltraShortForecastService.ForecastSlot("20261016", "1000", 18.0, 70, "0", "강수없음", 20));
+        new UltraShortForecastService.ForecastSlot(
+            "20261016",
+            "1000",
+            18.0,
+            70,
+            "0",
+            "강수없음",
+            20,
+            "1"  // SKY: 맑음
+        )
+    );
 
     assertThat(service.findFirstRain(slots)).isEmpty();
   }
