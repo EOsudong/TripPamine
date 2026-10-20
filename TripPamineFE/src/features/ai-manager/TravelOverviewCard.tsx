@@ -127,9 +127,9 @@ export default function TravelOverviewCard() {
     <section
       className="
                 rounded-3xl
-                bg-white/90
+                am-surface-card
                 p-5
-                shadow-[0_20px_50px_-35px_rgba(60,40,180,0.35)]
+
                 md:p-6
             "
     >
@@ -149,7 +149,7 @@ export default function TravelOverviewCard() {
                             text-[11px]
                             font-bold
                             tracking-wide
-                            text-sky-600
+                            am-accent
                         "
           >
             나의 여행
@@ -160,13 +160,13 @@ export default function TravelOverviewCard() {
                             mt-1
                             text-lg
                             font-bold
-                            text-slate-900
+                            am-text
                         "
           >
             여행 일정 한눈에 보기
           </h2>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm am-muted">
             예정된 여행과 지난 여행을 한곳에서 확인하세요.
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function TravelOverviewCard() {
           onClick={() => navigate("/travel")}
           className="
                         rounded-xl
-                        bg-sky-600
+                        am-primary-button
                         px-4
                         py-2.5
                         text-sm
@@ -184,7 +184,7 @@ export default function TravelOverviewCard() {
                         text-white
                         shadow-sm
                         transition
-                        hover:bg-sky-700
+
                     "
         >
           여행 관리하기
@@ -199,7 +199,7 @@ export default function TravelOverviewCard() {
                         py-8
                         text-center
                         text-sm
-                        text-slate-400
+                        am-muted
                     "
         >
           여행 일정을 살펴보고 있어요.
@@ -209,7 +209,7 @@ export default function TravelOverviewCard() {
       {/* 조회 실패 시 재시도 */}
       {!loading && error && (
         <div className="mt-6 text-center">
-          <p role="alert" className="text-sm text-rose-600">
+          <p role="alert" className="text-sm am-error-text">
             {error}
           </p>
 
@@ -219,12 +219,12 @@ export default function TravelOverviewCard() {
             className="
                             mt-3
                             rounded-xl
-                            bg-slate-100
+                            am-secondary-button
                             px-4
                             py-2
                             text-sm
                             font-bold
-                            text-slate-700
+                            am-secondary
                         "
           >
             다시 불러오기
@@ -243,7 +243,7 @@ export default function TravelOverviewCard() {
                             grid-cols-3
                             gap-2
                             rounded-2xl
-                            bg-slate-50
+                            am-inset
                             p-4
                         "
           >
@@ -257,11 +257,11 @@ export default function TravelOverviewCard() {
           {/* 여행이 없으면 안내 문구 표시 */}
           {overview.plans.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm am-muted">
                 아직 등록한 여행이 없어요.
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs am-muted">
                 새로운 여행을 계획해 보세요.
               </p>
             </div>
@@ -292,14 +292,14 @@ export default function TravelOverviewCard() {
 function SummaryItem({ label, count }: { label: string; count: number }) {
   return (
     <div className="text-center">
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-xs am-muted">{label}</p>
 
       <p
         className="
                     mt-1
                     text-xl
                     font-bold
-                    text-slate-900
+                    am-text
                 "
       >
         {count}
@@ -322,7 +322,7 @@ function TravelItemCard({ plan }: { plan: AiManagerTravelItem }) {
     <article
       className="
                 rounded-2xl
-                bg-slate-50
+                am-inset
                 p-4
             "
     >
@@ -340,13 +340,13 @@ function TravelItemCard({ plan }: { plan: AiManagerTravelItem }) {
                             break-words
                             text-sm
                             font-bold
-                            text-slate-900
+                            am-text
                         "
           >
             {plan.planName}
           </p>
 
-          <p className="mt-1 text-xs text-slate-500">{plan.statusLabel}</p>
+          <p className="mt-1 text-xs am-muted">{plan.statusLabel}</p>
         </div>
 
         {dday && (
@@ -354,12 +354,12 @@ function TravelItemCard({ plan }: { plan: AiManagerTravelItem }) {
             className="
                             shrink-0
                             rounded-full
-                            bg-sky-100
+                            am-badge
                             px-3
                             py-1
                             text-xs
                             font-bold
-                            text-sky-700
+                            am-accent
                         "
           >
             {dday}
@@ -376,13 +376,13 @@ function TravelItemCard({ plan }: { plan: AiManagerTravelItem }) {
                         text-xs
                     "
         >
-          <span className="text-slate-400">여행 일정</span>
+          <span className="am-muted">여행 일정</span>
 
           <span
             className="
                             text-right
                             font-medium
-                            text-slate-700
+                            am-secondary
                         "
           >
             {formatDate(plan.startDate)}
@@ -399,12 +399,12 @@ function TravelItemCard({ plan }: { plan: AiManagerTravelItem }) {
                         text-xs
                     "
         >
-          <span className="text-slate-400">여행 예산</span>
+          <span className="am-muted">여행 예산</span>
 
           <span
             className="
                             font-bold
-                            text-slate-800
+                            am-text
                         "
           >
             {formatWon(plan.totalBudget)}

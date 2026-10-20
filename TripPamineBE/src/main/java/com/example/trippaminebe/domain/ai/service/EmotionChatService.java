@@ -35,6 +35,11 @@ public class EmotionChatService {
     private final ManagerSlmClient slmClient;
     private final EmotionAnalysisService emotionAnalysisService;
     private final AiUserSettingsRepository settingsRepository;
+    // 본인 여행계획 조회 및 Qwen3 문맥 구성
+    private final AiManagerTravelContextService travelContextService;
+    private final AiManagerVerifiedAnswerService verifiedAnswerService;
+    private final AiManagerGameAnswerService gameAnswerService;
+    private final AiManagerReadIntentRouter readIntentRouter;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -101,12 +106,88 @@ public class EmotionChatService {
                 .filter(turn -> "user".equals(turn.role()))
                 .map(ManagerSlmClient.ChatTurn::content)
                 .toList();
-        String featureContext = AiManagerFeatureCatalog.buildPromptContext(message, previousUserMessages);
 
-        // 외부 HTTP 호출은 DB 트랜잭션 없이 진행한다.
-        String answer = slmClient.generateWithHistory(SYSTEM_PROMPT + "\n\n" + featureContext, turns);
+
+        // 기존 기능 카탈로그
+        String featureContext =
+            AiManagerFeatureCatalog.buildPromptContext(
+                message,
+                previousUserMessages
+            );
+
+        // 검증된 마스코트 도감 위치 안내
+        String verifiedAnswer =
+            AiManagerFeatureCatalog.getVerifiedMascotDexGuide(message);
+
+        // 실제 DB 조회 기반 직접 응답
+        if (verifiedAnswer == null) {
+            verifiedAnswer = verifiedAnswerService.findAnswer(
+                userId,
+                message,
+                previousUserMessages
+            );
+        }
+
+        // 개인 게임정보의 의미 구분 및 의도 라우팅.
+        // 출처별 포인트 잔액, 누적 획득량 등의 미확인 수치를
+        // 일반 Qwen3 대화로 넘기지 않고 검증된 답변으로 처리한다.
+        if (verifiedAnswer == null) {
+            verifiedAnswer = readIntentRouter.findAnswer(
+                userId,
+                message
+            );
+        }
+
+        // 포인트,퀘스트,RPG,마스코트 검증된 DB 조회
+        if (verifiedAnswer == null) {
+            verifiedAnswer = gameAnswerService.findAnswer(
+                userId,
+                message
+            );
+        }
+
+
+        // 직접 답할 수 없는 질문에 대해서만
+        // 기존 여행정보 문맥을 Qwen3에 전달한다.
+        String travelContext = verifiedAnswer == null
+            ? travelContextService.buildContext(
+            userId,
+            message,
+            previousUserMessages
+        )
+            : "";
+
+        String systemPrompt =
+            SYSTEM_PROMPT + "\n\n" + featureContext;
+
+        if (!travelContext.isBlank()) {
+            systemPrompt += "\n\n" + travelContext;
+        }
+
+        // 검증된 답변 우선, 그 외에는 기존 Qwen3 호출
+        String answer;
+
+        if (verifiedAnswer != null) {
+            answer = verifiedAnswer;
+        } else {
+            answer = slmClient.generateWithHistory(
+                systemPrompt,
+                turns
+            );
+        }
+
+        // 개발용 경로 출력 방지
+        answer = AiManagerFeatureCatalog.toUserFacingAnswer(answer);
+
+
+        // 서버 저장 동의 시 사용자에게 실제 표시되는 답변을 저장한다.
         if (request.saveHistory()) {
-            conversationId = persistence.recordExchange(userId, conversationId, message, answer);
+            conversationId = persistence.recordExchange(
+                userId,
+                conversationId,
+                message,
+                answer
+            );
         }
 
         int userTurnCount = request.saveHistory()

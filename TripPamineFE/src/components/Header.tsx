@@ -8,6 +8,7 @@ import BrandMark from "./BrandMark";
 interface HeaderProps {
     sidebarOpen: boolean;
     onToggleSidebar: () => void;
+    appearance?: "light" | "dark";
 }
 
 interface CurrentUser {
@@ -35,6 +36,7 @@ interface CurrentUser {
 export default function Header({
                                    sidebarOpen,
                                    onToggleSidebar,
+                                   appearance = "light",
                                }: HeaderProps) {
 
     const navigate = useNavigate();
@@ -207,6 +209,7 @@ export default function Header({
 
     return (
         <header
+            data-appearance={appearance}
             className="
         fixed inset-x-0 top-0 z-50
         flex h-16 items-center
@@ -223,8 +226,9 @@ export default function Header({
                 type="button"
                 onClick={onToggleSidebar}
                 aria-label="사이드바 토글"
+                aria-expanded={sidebarOpen}
                 className="
-          flex h-9 w-9 shrink-0
+          am-header-menu flex h-11 w-11 shrink-0
           items-center justify-center
           rounded-xl text-slate-500
           transition
@@ -254,17 +258,17 @@ export default function Header({
             <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="ml-2 flex items-center gap-2.5"
+                className="am-header-home ml-2 flex items-center gap-2.5"
             >
                 <BrandMark />
 
-                <span className="font-display text-lg font-bold tracking-tight text-slate-950">
+                <span className="am-header-brand font-display text-lg font-bold tracking-tight text-slate-950">
                     TripPamine
                 </span>
 
                 <span
                     className="
-            hidden items-center gap-1.5
+            am-header-badge hidden items-center gap-1.5
             rounded-full border border-sky-200 bg-sky-50
             px-2.5 py-1
             text-[10px] font-black tracking-[0.14em] text-sky-700
@@ -275,7 +279,7 @@ export default function Header({
                         <span className="absolute inset-0 animate-ping rounded-full bg-cyan-400 opacity-70" />
                         <span className="relative h-1.5 w-1.5 rounded-full bg-cyan-400" />
                     </span>
-                    AI ONLINE
+                    {appearance === "dark" ? "AI MANAGER" : "AI ONLINE"}
                 </span>
             </button>
 
@@ -284,7 +288,7 @@ export default function Header({
                     type="button"
                     onClick={() => navigate("/assets")}
                     className="
-            hidden items-center gap-1.5
+            am-header-assets hidden items-center gap-1.5
             rounded-xl tp-gradient-border
             px-3.5 py-2
             text-xs font-bold text-slate-700
@@ -306,7 +310,7 @@ export default function Header({
                             }
                             title="마이페이지"
                             className="
-                hidden items-center gap-2
+                am-header-profile hidden items-center gap-2
                 rounded-xl py-1.5 pl-1.5 pr-3
                 text-sm font-semibold text-slate-600
                 transition
@@ -343,7 +347,7 @@ export default function Header({
                             type="button"
                             onClick={handleLogout}
                             className="
-                rounded-xl border border-slate-200
+                am-header-logout rounded-xl border border-slate-200
                 bg-white/80 px-3.5 py-2
                 text-xs font-bold text-slate-600
                 transition
