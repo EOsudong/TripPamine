@@ -41,11 +41,6 @@ export interface RainAlert {
     rainAmount: string | null;
 }
 
-export interface UltraShortForecastResult {
-    hourly: HourlyForecast[];
-    rain: RainAlert;
-}
-
 export const getUltraShortForecastApi = async (
     lat: number,
     lng: number,
