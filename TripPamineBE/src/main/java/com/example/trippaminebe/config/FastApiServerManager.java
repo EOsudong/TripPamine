@@ -35,24 +35,50 @@ public class FastApiServerManager {
             return;
          }
 
-         // 3. OS(Windows vs Mac/Linux)에 따른 실행 명령어 분기
+         // 3. OS(Windows vs Mac/Linux) 및 venv 가상환경 python 직접 실행
          boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
          ProcessBuilder processBuilder;
 
          if (isWindows) {
-            File batFile = new File(visionDir, "run_vision.bat");
-            if (!batFile.exists()) {
-               System.err.println("⚠️ [FastAPI] run_vision.bat 파일이 없습니다: " + batFile.getAbsolutePath());
-               return;
+            File venvPython = new File(visionDir, "venv/Scripts/python.exe");
+
+            if (venvPython.exists()) {
+               // cmd.exe / start /b 껍데기 없이 venv의 python.exe로 uvicorn 직접 실행 (터미널 대기 현원 해결)
+               processBuilder = new ProcessBuilder(
+                   venvPython.getAbsolutePath(),
+                   "-m", "uvicorn",
+                   "main:app",
+                   "--host", "127.0.0.1",
+                   "--port", "8000"
+               );
+            } else {
+               File batFile = new File(visionDir, "run_vision.bat");
+               if (!batFile.exists()) {
+                  System.err.println("⚠️ [FastAPI] venv python 및 run_vision.bat 파일을 찾을 수 없습니다: " + visionDir.getAbsolutePath());
+                  return;
+               }
+               // start /b 없이 cmd /c 로 bat 직접 실행
+               processBuilder = new ProcessBuilder("cmd.exe", "/c", "run_vision.bat");
             }
-            processBuilder = new ProcessBuilder("cmd.exe", "/c", "start", "", "/b", "run_vision.bat");
          } else {
-            File shFile = new File(visionDir, "run_vision.sh");
-            if (!shFile.exists()) {
-               System.err.println("⚠️ [FastAPI] run_vision.sh 파일이 없습니다: " + shFile.getAbsolutePath());
-               return;
+            File venvPython = new File(visionDir, "venv/bin/python");
+
+            if (venvPython.exists()) {
+               processBuilder = new ProcessBuilder(
+                   venvPython.getAbsolutePath(),
+                   "-m", "uvicorn",
+                   "main:app",
+                   "--host", "127.0.0.1",
+                   "--port", "8000"
+               );
+            } else {
+               File shFile = new File(visionDir, "run_vision.sh");
+               if (!shFile.exists()) {
+                  System.err.println("⚠️ [FastAPI] run_vision.sh 파일이 없습니다: " + shFile.getAbsolutePath());
+                  return;
+               }
+               processBuilder = new ProcessBuilder("/bin/bash", shFile.getAbsolutePath());
             }
-            processBuilder = new ProcessBuilder("/bin/bash", shFile.getAbsolutePath());
          }
 
          processBuilder.directory(visionDir);
@@ -61,7 +87,7 @@ public class FastApiServerManager {
 
          fastApiProcess = processBuilder.start();
 
-         System.out.println("🚀 [FastAPI] 비전 AI 서버 자동 실행 성공 (" + (isWindows ? "Windows .bat" : "Mac .sh") + ")");
+         System.out.println("🚀 [FastAPI] 비전 AI 서버 자동 실행 성공 (PID: " + fastApiProcess.pid() + ")");
          System.out.println("📂 [FastAPI] 실행 위치: " + visionDir.getAbsolutePath());
 
       } catch (Exception e) {
@@ -77,8 +103,9 @@ public class FastApiServerManager {
             boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
             if (isWindows) {
-               // Windows: /T 옵션으로 자식 프로세스(python.exe)까지 프로세스 트리 전체 강제 종료
-               Runtime.getRuntime().exec("taskkill /F /T /PID " + fastApiProcess.pid());
+               // Windows: /T 옵션으로 자식 프로세스(python.exe)까지 프로세스 트리 전체 강제 종료 후 대기
+               Process taskkillProcess = Runtime.getRuntime().exec("taskkill /F /T /PID " + fastApiProcess.pid());
+               taskkillProcess.waitFor();
             } else {
                // Mac/Linux: ProcessHandle을 통해 모든 하위 프로세스 강제 종료
                fastApiProcess.descendants().forEach(ProcessHandle::destroyForcibly);
