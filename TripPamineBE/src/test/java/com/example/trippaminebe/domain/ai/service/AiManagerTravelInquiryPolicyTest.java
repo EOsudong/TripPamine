@@ -54,6 +54,13 @@ class AiManagerTravelInquiryPolicyTest {
     }
 
     @Test
+    void 중간에다른주제가등장하면오래된여행질문을복원하지않는다() {
+        assertThat(AiManagerTravelInquiryPolicy.isCorrectionFollowup(
+                "아닌데?", List.of("내 여행 목록 알려줘", "어제 영화 봤어")))
+                .isFalse();
+    }
+
+    @Test
     void 삭제실행요청을재조회로오인하지않는다() {
         assertThat(AiManagerTravelInquiryPolicy.isCorrectionFollowup(
                 "그 여행 삭제해줘", List.of("내 여행 목록 알려줘"))).isFalse();
