@@ -35,6 +35,7 @@ import {
 } from "../api/recommendation";
 import { KakaoMapModal, type PlaceItem } from "../components/KakaoMapModal";
 import TravelReplanningModal from "../components/TravelReplanningModal";
+import AiRecommendDealsHub from "../components/AiRecommendDealsHub";
 import {
   getTripWeatherApi,
   getUltraShortForecastApi,
@@ -629,6 +630,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                   </p>
                 )}
               </div>
+              {/* 서로 중복되던 맞춤 추천/자유 검색을 여행 콘텐츠 안의 단일 탭으로 표시한다. */}
+              <AiRecommendDealsHub key={selectedPlan?.planId ?? "general"} plan={selectedPlan} />
               {!selectedPlan ? (
                 <div className="ar-empty">
                   <span className="ar-empty-icon">

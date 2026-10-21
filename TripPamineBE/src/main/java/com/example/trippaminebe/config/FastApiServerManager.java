@@ -8,7 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 
-@Component
+//@Component
 public class FastApiServerManager {
 
    private Process fastApiProcess;

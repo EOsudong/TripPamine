@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import NegoPartnerDealsDialog from "./NegoPartnerDealsDialog";
 import { useNego } from "../context/NegoContext";
 import { extractNegoErrorMessage } from "../api/nego";
 import { getMyAccountsApi, type AccountSummary } from "../api/account";
@@ -14,6 +15,8 @@ export default function NegoHotDealBanner() {
   const [error, setError] = useState<string | null>(null);
   // 수락 성공 시 activeOffer가 비워지므로, 결제 완료 패널에 보여줄 금액은 따로 잡아둔다.
   const [paidAmount, setPaidAmount] = useState<number | null>(null);
+  const [showPartnerDeals, setShowPartnerDeals] = useState(false);
+  const [partnerOfferName, setPartnerOfferName] = useState("");
 
   const negoId = activeOffer?.negoId ?? null;
 
@@ -71,27 +74,27 @@ export default function NegoHotDealBanner() {
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  if (phase === "done") {
+  if (phase === "done" && !showPartnerDeals) {
     return (
       <div className="fixed top-20 right-4 z-[60] w-80 rounded-2xl bg-white shadow-xl border border-emerald-100 p-4 animate-in fade-in slide-in-from-top-2">
-        <p className="text-sm font-bold text-emerald-600">✅ 결제 완료</p>
+        <p className="text-sm font-bold text-emerald-600">거래 기록 완료</p>
         <p className="text-lg font-bold text-slate-800 mt-1">
           {paidAmount?.toLocaleString()}원
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          최근 입출금 내역과 가계부에 지출로 반영되었습니다.
+          연동된 계좌의 잔액과 가계부에 지출로 반영되었습니다. 실제 예약·결제는 아닙니다.
         </p>
       </div>
     );
   }
 
-  if (!activeOffer || secondsLeft <= 0) return null;
+  if ((!activeOffer || secondsLeft <= 0 || phase === "done") && !showPartnerDeals) return null;
 
   const selected =
     accounts.find((a) => a.accountId === selectedAccountId) ?? null;
   const noAccount = accounts.length === 0;
   const insufficient =
-    selected != null && selected.balance < activeOffer.offeredPrice;
+    selected != null && selected.balance < (activeOffer?.offeredPrice ?? 0);
   const acceptDisabled =
     phase === "submitting" || noAccount || selected == null || insufficient;
 
@@ -99,7 +102,7 @@ export default function NegoHotDealBanner() {
     if (selectedAccountId == null) return;
     setError(null);
     setPhase("submitting");
-    const amount = activeOffer.offeredPrice;
+    const amount = activeOffer?.offeredPrice ?? 0;
     try {
       await accept(selectedAccountId);
       setPaidAmount(amount);
@@ -119,12 +122,14 @@ export default function NegoHotDealBanner() {
         ? "계좌 연동 필요"
         : insufficient
           ? "잔액 부족"
-          : "수락하기";
+          : "결제 수락";
 
   return (
+    <>
+      {activeOffer && secondsLeft > 0 && phase !== "done" && (
     <div className="fixed top-20 right-4 z-[60] w-80 rounded-2xl bg-white shadow-xl border border-sky-100 p-4 animate-in fade-in slide-in-from-top-2">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-sky-500">🔥 AI 타임 네고</span>
+        <span className="text-xs font-bold text-sky-500">AI 타임 네고 · 오퍼</span>
         <button
           onClick={dismiss}
           className="text-slate-400 hover:text-slate-600 text-sm"
@@ -160,6 +165,20 @@ export default function NegoHotDealBanner() {
         </select>
       )}
 
+      <p className="mb-3 text-[11px] leading-relaxed text-slate-500">
+        아래 제안은 여행 예산을 기준으로 계산한 금액입니다. 실제 마이리얼트립 상품 가격·할인과는 무관합니다.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          setPartnerOfferName(activeOffer.itemName);
+          setShowPartnerDeals(true);
+        }}
+        className="mb-3 w-full rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-bold text-white hover:bg-slate-800"
+      >
+        실제 마이리얼트립 상품 비교하기
+      </button>
+
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
       <div className="flex items-center justify-between">
@@ -179,5 +198,14 @@ export default function NegoHotDealBanner() {
         </button>
       </div>
     </div>
+      )}
+      {showPartnerDeals && (
+        <NegoPartnerDealsDialog
+          key={partnerOfferName}
+          offerName={partnerOfferName}
+          onClose={() => setShowPartnerDeals(false)}
+        />
+      )}
+    </>
   );
 }

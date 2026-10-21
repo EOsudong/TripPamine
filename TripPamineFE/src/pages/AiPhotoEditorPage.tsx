@@ -1,20 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import AppLayout from "../layout/AppLayout";
+import { API_BASE_URL as SPRING_API_BASE_URL } from "../api/axios";
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-
-// 도메인 배포 환경(상대 경로) 및 로컬 환경 동적 대응
-const getApiBaseUrl = () => {
-    if (BASE_URL) {
-        return `${BASE_URL}/api/v1/ai-photo`;
-    }
-    if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-        return "http://localhost:8080/api/v1/ai-photo";
-    }
-    return "/api/v1/ai-photo";
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = `${SPRING_API_BASE_URL}/api/v1/ai-photo`;
 
 // 🔑 인증 헤더 생성 공통 헬퍼 함수
 const getAuthHeaders = (): Record<string, string> => {
