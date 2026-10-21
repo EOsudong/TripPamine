@@ -1,5 +1,22 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Check,
+  Compass,
+  Gift,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  Users,
+  Wallet,
+} from "lucide-react";
 import type { TravelPlan, TravelPlanFormState } from "../types";
 import {
   getTravelPlansApi,
@@ -7,437 +24,560 @@ import {
   updateTravelPlanApi,
   deleteTravelPlanApi,
 } from "../api/travel";
-import { useNavigate } from "react-router-dom";
 import MysteryTour from "./MysteryTour";
 
-// 가계부(AccountBook)는 마이페이지(/mypage)로 이동했습니다.
-// 로그인 여부와 무관하게 노출되던 메인 페이지 대신, 로그인 후에만 접근 가능한
-// 마이페이지 탭에서 확인할 수 있어요. (src/pages/MyPage.tsx 참고)
+const EMPTY_FORM: TravelPlanFormState = {
+  planName: "",
+  totalBudget: "",
+  companionType: "",
+  blindYn: "N",
+  startDate: "",
+  endDate: "",
+};
 
+/** 여행 관리와 미스터리 투어를 공통 작업 화면으로 제공한다. */
 export default function Hero() {
   const [activeTab, setActiveTab] = useState<"planner" | "mystery">("planner");
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState<TravelPlanFormState>({ ...EMPTY_FORM });
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState<"save" | number | null>(null);
+  const pendingRef = useRef(false);
+  const requestRef = useRef(0);
+  const mountedRef = useRef(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const listHeadingRef = useRef<HTMLHeadingElement>(null);
 
-  const [form, setForm] = useState<TravelPlanFormState>({
-    planName: "",
-    totalBudget: "",
-    companionType: "",
-    blindYn: "N",
-    startDate: "",
-    endDate: "",
-  });
-
-  // 여행 목록 조회
+  // 조회 실패와 빈 목록을 구분하고 늦게 도착한 응답은 반영하지 않는다.
   const loadPlans = async () => {
+    const request = ++requestRef.current;
+    setListLoading(true);
+    setListError("");
     try {
       const data = await getTravelPlansApi();
-      setPlans(data);
-    } catch (error) {
-      console.error("여행 계획 조회 실패:", error);
+      if (mountedRef.current && request === requestRef.current) setPlans(data);
+    } catch {
+      if (mountedRef.current && request === requestRef.current)
+        setListError("여행 목록을 불러오지 못했어요. 다시 불러와 주세요.");
+    } finally {
+      if (mountedRef.current && request === requestRef.current)
+        setListLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPlans();
+    mountedRef.current = true;
+    void loadPlans();
+    return () => {
+      mountedRef.current = false;
+      requestRef.current += 1;
+    };
   }, []);
 
-  // 입력값 변경 핸들러
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value } = event.target;
+    setForm((previous) => ({ ...previous, [name]: value }));
+    setFormError("");
   };
 
-  // 폼 초기화
   const resetForm = () => {
     setEditingId(null);
-    setForm({
-      planName: "",
-      totalBudget: "",
-      companionType: "",
-      blindYn: "N",
-      startDate: "",
-      endDate: "",
-    });
+    setForm({ ...EMPTY_FORM });
+    setFormError("");
   };
 
-  // 등록 / 수정 제출
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (pendingRef.current) return;
+    const budget = Number(form.totalBudget);
+    if (!form.planName.trim()) {
+      setFormError("여행 이름을 입력해 주세요.");
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (!form.totalBudget.trim() || !Number.isFinite(budget) || budget < 0) {
+      setFormError("예산은 0원 이상의 숫자로 입력해 주세요.");
+      return;
+    }
+    // 백엔드와 동일하게 과거 출발 일시와 역전된 기간을 차단한다.
+    if (form.startDate && new Date(form.startDate).getTime() < Date.now()) {
+      setFormError("출발 일시는 현재 이후로 선택해 주세요.");
+      return;
+    }
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setFormError("종료 일시는 출발 일시 이후로 선택해 주세요.");
+      return;
+    }
     const requestData = {
-      planName: form.planName,
-      totalBudget: Number(form.totalBudget),
+      planName: form.planName.trim(),
+      totalBudget: budget,
       companionType: form.companionType || null,
       blindYn: form.blindYn,
-      startDate:
-        form.startDate && form.startDate.trim() !== "" ? form.startDate : null,
-      endDate: form.endDate && form.endDate.trim() !== "" ? form.endDate : null,
+      startDate: form.startDate || null,
+      endDate: form.endDate || null,
     };
-
+    pendingRef.current = true;
+    setPending("save");
+    setFormError("");
+    setActionError("");
+    setNotice("");
     try {
-      setLoading(true);
-      if (editingId) {
-        await updateTravelPlanApi(editingId, requestData);
-        alert("여행 계획이 수정되었습니다!");
-      } else {
-        await createTravelPlanApi(requestData);
-        alert("여행 계획이 등록되었습니다!");
-      }
+      if (editingId !== null) await updateTravelPlanApi(editingId, requestData);
+      else await createTravelPlanApi(requestData);
+      if (!mountedRef.current) return;
+      setNotice(
+        editingId !== null
+          ? "여행 계획을 수정했어요."
+          : "새 여행을 등록했어요. AI 추천에서 코스를 확인해 보세요.",
+      );
       resetForm();
-      loadPlans();
-    } catch (error) {
-      console.error("저장 실패:", error);
-      alert("저장 중 오류가 발생했습니다.");
+      // 저장 성공 뒤 목록 갱신에 실패해도 저장 실패로 안내하지 않는다.
+      await loadPlans();
+      listHeadingRef.current?.focus({ preventScroll: true });
+    } catch {
+      if (mountedRef.current)
+        setFormError(
+          "저장 결과를 확인하지 못했어요. 목록을 새로고침해 반영 여부를 확인한 뒤 다시 시도해 주세요.",
+        );
     } finally {
-      setLoading(false);
+      pendingRef.current = false;
+      if (mountedRef.current) setPending(null);
     }
   };
 
-  // 수정 시작
   const handleEdit = (plan: TravelPlan) => {
+    if (pendingRef.current) return;
     setEditingId(plan.planId);
     setForm({
       planName: plan.planName,
       totalBudget: String(plan.totalBudget),
       companionType: plan.companionType || "",
       blindYn: plan.blindYn || "N",
-      startDate: plan.startDate ? plan.startDate.slice(0, 16) : "",
-      endDate: plan.endDate ? plan.endDate.slice(0, 16) : "",
+      startDate: plan.startDate?.slice(0, 16) || "",
+      endDate: plan.endDate?.slice(0, 16) || "",
     });
-
+    setFormError("");
+    setActionError("");
+    setNotice("");
+    nameInputRef.current?.focus({ preventScroll: true });
     document
-      .getElementById("ai-planner")
-      ?.scrollIntoView({ behavior: "smooth" });
+      .getElementById("tw-form-heading")
+      ?.scrollIntoView({ block: "start" });
   };
 
-  // 삭제
-  const handleDelete = async (planId: number) => {
-    if (!window.confirm("정말 이 여행 계획을 삭제하시겠습니까?")) return;
-
+  const handleDelete = async (plan: TravelPlan) => {
+    if (pendingRef.current) return;
+    if (!window.confirm(`“${plan.planName}” 여행 계획을 삭제할까요?`)) return;
+    pendingRef.current = true;
+    setPending(plan.planId);
+    setActionError("");
+    setNotice("");
     try {
-      await deleteTravelPlanApi(planId);
-      alert("여행 계획이 삭제되었습니다.");
-      loadPlans();
-    } catch (error) {
-      console.error("삭제 실패:", error);
-      alert("삭제 중 오류가 발생했습니다.");
+      await deleteTravelPlanApi(plan.planId);
+      if (!mountedRef.current) return;
+      setPlans((previous) =>
+        previous.filter((item) => item.planId !== plan.planId),
+      );
+      if (editingId === plan.planId) resetForm();
+      setNotice("여행 계획을 삭제했어요.");
+      await loadPlans();
+      listHeadingRef.current?.focus({ preventScroll: true });
+    } catch {
+      if (mountedRef.current)
+        setActionError(
+          "삭제 결과를 확인하지 못했어요. 목록을 새로고침해 반영 여부를 확인해 주세요.",
+        );
+    } finally {
+      pendingRef.current = false;
+      if (mountedRef.current) setPending(null);
     }
   };
-
-  const companionLabel = (type: string | null) => {
-    switch (type) {
-      case "ALONE":
-        return "혼자";
-      case "FRIEND":
-        return "친구";
-      case "FAMILY":
-        return "가족";
-      case "COUPLE":
-        return "연인";
-      default:
-        return type || "미선택";
-    }
-  };
-
-  const navigate = useNavigate();
 
   const now = new Date();
   const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
+  const busy = pending !== null;
 
   return (
-    <section
-      id="ai-planner"
-      className="relative min-h-[680px] flex items-center justify-center overflow-hidden py-10"
-    >
-      {/* 배경 사진 + 그라데이션 */}
-      <img
-        src="https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=1600&h=900&fit=crop&auto=format"
-        alt="Korean coastal travel"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-night-950/80 via-sky-950/60 to-night-950/90" />
-      <div className="absolute inset-0 tp-aurora opacity-70 mix-blend-screen" />
-      <div className="absolute inset-0 tp-dot-grid opacity-40 [mask-image:radial-gradient(70%_60%_at_50%_30%,black,transparent)]" />
-
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 pt-10 pb-16">
-        {/* 상단 텍스트 */}
-        <div className="text-center mb-6">
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-violet-100 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.9)]" />
-            Travel Workspace · AI Manager
-          </span>
-          <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl">
-            여행 계획을 세우면,<br />
-            <span className="tp-gradient-text animate-shimmer">AI가 모든 걸 해결해 줍니다</span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm text-white/70 md:text-base">
-            일정과 예산을 등록하면 AI 매니저가 코스·퀘스트·미스터리 투어로 이어 드립니다
+    <div className="tw-page" id="ai-planner">
+      <section className="tw-hero" aria-labelledby="tw-heading">
+        <div className="absolute inset-0 -z-10 tp-aurora" aria-hidden="true" />
+        <div
+          className="absolute inset-0 -z-10 tp-dot-grid opacity-40"
+          aria-hidden="true"
+        />
+        <div>
+          <p className="tw-eyebrow">
+            <Compass size={14} aria-hidden="true" />
+            TRIPPAMINE TRAVEL
+          </p>
+          <h1 id="tw-heading">나의 여행 계획</h1>
+          <p className="tw-description">
+            일정과 예산을 정하고, 나에게 맞는 여행을 준비하세요.
+            <br className="tw-desktop-break" /> 등록한 여행은 AI 추천에서 코스로
+            이어갈 수 있어요.
           </p>
         </div>
-        {/* 여행 플래너 / 미스터리 투어 탭 */}
-        <div className="mx-auto mb-8 flex max-w-md rounded-2xl border border-white/15 bg-white/10 p-1.5 shadow-2xl backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => setActiveTab("planner")}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "planner"
-                ? "tp-gradient-bg text-white shadow-[0_8px_24px_-8px_rgba(124,108,255,0.9)]"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            ✈ 여행 플래너
-          </button>
+        <Link to="/ai-recommend" className="tw-button tw-button--primary">
+          <Sparkles size={16} aria-hidden="true" />
+          AI 추천 보기
+          <ArrowUpRight size={14} aria-hidden="true" />
+        </Link>
+      </section>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("mystery")}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "mystery"
-                ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white shadow-[0_8px_24px_-8px_rgba(217,70,239,0.9)]"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            🎁 미스터리 투어
-          </button>
-        </div>
-        {activeTab === "planner" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start text-left">
-            {/* 1열: 등록 / 수정 폼 */}
-            <div className="rounded-3xl border border-white/50 bg-white/90 p-6 py-13 shadow-[0_30px_80px_-30px_rgba(60,40,180,0.6)] backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
-                <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
-                  {editingId ? "EDIT PLAN" : "NEW PLAN"}
-                </span>
-                <h3 className="font-bold text-slate-800 text-lg">
-                  {editingId ? "여행 계획 수정" : "새 여행 계획 생성"}
-                </h3>
-              </div>
+      <div className="tw-switcher" role="group" aria-label="여행 방식">
+        <button
+          type="button"
+          aria-pressed={activeTab === "planner"}
+          disabled={busy}
+          onClick={() => setActiveTab("planner")}
+        >
+          <Compass size={16} aria-hidden="true" />
+          여행 계획
+        </button>
+        <button
+          type="button"
+          aria-pressed={activeTab === "mystery"}
+          disabled={busy}
+          onClick={() => setActiveTab("mystery")}
+        >
+          <Gift size={16} aria-hidden="true" />
+          미스터리 투어
+        </button>
+      </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    여행 이름
-                  </label>
-                  <input
-                    type="text"
-                    name="planName"
-                    value={form.planName}
-                    onChange={handleChange}
-                    placeholder="예: 제주도 3박 4일 여행"
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    총 예산
-                  </label>
-                  <div className="relative">
+      {activeTab === "planner" ? (
+        <div id="tw-planner-panel">
+          {notice && (
+            <p className="tw-notice" role="status">
+              <Check size={16} aria-hidden="true" />
+              {notice}
+            </p>
+          )}
+          {actionError && (
+            <p className="tw-error" role="alert">
+              {actionError}
+            </p>
+          )}
+          <div className="tw-workspace">
+            <section
+              className="tw-form-card tp-card-dark"
+              aria-labelledby="tw-form-heading"
+            >
+              <p className="tw-eyebrow">
+                {editingId !== null ? "EDIT PLAN" : "NEW PLAN"}
+              </p>
+              <h2 id="tw-form-heading">
+                {editingId !== null ? "여행 계획 수정" : "새 여행 등록"}
+              </h2>
+              <p className="tw-section-description">
+                이름과 예산을 입력해 주세요. 일정·동행자는 나중에 정해도
+                괜찮아요.
+              </p>
+              <form onSubmit={handleSubmit} aria-busy={pending === "save"}>
+                <fieldset disabled={busy} className="tw-fields">
+                  <div className="tw-field">
+                    <label htmlFor="tw-plan-name">
+                      여행 이름 <span>필수</span>
+                    </label>
                     <input
-                      type="number"
-                      name="totalBudget"
-                      min="0"
-                      value={form.totalBudget}
+                      ref={nameInputRef}
+                      id="tw-plan-name"
+                      name="planName"
+                      value={form.planName}
                       onChange={handleChange}
-                      placeholder="500000"
+                      placeholder="예: 전주에서 보내는 주말"
                       required
-                      className="w-full px-3.5 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
+                      aria-describedby={formError ? "tw-form-error" : undefined}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                      원
-                    </span>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      동행자
+                  <div className="tw-field">
+                    <label htmlFor="tw-budget">
+                      총 예산 <span>필수</span>
+                    </label>
+                    <div className="tw-input-unit">
+                      <input
+                        id="tw-budget"
+                        type="number"
+                        name="totalBudget"
+                        min="0"
+                        step="any"
+                        inputMode="decimal"
+                        value={form.totalBudget}
+                        onChange={handleChange}
+                        placeholder="예: 300000"
+                        required
+                      />
+                      <span>원</span>
+                    </div>
+                    {form.totalBudget &&
+                      Number.isFinite(Number(form.totalBudget)) &&
+                      Number(form.totalBudget) >= 0 && (
+                        <p className="tw-field-hint">
+                          {Number(form.totalBudget).toLocaleString("ko-KR")}원
+                        </p>
+                      )}
+                  </div>
+                  <div className="tw-field">
+                    <label htmlFor="tw-companion">
+                      동행자 <span>선택</span>
                     </label>
                     <select
+                      id="tw-companion"
                       name="companionType"
                       value={form.companionType}
                       onChange={handleChange}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
                     >
-                      <option value="">선택</option>
+                      <option value="">아직 정하지 않았어요</option>
                       <option value="ALONE">혼자</option>
                       <option value="FRIEND">친구</option>
                       <option value="FAMILY">가족</option>
                       <option value="COUPLE">연인</option>
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    출발 일시
-                  </label>
-                  <input
-                    type="datetime-local"
-                    name="startDate"
-                    value={form.startDate}
-                    onChange={handleChange}
-                    min={minDateTime}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    종료 일시
-                  </label>
-                  <input
-                    type="datetime-local"
-                    name="endDate"
-                    value={form.endDate}
-                    onChange={handleChange}
-                    min={form.startDate || minDateTime}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none text-xs text-slate-800 transition"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 rounded-xl tp-gradient-bg py-3 text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(124,108,255,0.9)] transition hover:brightness-110 disabled:opacity-60"
-                  >
-                    {loading
-                      ? "저장 중..."
-                      : editingId
-                        ? "수정 완료"
-                        : "여행 등록"}
-                  </button>
-                  {editingId && (
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
-                    >
-                      취소
-                    </button>
+                  <div className="tw-field">
+                    <label htmlFor="tw-start">
+                      출발 일시 <span>선택</span>
+                    </label>
+                    <input
+                      id="tw-start"
+                      type="datetime-local"
+                      name="startDate"
+                      value={form.startDate}
+                      onChange={handleChange}
+                      min={minDateTime}
+                    />
+                  </div>
+                  <div className="tw-field">
+                    <label htmlFor="tw-end">
+                      종료 일시 <span>선택</span>
+                    </label>
+                    <input
+                      id="tw-end"
+                      type="datetime-local"
+                      name="endDate"
+                      value={form.endDate}
+                      onChange={handleChange}
+                      min={form.startDate || minDateTime}
+                    />
+                  </div>
+                  {formError && (
+                    <p id="tw-form-error" className="tw-error" role="alert">
+                      {formError}
+                    </p>
                   )}
-                </div>
+                  <div className="tw-form-actions">
+                    <button
+                      type="submit"
+                      className="tw-button tw-button--primary"
+                    >
+                      {pending === "save" ? (
+                        <Loader2
+                          size={16}
+                          className="animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : editingId !== null ? (
+                        <Check size={16} aria-hidden="true" />
+                      ) : (
+                        <Plus size={16} aria-hidden="true" />
+                      )}
+                      {pending === "save"
+                        ? "저장 중…"
+                        : editingId !== null
+                          ? "수정 저장"
+                          : "여행 등록"}
+                    </button>
+                    {editingId !== null && (
+                      <button
+                        type="button"
+                        className="tw-button tw-button--secondary"
+                        onClick={resetForm}
+                      >
+                        수정 취소
+                      </button>
+                    )}
+                  </div>
+                </fieldset>
               </form>
-            </div>
+            </section>
 
-            {/* 2열: 등록된 여행 카드리스트 */}
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-              <div className="flex items-center justify-between text-white mb-2">
-                <h3 className="font-bold text-lg drop-shadow">
-                  등록된 여행 목록
-                </h3>
-
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
-                    총 {plans.length}개
-                  </span>
-
+            <section
+              className="tw-list-section"
+              aria-labelledby="tw-list-heading"
+              aria-busy={listLoading}
+            >
+              <div className="tw-list-heading">
+                <div>
+                  <p className="tw-eyebrow">MY TRIPS</p>
+                  <h2 id="tw-list-heading" ref={listHeadingRef} tabIndex={-1}>
+                    등록한 여행{" "}
+                    <span>{listLoading || listError ? "—" : plans.length}</span>
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  className="tw-button tw-button--secondary"
+                  disabled={busy || listLoading}
+                  onClick={() => void loadPlans()}
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  새로고침
+                </button>
+              </div>
+              {listLoading ? (
+                <div className="tw-state tp-card-dark" role="status">
+                  <Loader2
+                    size={26}
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                  <h3>여행 목록을 불러오고 있어요</h3>
+                </div>
+              ) : listError ? (
+                <div className="tw-state tp-card-dark">
+                  <p role="alert">{listError}</p>
                   <button
                     type="button"
-                    onClick={() => navigate("/ai-recommend")}
-                    className="  px-4 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-sky-500/30 border border-white/30 transition-all duration-300 hover:scale-105 active:scale-95"
+                    className="tw-button tw-button--secondary"
+                    disabled={busy}
+                    onClick={() => void loadPlans()}
                   >
-                    ✨ AI 추천 보기
+                    <RefreshCw size={15} aria-hidden="true" />
+                    목록 다시 불러오기
                   </button>
                 </div>
-              </div>
-
-              {plans.length === 0 ? (
-                <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center border border-white/50 shadow-xl">
-                  <div className="text-4xl mb-3">🌏</div>
-                  <h4 className="font-bold text-slate-700 text-base">
-                    등록된 여행이 없습니다.
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    좌측 폼에서 첫 번째 여행 계획을 세워보세요!
-                  </p>
+              ) : plans.length === 0 ? (
+                <div className="tw-state tp-card-dark">
+                  <MapPin size={32} aria-hidden="true" />
+                  <h3>첫 여행을 계획해 볼까요?</h3>
+                  <p>이름과 예산만 등록해도 시작할 수 있어요.</p>
+                  <button
+                    type="button"
+                    className="tw-button tw-button--secondary"
+                    onClick={() => nameInputRef.current?.focus()}
+                  >
+                    새 여행 입력하기
+                    <Plus size={14} aria-hidden="true" />
+                  </button>
                 </div>
               ) : (
-                plans.map((plan) => (
-                  <div
-                    key={plan.planId}
-                    className="tp-lift flex flex-col justify-between rounded-2xl border border-white/60 bg-white/95 p-5 shadow-lg backdrop-blur"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="px-2.5 py-0.5 bg-sky-50 text-sky-600 text-[10px] font-bold rounded-full">
-                          ✈ TRAVEL
+                <div className="tw-plan-list">
+                  {plans.map((plan) => (
+                    <article
+                      key={plan.planId}
+                      className="tw-plan tp-card-dark"
+                      data-editing={editingId === plan.planId}
+                      aria-labelledby={`tw-plan-${plan.planId}`}
+                    >
+                      <div className="tw-plan-top">
+                        <span>
+                          <MapPin size={12} aria-hidden="true" />
+                          여행 계획
                         </span>
                         {plan.blindYn === "Y" && (
-                          <span className="px-2.5 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-full">
-                            🎁 MYSTERY TOUR
+                          <span>
+                            <Gift size={12} aria-hidden="true" />
+                            미스터리
                           </span>
                         )}
+                        {editingId === plan.planId && <span>수정 중</span>}
                       </div>
-                      <h4 className="font-bold text-slate-800 text-lg mb-3">
-                        {plan.planName}
-                      </h4>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
-                        <div className="bg-slate-50 p-2.5 rounded-xl">
-                          <span className="text-slate-400 block text-[10px] mb-0.5">
-                            총 예산
-                          </span>
-                          <span className="font-bold text-slate-700">
-                            💰 {Number(plan.totalBudget).toLocaleString()}원
-                          </span>
+                      <h3 id={`tw-plan-${plan.planId}`}>{plan.planName}</h3>
+                      <p className="tw-plan-date">
+                        <CalendarDays size={15} aria-hidden="true" />
+                        <span>
+                          {formatDate(plan.startDate)} ~{" "}
+                          {formatDate(plan.endDate)}
+                        </span>
+                      </p>
+                      <dl className="tw-plan-facts">
+                        <div>
+                          <dt>
+                            <Wallet size={13} aria-hidden="true" />총 예산
+                          </dt>
+                          <dd>
+                            {Number(plan.totalBudget).toLocaleString("ko-KR")}원
+                          </dd>
                         </div>
-                        <div className="bg-slate-50 p-2.5 rounded-xl">
-                          <span className="text-slate-400 block text-[10px] mb-0.5">
+                        <div>
+                          <dt>
+                            <Users size={13} aria-hidden="true" />
                             동행자
-                          </span>
-                          <span className="font-bold text-slate-700">
-                            👥 {companionLabel(plan.companionType)}
-                          </span>
+                          </dt>
+                          <dd>{companionLabel(plan.companionType)}</dd>
                         </div>
+                      </dl>
+                      <div className="tw-plan-actions">
+                        <button
+                          type="button"
+                          className="tw-button tw-button--secondary"
+                          disabled={busy}
+                          onClick={() => handleEdit(plan)}
+                          aria-label={`${plan.planName} 수정`}
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                          수정
+                        </button>
+                        <button
+                          type="button"
+                          className="tw-button tw-button--danger"
+                          disabled={busy}
+                          onClick={() => void handleDelete(plan)}
+                          aria-label={`${plan.planName} 삭제`}
+                        >
+                          {pending === plan.planId ? (
+                            <Loader2
+                              size={14}
+                              className="animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Trash2 size={14} aria-hidden="true" />
+                          )}
+                          {pending === plan.planId ? "삭제 중…" : "삭제"}
+                        </button>
                       </div>
-
-                      {(plan.startDate || plan.endDate) && (
-                        <div className="bg-emerald-50 px-3 py-2 rounded-xl text-xs text-emerald-800 flex items-center gap-1.5 mb-3">
-                          <span>📅</span>
-                          <span>
-                            {plan.startDate
-                              ? plan.startDate.slice(0, 10)
-                              : "미정"}{" "}
-                            ~{" "}
-                            {plan.endDate ? plan.endDate.slice(0, 10) : "미정"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex justify-end flex-wrap gap-2 pt-2 border-t border-slate-100">
-                      <button
-                        onClick={() => handleEdit(plan)}
-                        className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-600 text-xs font-bold rounded-lg transition-colors"
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => handleDelete(plan.planId)}
-                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold rounded-lg transition-colors"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                ))
+                    </article>
+                  ))}
+                </div>
               )}
-            </div>
+            </section>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div id="tw-mystery-panel">
           <MysteryTour />
-        )}
-      </div>
-    </section>
+        </div>
+      )}
+    </div>
   );
+}
+
+function companionLabel(type: string | null): string {
+  return (
+    (
+      {
+        ALONE: "혼자",
+        FRIEND: "친구",
+        FAMILY: "가족",
+        COUPLE: "연인",
+      } as Record<string, string>
+    )[type ?? ""] ??
+    (type || "동행자 미정")
+  );
+}
+
+function formatDate(value: string | null): string {
+  return value
+    ? value.slice(0, 16).replace("T", " ").replaceAll("-", ".")
+    : "일정 미정";
 }

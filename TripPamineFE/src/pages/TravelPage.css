@@ -1,0 +1,531 @@
+/* 퀘스트·마스코트·AI 추천과 같은 토큰을 쓰는 여행 작업 화면. */
+.tw-theme {
+  --tw-surface: var(--color-night-900);
+  --tw-border: rgb(255 255 255 / 0.1);
+  --tw-text: #f8fafc;
+  --tw-secondary: #cbd5e1;
+  --tw-muted: #94a3b8;
+  --tw-accent: var(--color-cyan-300);
+  background: var(--color-night-950);
+  color: var(--tw-text);
+  color-scheme: dark;
+}
+.tw-page {
+  max-width: 1152px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 40px 16px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.tw-page :is(button, a, input, select, summary):focus-visible {
+  outline: 2px solid var(--tw-accent);
+  outline-offset: 4px;
+}
+.tw-page button {
+  cursor: pointer;
+}
+.tw-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.tw-page svg {
+  flex-shrink: 0;
+}
+.tw-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  padding: 32px;
+  border: 1px solid var(--tw-border);
+  border-radius: 2rem;
+  box-shadow: 0 40px 80px -50px rgb(60 40 180 / 0.8);
+}
+.tw-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--tw-accent);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.5;
+  letter-spacing: 0.2em;
+}
+.tw-hero h1 {
+  margin: 12px 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.5vw, 48px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.tw-description {
+  color: var(--tw-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.tw-hero > .tw-button {
+  flex-shrink: 0;
+}
+.tw-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  transition:
+    background 160ms,
+    border-color 160ms,
+    box-shadow 160ms;
+}
+.tw-button--primary {
+  background: var(--color-cyan-400);
+  color: var(--color-night-950);
+  box-shadow: 0 10px 24px -16px rgb(34 211 238 / 0.8);
+}
+.tw-button--primary:hover:not(:disabled) {
+  background: var(--color-cyan-300);
+  box-shadow: 0 12px 28px -14px rgb(34 211 238 / 0.65);
+}
+.tw-button--secondary {
+  border-color: rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.05);
+  color: var(--tw-text);
+}
+.tw-button--secondary:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.25);
+  background: rgb(255 255 255 / 0.1);
+}
+.tw-button--danger {
+  background: transparent;
+  color: var(--color-rose-200);
+}
+.tw-button--danger:hover:not(:disabled) {
+  background: rgb(244 63 94 / 0.1);
+}
+.tw-switcher {
+  display: inline-flex;
+  gap: 6px;
+  max-width: 100%;
+  margin-bottom: 24px;
+  padding: 6px;
+  border: 1px solid var(--tw-border);
+  border-radius: 1.25rem;
+  background: var(--tw-surface);
+}
+.tw-switcher button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  color: var(--tw-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.tw-switcher button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--tw-text);
+}
+.tw-switcher button[aria-pressed="true"] {
+  border-color: rgb(34 211 238 / 0.3);
+  background: rgb(34 211 238 / 0.1);
+  color: var(--tw-accent);
+}
+.tw-workspace {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.tw-form-card {
+  min-width: 0;
+  padding: 24px;
+}
+.tw-form-card h2,
+.tw-list-heading h2 {
+  margin-top: 8px;
+  color: var(--tw-text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.025em;
+}
+#tw-form-heading,
+#tw-list-heading {
+  scroll-margin-top: 88px;
+}
+#tw-list-heading:focus-visible {
+  outline: 2px solid var(--tw-accent);
+  outline-offset: 4px;
+}
+.tw-section-description {
+  margin: 10px 0 24px;
+  color: var(--tw-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.tw-fields {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.tw-field {
+  min-width: 0;
+}
+.tw-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--tw-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tw-field label > span {
+  color: var(--tw-muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.tw-field :is(input, select) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 12px;
+  background: var(--color-night-800);
+  color: var(--tw-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tw-field input::placeholder {
+  color: var(--tw-muted);
+  opacity: 1;
+}
+.tw-field :is(input, select):focus {
+  border-color: var(--color-cyan-400);
+}
+.tw-field :is(input, select):disabled {
+  opacity: 0.6;
+}
+.tw-input-unit {
+  position: relative;
+}
+.tw-input-unit input {
+  padding-right: 40px;
+}
+.tw-input-unit > span {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  color: var(--tw-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+.tw-field-hint {
+  margin-top: 6px;
+  color: var(--tw-accent);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.tw-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.tw-form-actions .tw-button--primary {
+  flex: 1;
+}
+.tw-notice,
+.tw-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid rgb(52 211 153 / 0.2);
+  border-radius: 1rem;
+  background: rgb(16 185 129 / 0.08);
+  color: var(--color-emerald-200);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.tw-notice svg {
+  margin-top: 4px;
+}
+.tw-error {
+  border-color: rgb(251 113 133 / 0.25);
+  background: rgb(244 63 94 / 0.08);
+  color: var(--color-rose-200);
+}
+.tw-fields .tw-error {
+  margin-bottom: 0;
+}
+.tw-list-section {
+  min-width: 0;
+}
+.tw-list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.tw-list-heading h2 > span {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(34 211 238 / 0.1);
+  color: var(--tw-accent);
+  font-size: 12px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.tw-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 320px;
+  padding: 36px 24px;
+  color: var(--tw-muted);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.tw-state > svg {
+  color: var(--tw-accent);
+}
+.tw-state h3 {
+  color: var(--tw-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+.tw-plan-list {
+  display: grid;
+  gap: 16px;
+}
+.tw-plan {
+  min-width: 0;
+  padding: 24px;
+}
+.tw-plan[data-editing="true"] {
+  border-color: var(--color-cyan-400);
+}
+.tw-plan-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: var(--tw-accent);
+  font-size: 10px;
+  font-weight: 700;
+}
+.tw-plan-top > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tw-plan h3 {
+  margin: 12px 0;
+  color: var(--tw-text);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.tw-plan-date {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--tw-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.tw-plan-date svg {
+  margin-top: 3px;
+}
+.tw-plan-date > span {
+  overflow-wrap: anywhere;
+}
+.tw-plan-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.tw-plan-facts > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--tw-border);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.04);
+}
+.tw-plan-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tw-muted);
+  font-size: 11px;
+}
+.tw-plan-facts dd {
+  margin-top: 8px;
+  color: var(--tw-text);
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.tw-plan-facts > div:first-child dd {
+  color: var(--tw-accent);
+}
+.tw-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tw-border);
+}
+/* 미스터리 투어는 기존 기능을 재사용하며 현재 페이지에서만 면과 입력 스타일을 맞춘다. */
+.tw-page .tw-mystery {
+  min-width: 0;
+  width: 100%;
+}
+.tw-page .tw-mystery-panel {
+  padding: 32px;
+  border: 1px solid var(--tw-border);
+  border-radius: 1.5rem;
+  background: var(--tw-surface);
+  color: var(--tw-text);
+  box-shadow: 0 40px 80px -50px rgb(60 40 180 / 0.8);
+}
+.tw-page .tw-mystery-panel h2 {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.025em;
+}
+.tw-page .tw-mystery :is(input, select) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 46px;
+  border-color: rgb(255 255 255 / 0.15);
+  background: var(--color-night-800);
+  color: var(--tw-text);
+  font-size: 13px;
+  color-scheme: dark;
+}
+.tw-page .tw-mystery input::placeholder {
+  color: var(--tw-muted);
+}
+.tw-page .tw-mystery :is(input, select):focus {
+  border-color: var(--color-cyan-400);
+}
+.tw-page .tw-mystery button[aria-pressed="true"] {
+  border-color: var(--color-cyan-400);
+  background: rgb(34 211 238 / 0.1);
+  color: var(--tw-accent);
+  transform: none;
+}
+.tw-page .tw-mystery .tw-button--primary {
+  background: var(--color-cyan-400);
+  background-image: none;
+  color: var(--color-night-950);
+}
+.tw-page .tw-mystery .tw-button--primary:hover:not(:disabled) {
+  background: var(--color-cyan-300);
+  transform: none;
+}
+@media (max-width: 1000px) {
+  .tw-workspace {
+    grid-template-columns: 310px minmax(0, 1fr);
+    gap: 18px;
+  }
+  .tw-form-card,
+  .tw-plan {
+    padding: 20px;
+  }
+}
+@media (max-width: 800px) {
+  .tw-hero {
+    flex-wrap: wrap;
+  }
+  .tw-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+@media (max-width: 600px) {
+  .tw-page {
+    padding-block: 32px;
+  }
+  .tw-hero {
+    align-items: flex-start;
+    padding: 24px;
+  }
+  .tw-desktop-break {
+    display: none;
+  }
+  .tw-switcher {
+    display: flex;
+    gap: 4px;
+  }
+  .tw-switcher button {
+    flex: 1;
+    gap: 6px;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .tw-form-card,
+  .tw-plan {
+    padding: 20px 16px;
+  }
+  .tw-plan-facts {
+    gap: 8px;
+  }
+  .tw-plan-facts > div {
+    padding: 12px;
+  }
+  .tw-page .tw-mystery-panel {
+    padding: 24px 16px;
+  }
+  .tw-page .tw-mystery-panel :is(input, select) {
+    padding-inline: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-page *,
+  .tw-page *::before,
+  .tw-page *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

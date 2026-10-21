@@ -1,3 +1,4 @@
+
 package com.example.trippaminebe.domain.accountbook.repository;
 
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
@@ -5,58 +6,34 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+import java.util.Optional;
 
 public interface AccountBookRepository
     extends JpaRepository<TransactionEntity, Long> {
 
+   // 거래 ID와 사용자 ID를 함께 확인
+   Optional<TransactionEntity> findByIdAndUserId(Long id, Long userId);
 
-   // =========================================
-   // 기존 기능
-   // 특정 사용자의 전체 가계부 내역
-   // 최신순 조회
-   // =========================================
+   // 로그인 사용자의 전체 거래
+   List<TransactionEntity> findByUserIdOrderByTransactionDateDesc(Long userId);
 
-   List<TransactionEntity>
-   findByUsernameOrderByTransactionDateDesc(
-       String username
-   );
-
-
-   // =========================================
-   // 자산관리 Dashboard용
-   //
-   // 특정 사용자의 특정 기간 거래 조회
-   //
-   // 예:
-   // 2026-09-01 00:00
-   // ~
-   // 2026-10-01 00:00 미만
-   // =========================================
-
-   List<TransactionEntity>
-   findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-       String username,
+   // 특정 기간 거래 조회
+   List<TransactionEntity> findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+       Long userId,
        LocalDateTime startDate,
        LocalDateTime endDate
    );
 
-
-
-   // AI 금융 요약 자동 생성 전, 해당 월에 실제 거래가 존재하는지 확인한다.
-   boolean existsByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-       String username,
-       LocalDateTime startDate,
-       LocalDateTime endDate
-   );
-
-   // [자산관리 수정] 특정 시점 이후의 거래 전체.
-   // 자산 대시보드가 "그 시점의 계좌 잔액"을 거꾸로 계산할 때 사용한다.
-   // (현재 잔액 − 그 이후 계좌에 반영된 수입 + 그 이후 계좌에 반영된 지출)
-   List<TransactionEntity>
-   findByUsernameAndTransactionDateGreaterThanEqual(
-       String username,
+   // 특정 날짜 이후 거래
+   List<TransactionEntity> findByUserIdAndTransactionDateGreaterThanEqual(
+       Long userId,
        LocalDateTime startDate
    );
 
+   // 지정 기간 거래 존재 여부
+   boolean existsByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+       Long userId,
+       LocalDateTime startDate,
+       LocalDateTime endDate
+   );
 }

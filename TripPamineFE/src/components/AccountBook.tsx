@@ -4,7 +4,6 @@ import { getMyAccountsApi, AccountSummary } from '../api/account';
 
 interface Transaction {
   id: number;
-  username: string;
   transactionDate: string;
   description: string;
   amount: number;
@@ -15,7 +14,7 @@ interface Transaction {
 }
 
 interface AccountBookProps {
-  username?: string;
+  userId: number | null;
   // [Mock 은행 연동 추가]
   // 계좌 목록이 바뀌었을 수도 있는 시점(예: ManualAccountSection에서 새 계좌를 연동했을 때)에
   // 부모(MyPage)가 이 값을 증가시켜주면, 여기서도 계좌 드롭다운을 다시 불러온다.
@@ -43,7 +42,7 @@ const SELECTABLE_CATEGORIES = Object.entries(CATEGORY_MAP).filter(
   ([key]) => key !== 'NEGO',
 );
 
-export default function AccountBook({ username = '여행자', accountsRefreshSignal, onLedgerChanged }: AccountBookProps) {
+export default function AccountBook({ userId, accountsRefreshSignal, onLedgerChanged }: AccountBookProps) {
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const getNowLocalDateTime = () => {
@@ -104,10 +103,19 @@ export default function AccountBook({ username = '여행자', accountsRefreshSig
     }
   };
 
+
   useEffect(() => {
+    if (userId === null) {
+      setTransactions([]);
+      setAccounts([]);
+      return;
+    }
+
     fetchTransactions();
     fetchAccounts();
-  }, [username]);
+
+  }, [userId]);
+
 
   // 다른 화면(ManualAccountSection)에서 계좌를 새로 연동/해지했을 수 있으므로 신호가 오면 다시 조회
   useEffect(() => {

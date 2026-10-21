@@ -6,7 +6,6 @@ import com.example.trippaminebe.domain.asset.dto.AssetAdviceResponseDto;
 import com.example.trippaminebe.domain.asset.dto.TravelGoalRequestDto;
 import com.example.trippaminebe.domain.asset.entity.AssetGoal;
 import com.example.trippaminebe.domain.asset.repository.AssetGoalRepository;
-import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -136,14 +135,12 @@ public class AssetAdviceService {
         // =====================================================
         // 1. 사용자 조회
         // =====================================================
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "사용자를 찾을 수 없습니다. userId=" + userId
                         )
                 );
-
-        String username = user.getUserName();
 
 
         // =====================================================
@@ -162,8 +159,8 @@ public class AssetAdviceService {
 
         List<TransactionEntity> transactions =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                userId,
                                 startDate,
                                 endDate
                         );

@@ -4,6 +4,10 @@ import com.example.trippaminebe.domain.account.entity.TransactionType;
 import com.example.trippaminebe.domain.account.service.AccountBalanceService;
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
+import com.example.trippaminebe.domain.user.entity.User;
+import com.example.trippaminebe.domain.user.repository.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +29,19 @@ import java.util.List;
 public class AccountBookService {
 
    private final AccountBookRepository accountBookRepository;
+   private final UserRepository userRepository;
    private final AccountBalanceService accountBalanceService;
 
    // 1. 거래 내역 추가
    public TransactionEntity saveTransaction(Long userId, TransactionEntity transaction) {
+      requireUserId(userId);
+      User user = userRepository.findById(userId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+
+      // 요청 본문의 id, username, userId는 신뢰하지 않는다.
+      transaction.setId(null);
+      transaction.setUserId(user.getId());
+      transaction.setUsername(user.getUserName()); // 기존 USERNAME NOT NULL 컬럼 호환용
       if (transaction.getTransactionDate() == null) {
          transaction.setTransactionDate(LocalDateTime.now());
       }
@@ -51,16 +64,18 @@ public class AccountBookService {
    }
 
    @Transactional(readOnly = true)
-   public List<TransactionEntity> getTransactions(String username) {
-      return accountBookRepository.findByUsernameOrderByTransactionDateDesc(username);
+   public List<TransactionEntity> getTransactions(Long userId) {
+      requireUserId(userId);
+      return accountBookRepository.findByUserIdOrderByTransactionDateDesc(userId);
    }
 
    // 3. 거래 내역 수정
    // accountId가 바뀌었거나, 계좌 연동을 새로 걸거나 해제한 경우까지 전부
    // AccountBalanceService.updateLedgerTransaction() 한 번으로 처리된다
    public TransactionEntity updateTransaction(Long userId, Long id, TransactionEntity updatedData) {
-      TransactionEntity transaction = accountBookRepository.findById(id)
-          .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 내역입니다."));
+      requireUserId(userId);
+      TransactionEntity transaction = accountBookRepository.findByIdAndUserId(id, userId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "본인 가계부 내역을 찾을 수 없습니다."));
 
       transaction.setDescription(updatedData.getDescription());
       transaction.setAmount(updatedData.getAmount());
@@ -89,9 +104,18 @@ public class AccountBookService {
 
    // 4. 거래 내역 삭제
    // 먼저 계좌 잔액 반영을 되돌린 뒤(연동 안 된 항목이면 조용히 넘어감) 가계부 항목 자체를 삭제.
-   public void deleteTransaction(Long id) {
-      accountBalanceService.reverseLedgerTransaction(id);
-      accountBookRepository.deleteById(id);
+   public void deleteTransaction(Long userId, Long id) {
+      requireUserId(userId);
+      TransactionEntity transaction = accountBookRepository.findByIdAndUserId(id, userId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "본인 가계부 내역을 찾을 수 없습니다."));
+      accountBalanceService.reverseLedgerTransaction(userId, transaction.getId());
+      accountBookRepository.delete(transaction);
+   }
+
+   private static void requireUserId(Long userId) {
+      if (userId == null || userId <= 0) {
+         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+      }
    }
 
    // "income" -> DEPOSIT(입금), 그 외("expense" 등) -> WITHDRAW(출금)

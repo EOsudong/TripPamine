@@ -20,6 +20,7 @@ import TitleSelectModal from "../components/TitleSelectModal";
 import { getBookmarksApi, removeBookmarkApi } from "../api/bookmark";
 import { getFinanceBookmarksApi, removeFinanceBookmarkApi } from "../api/financeBookmark";
 import type { FinancialProductBookmark, TourBookmark, TourMainCategoryKey } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 const FALLBACK_IMAGE =
     "https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=900&h=600&fit=crop&auto=format";
@@ -51,6 +52,7 @@ function formatRate(rate: number | null): string {
 }
 
 export default function MyPage() {
+  const { userId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // 마이페이지 초기 화면 여행 가계부로 설정
@@ -390,7 +392,10 @@ export default function MyPage() {
                           <p className="text-xs text-slate-400">직접 입력하거나 영수증을 찍으면 AI가 내역을 채워요</p>
                         </div>
                       </div>
-                      <AccountBook username={userName || "여행자"} />
+                      <AccountBook
+                          key={userId ?? "signed-out"}
+                          userId={userId}
+                      />
                     </div>
                   </div>
               )}

@@ -17,6 +17,10 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,52 +60,105 @@ public class AccountBookController {
 
    private final AccountBookService accountBookService;
 
-   // 로그인 점검
-   private String getUsernameSafely(CustomUserDetails userDetails) {
-      if (userDetails != null && userDetails.getUsername() != null) {
-         return userDetails.getUsername();
+   // JWT에서 인증된 사용자 고유 ID만 사용한다. 비로그인 가계부 요청은 차단한다.
+   private Long requireUserId(CustomUserDetails userDetails) {
+      if (userDetails == null || userDetails.getUser() == null
+          || userDetails.getUser().getId() == null) {
+         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
       }
-      return "ANONYMOUS_GUEST_USER"; // 로그인 정보가 없을 시 임시 사용할 계정 ID/이메일
+      return userDetails.getUser().getId();
    }
 
-   // [Mock 은행 연동 추가] 계좌 잔액 반영에 필요한 userId 추출 (비로그인 시 null)
-   private Long getUserIdSafely(CustomUserDetails userDetails) {
-      return userDetails != null ? userDetails.getUser().getId() : null;
-   }
-
-   // 1. 거래 내역 조회 (서비스: getTransactions(String username))
+   // 1. 거래 내역 조회 (인증된 USER_ID 기준)
    @GetMapping
-   public ResponseEntity<List<TransactionEntity>> getTransactions(
+   public ResponseEntity<List<TransactionResponse>> getTransactions(
        @AuthenticationPrincipal CustomUserDetails userDetails) {
-      String username = getUsernameSafely(userDetails);
-      return ResponseEntity.ok(accountBookService.getTransactions(username));
+      return ResponseEntity.ok(
+          accountBookService.getTransactions(requireUserId(userDetails))
+              .stream()
+              .map(TransactionResponse::new)
+              .toList()
+      );
    }
 
-   // 2. 거래 내역 추가 (서비스: saveTransaction(Long userId, TransactionEntity transaction))
+   // 2. 거래 내역 추가
    @PostMapping("/add")
-   public ResponseEntity<TransactionEntity> addTransaction(
+   public ResponseEntity<TransactionResponse> addTransaction(
        @AuthenticationPrincipal CustomUserDetails userDetails,
-       @RequestBody TransactionEntity transaction) {
-      String username = getUsernameSafely(userDetails);
-      transaction.setUsername(username); // Entity에 계정 정보 세팅
-      Long userId = getUserIdSafely(userDetails);
-      return ResponseEntity.ok(accountBookService.saveTransaction(userId, transaction));
+       @Valid @RequestBody TransactionRequest request) {
+
+      Long userId = requireUserId(userDetails);
+
+      return ResponseEntity.ok(
+          new TransactionResponse(
+              accountBookService.saveTransaction(
+                  userId,
+                  toTransactionEntity(request)
+              )
+          )
+      );
    }
 
-   // 3. 거래 내역 수정 (서비스: updateTransaction(Long userId, Long id, TransactionEntity updatedData))
+   // 3. 거래 내역 수정
    @PutMapping("/update/{id}")
-   public ResponseEntity<TransactionEntity> updateTransaction(
+   public ResponseEntity<TransactionResponse> updateTransaction(
        @AuthenticationPrincipal CustomUserDetails userDetails,
        @PathVariable Long id,
-       @RequestBody TransactionEntity updatedData) {
-      Long userId = getUserIdSafely(userDetails);
-      return ResponseEntity.ok(accountBookService.updateTransaction(userId, id, updatedData));
+       @Valid @RequestBody TransactionRequest request) {
+
+      Long userId = requireUserId(userDetails);
+
+      return ResponseEntity.ok(
+          new TransactionResponse(
+              accountBookService.updateTransaction(
+                  userId,
+                  id,
+                  toTransactionEntity(request)
+              )
+          )
+      );
+   }
+
+   private TransactionEntity toTransactionEntity(TransactionRequest request) {
+      TransactionEntity transaction = new TransactionEntity();
+      transaction.setDescription(request.getDescription().trim());
+      transaction.setAmount(request.getAmount());
+      transaction.setType(request.getType().toLowerCase(Locale.ROOT));
+      transaction.setCategory(request.getCategory().trim());
+      transaction.setAccountId(request.getAccountId());
+      transaction.setTransactionDate(parseTransactionDate(request.getTransactionDate()));
+      return transaction;
+   }
+
+   private LocalDateTime parseTransactionDate(String value) {
+      if (value == null || value.isBlank()) {
+         return null; // 등록 시 현재 시각, 수정 시 기존 시각 유지
+      }
+
+      try {
+         // 프론트 등록 API: ISO-8601 UTC/오프셋, 예: 2026-10-21T00:00:00.000Z
+         return OffsetDateTime.parse(value.trim())
+             .atZoneSameInstant(ZoneId.of("Asia/Seoul"))
+             .toLocalDateTime();
+      } catch (DateTimeParseException ignored) {
+         try {
+            // 프론트 수정 API: 오프셋 없는 로컬 시간, 예: 2026-10-21T09:00:00
+            return LocalDateTime.parse(value.trim());
+         } catch (DateTimeParseException exception) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "거래일시는 ISO-8601 형식이어야 합니다."
+            );
+         }
+      }
    }
 
    // 4. 거래 내역 삭제 (서비스: deleteTransaction(Long id))
    @DeleteMapping("/delete/{id}")
-   public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-      accountBookService.deleteTransaction(id);
+   public ResponseEntity<Void> deleteTransaction(
+       @AuthenticationPrincipal CustomUserDetails userDetails,
+       @PathVariable Long id) {
+      accountBookService.deleteTransaction(requireUserId(userDetails), id);
       return ResponseEntity.ok().build();
    }
 

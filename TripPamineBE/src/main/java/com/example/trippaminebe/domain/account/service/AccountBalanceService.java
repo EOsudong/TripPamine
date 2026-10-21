@@ -63,9 +63,10 @@ public class AccountBalanceService {
    * 가계부 항목이 삭제되거나, 수정으로 인해 기존 반영을 무효화해야 할 때 호출.
    * 대응되는 ACCOUNT_HISTORY가 없으면(원래 계좌 연동 없이 등록된 항목이었다면) 조용히 넘어간다.
    */
-  public void reverseLedgerTransaction(Long ledgerTxnId) {
+  public void reverseLedgerTransaction(Long userId, Long ledgerTxnId) {
     accountHistoryRepository.findByLedgerTxnId(ledgerTxnId).ifPresent(history -> {
-      Account account = history.getAccount();
+      // 거래 소유자만 확인하면 안 된다. 기존 계좌 역시 동일 사용자 소유인지 확인한다.
+      Account account = getOwnedAccountOrThrow(userId, history.getAccount().getAccountId());
       BigDecimal signedDelta = (history.getTransactionType() == TransactionType.DEPOSIT)
           ? history.getAmount().negate()
           : history.getAmount();
@@ -84,7 +85,7 @@ public class AccountBalanceService {
   public void updateLedgerTransaction(Long userId, Long ledgerTxnId, Long newAccountId,
                                       TransactionType newType, BigDecimal newAmount,
                                       String newDescription, LocalDateTime newDate) {
-    reverseLedgerTransaction(ledgerTxnId);
+    reverseLedgerTransaction(userId, ledgerTxnId);
     if (newAccountId != null) {
       applyNewLedgerTransaction(userId, newAccountId, ledgerTxnId, newType, newAmount, newDescription, newDate);
     }

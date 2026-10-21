@@ -85,7 +85,7 @@ public class AiNegoService {
 		}
 
 		TransactionEntity transaction = new TransactionEntity();
-		transaction.setUsername(offer.getUser().getEmail());
+		// AccountBookService가 인증된 userId로 소유권과 레거시 USERNAME을 지정한다.
 		transaction.setTransactionDate(LocalDateTime.now());
 		// AI 타임 네고 결제로 생긴 가계부 항목임을 카테고리로 명시한다(프론트 CATEGORY_MAP의 NEGO와 대응).
 		transaction.setCategory("NEGO");

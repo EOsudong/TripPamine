@@ -120,20 +120,15 @@ public class AiFinanceMonthlySummaryService {
 				period.plusMonths(1).atDay(1).atStartOfDay();
 
 		/*
-		 * 3. 사용자 가계부 내역 조회.
-		 *
-		 * 현재 기존 가계부 구조는
-		 * USERS.USER_NAME과 TRANSACTIONS.USERNAME을
-		 * 연결해서 조회한다.
-		 *
-		 * userId를 직접 거래 테이블에 대입하지 않는다.
+		 * 3. 인증된 사용자 ID로 해당 월 가계부를 조회한다.
+		 * 닉네임 변경과 관계없이 같은 사용자의 기록만 집계한다.
 		 */
 		List<TransactionEntity> transactions =
 				accountBookRepository
-						.findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-								user.getUserName(),
+						.findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+								userId,
 								periodStart,
-								periodEnd
+									periodEnd
 						);
 
 		// 4. 계산할 금액 초기화

@@ -14,7 +14,6 @@ import com.example.trippaminebe.domain.asset.entity.MonthlyBudget;
 import com.example.trippaminebe.domain.asset.repository.AssetGoalRepository;
 import com.example.trippaminebe.domain.asset.repository.AssetSnapshotRepository;
 import com.example.trippaminebe.domain.asset.repository.MonthlyBudgetRepository;
-import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,8 +84,7 @@ public class AssetDashboardService {
             Integer month
     ) {
 
-        String username =
-                findUsername(userId);
+        requireExistingUser(userId);
 
 
         // 1. 조회 년월
@@ -117,8 +115,8 @@ public class AssetDashboardService {
         // 2. 그 달 거래 (수입/지출/카테고리 통계용 — 가계부 전체)
         List<TransactionEntity> monthTransactions =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                userId,
                                 monthStart,
                                 nextMonthStart
                         );
@@ -137,7 +135,6 @@ public class AssetDashboardService {
         BalanceCalculator balance =
                 createBalanceCalculator(
                         userId,
-                        username,
                         monthStart
                 );
 
@@ -238,8 +235,7 @@ public class AssetDashboardService {
         // 1. 로그인 사용자 확인
         // =================================================
 
-        String username =
-                findUsername(userId);
+        requireExistingUser(userId);
 
 
         LocalDate today =
@@ -268,8 +264,8 @@ public class AssetDashboardService {
 
         List<TransactionEntity> recentTransactions =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                userId,
                                 startDate,
                                 endDate
                         );
@@ -325,7 +321,6 @@ public class AssetDashboardService {
         BalanceCalculator balance =
                 createBalanceCalculator(
                         userId,
-                        username,
                         startDate
                 );
 
@@ -664,8 +659,7 @@ public class AssetDashboardService {
             Long userId
     ) {
 
-        String username =
-                findUsername(userId);
+        requireExistingUser(userId);
 
         LocalDate today =
                 LocalDate.now();
@@ -681,8 +675,8 @@ public class AssetDashboardService {
 
         List<TransactionEntity> monthTransactions =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                userId,
                                 monthStart,
                                 nextMonthStart
                         );
@@ -738,8 +732,7 @@ public class AssetDashboardService {
         // 1. 사용자
         // -------------------------------------------------
 
-        String username =
-                findUsername(userId);
+        requireExistingUser(userId);
 
 
         // -------------------------------------------------
@@ -795,8 +788,8 @@ public class AssetDashboardService {
 
         List<TransactionEntity> transactions =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+                                userId,
                                 startDateTime,
                                 endExclusive
                         );
@@ -827,7 +820,6 @@ public class AssetDashboardService {
         BalanceCalculator balance =
                 createBalanceCalculator(
                         userId,
-                        username,
                         startDateTime
                 );
 
@@ -1198,7 +1190,6 @@ public class AssetDashboardService {
 
     private BalanceCalculator createBalanceCalculator(
             Long userId,
-            String username,
             LocalDateTime from
     ) {
 
@@ -1223,8 +1214,8 @@ public class AssetDashboardService {
         // from 이후 거래 중 "연동 중인 계좌에 반영된" 것만
         List<TransactionEntity> linkedSince =
                 accountBookRepository
-                        .findByUsernameAndTransactionDateGreaterThanEqual(
-                                username,
+                        .findByUserIdAndTransactionDateGreaterThanEqual(
+                                userId,
                                 from
                         )
                         .stream()
@@ -1279,19 +1270,16 @@ public class AssetDashboardService {
     // 내부 — 공통 계산
     // =====================================================
 
-    private String findUsername(
+    private void requireExistingUser(
             Long userId
     ) {
-        User user =
-                userRepository
-                        .findById(userId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "사용자를 찾을 수 없습니다. userId=" + userId
-                                )
-                        );
-
-        return user.getUserName();
+        userRepository
+                .findById(userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "사용자를 찾을 수 없습니다. userId=" + userId
+                        )
+                );
     }
 
 

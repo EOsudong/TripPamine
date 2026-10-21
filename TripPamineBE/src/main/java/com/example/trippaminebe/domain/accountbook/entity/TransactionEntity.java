@@ -16,7 +16,10 @@ public class TransactionEntity {
    private Long id;
 
    @Column(nullable = false)
-   private String username; // 작성자 식별자 (TripPamine 유저)
+   private String username; // 레거시 표시 정보. 소유권 판단에는 사용하지 않는다.
+
+   @Column(name = "USER_ID")
+   private Long userId; // USERS.USER_ID 외래키
 
    @Column(nullable = false)
    private LocalDateTime transactionDate; // 거래 일시

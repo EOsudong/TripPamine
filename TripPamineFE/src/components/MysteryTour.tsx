@@ -139,11 +139,11 @@ export default function MysteryTour() {
     createdTour !== null &&
     new Date().toISOString().split("T")[0] >= createdTour.travelDate;
   return (
-    <section className="w-full px-6 py-4">
+    <section className="tw-mystery" aria-label="미스터리 투어">
       <div className="max-w-6xl mx-auto">
         {createdTour ? (
           // 완료 화면
-          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 px-8 py-14 md:px-14 md:py-16 shadow-2xl border border-violet-500/20">
+          <div className="tw-mystery-panel relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 px-8 py-14 md:px-14 md:py-16 shadow-2xl border border-violet-500/20">
             <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-violet-500/20 blur-3xl" />
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
 
@@ -208,7 +208,7 @@ export default function MysteryTour() {
                     onClick={() =>
                       navigate(`/mystery-tour/${createdTour.mysteryTourId}`)
                     }
-                    className="mt-4 w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-black text-sm hover:scale-[1.01] transition-all"
+                    className="tw-button tw-button--primary mt-4 w-full"
                   >
                     🚀 진행 중인 미스터리 투어 계속하기
                   </button>
@@ -230,7 +230,7 @@ export default function MysteryTour() {
                         alert("여행 시작 중 오류가 발생했습니다.");
                       }
                     }}
-                    className={`mt-4 w-full py-4 rounded-2xl font-black text-sm transition-all ${
+                    className={`tw-button tw-button--primary mt-4 w-full ${
                       canStartTour
                         ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white hover:scale-[1.01] cursor-pointer"
                         : "bg-slate-700 text-slate-400 cursor-not-allowed"
@@ -257,7 +257,7 @@ export default function MysteryTour() {
           /* =========================
                    미스터리 투어 신청 화면
                 ========================== */
-          <div className="relative overflow-hidden rounded-[32px] bg-slate-950 px-8 py-10 md:px-14 md:py-12 shadow-2xl border border-violet-500/20">
+          <div className="tw-mystery-panel relative overflow-hidden rounded-[32px] bg-slate-950 px-8 py-10 md:px-14 md:py-12 shadow-2xl border border-violet-500/20">
             {/* 게임 느낌 배경 */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
               <span className="absolute top-5 left-[8%] text-7xl font-black text-white/[0.03] rotate-12">
@@ -298,26 +298,33 @@ export default function MysteryTour() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* 여행 날짜 */}
                     <div>
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-travelDate"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         📅 여행 날짜
                       </label>
                       <input
                         type="date"
+                        id="tw-mystery-travelDate"
                         name="travelDate"
                         value={form.travelDate}
                         onChange={handleFormChange}
                         min={new Date().toISOString().split("T")[0]}
-                        onClick={(e) => e.currentTarget.showPicker()}
                         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-violet-400 cursor-pointer"
                       />
                     </div>
 
                     <div>
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-travelDays"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         🗓 여행 기간
                       </label>
 
                       <select
+                        id="tw-mystery-travelDays"
                         name="travelDays"
                         value={form.travelDays}
                         onChange={handleFormChange}
@@ -333,11 +340,15 @@ export default function MysteryTour() {
 
                     {/* 인원 */}
                     <div>
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-peopleCount"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         👥 여행 인원
                       </label>
                       <input
                         type="number"
+                        id="tw-mystery-peopleCount"
                         name="peopleCount"
                         value={form.peopleCount}
                         onChange={handleFormChange}
@@ -349,12 +360,16 @@ export default function MysteryTour() {
 
                     {/* 예산 */}
                     <div>
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-budget"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         💰 총 예산
                       </label>
                       <div className="relative">
                         <input
                           type="number"
+                          id="tw-mystery-budget"
                           name="budget"
                           value={form.budget}
                           onChange={handleFormChange}
@@ -370,15 +385,18 @@ export default function MysteryTour() {
 
                     {/* 이동 반경 */}
                     <div>
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-radius"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         📍 최대 이동 반경
                       </label>
                       <select
                         className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none focus:border-violet-400"
+                        id="tw-mystery-radius"
                         name="radius"
                         value={form.radius}
                         onChange={handleFormChange}
-                        defaultValue=""
                       >
                         <option value="" disabled>
                           반경 선택
@@ -392,11 +410,15 @@ export default function MysteryTour() {
 
                     {/* 출발지 */}
                     <div className="md:col-span-2">
-                      <label className="block mb-2 text-xs font-bold text-slate-300">
+                      <label
+                        htmlFor="tw-mystery-departure"
+                        className="block mb-2 text-xs font-bold text-slate-300"
+                      >
                         🏠 출발 위치
                       </label>
                       <input
                         type="text"
+                        id="tw-mystery-departure"
                         name="departure"
                         value={form.departure}
                         onChange={handleFormChange}
@@ -424,6 +446,7 @@ export default function MysteryTour() {
                         <button
                           key={label}
                           type="button"
+                          aria-pressed={form.style === label}
                           onClick={() =>
                             setForm((prev) => ({
                               ...prev,
@@ -467,7 +490,7 @@ export default function MysteryTour() {
                   type="button"
                   onClick={handleCreate}
                   disabled={isCreating}
-                  className={`flex-1 py-3.5 rounded-xl text-white text-sm font-black transition-all shadow-lg ${
+                  className={`tw-button tw-button--primary flex-1 ${
                     isCreating
                       ? "bg-slate-700 cursor-not-allowed"
                       : "bg-gradient-to-r from-violet-500 to-indigo-500 hover:scale-[1.01] shadow-violet-950/40"
@@ -486,7 +509,7 @@ export default function MysteryTour() {
             </div>
           </div>
         ) : (
-          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-8 py-14 md:px-14 md:py-16 shadow-2xl">
+          <div className="tw-mystery-panel relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-8 py-14 md:px-14 md:py-16 shadow-2xl">
             {/* 배경 장식 */}
             <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-violet-500/20 blur-3xl" />
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-sky-500/20 blur-3xl" />
@@ -535,7 +558,7 @@ export default function MysteryTour() {
               <button
                 type="button"
                 onClick={handleApply}
-                className="mt-10 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-black text-sm shadow-xl shadow-violet-950/30 hover:scale-105 hover:shadow-violet-500/20 transition-all duration-300"
+                className="tw-button tw-button--primary mt-8"
               >
                 🎁 미스터리 투어 신청하기
               </button>

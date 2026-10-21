@@ -1,7 +1,8 @@
-import AiPlannerCard from "../components/AiPlannerCard";
 import Hero from "../components/Hero";
+import { useAuth } from "../context/AuthContext";
 
 import AppLayout from "../layout/AppLayout";
+import "./TravelPage.css";
 
 
 /**
@@ -11,18 +12,18 @@ import AppLayout from "../layout/AppLayout";
  *
  * - 여행 계획 CRUD
  * - 미스터리 투어
- * - AI 여행 기능 소개
  *
  * 를 담당한다.
  */
 export default function TravelPage() {
+    const { userId } = useAuth();
+
     return (
         <AppLayout
-            pageClassName="tp-aurora-light"
+            pageClassName="tw-theme"
+            appearance="dark"
         >
-            <Hero />
-
-            <AiPlannerCard />
+            <Hero key={userId ?? "guest"} />
         </AppLayout>
     );
 }
