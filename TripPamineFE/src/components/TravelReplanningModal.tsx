@@ -14,6 +14,76 @@ type ReplanningHistoryItem = {
   createdAt: string;
 };
 
+type RecommendationDay = {
+  day: number;
+  places: Array<{
+    name: string;
+    description?: string;
+    estimatedCost?: number;
+    startTime?: string;
+    endTime?: string;
+  }>;
+};
+
+function getRemainingPlaces(
+  startDate: string,
+  recommendationDays: RecommendationDay[],
+  now = new Date(),
+) {
+  // 날짜만 추출해서 시간대 변환으로 날짜가 밀리는 문제 방지
+  const tripStart = startDate.slice(0, 10);
+
+  const [startYear, startMonth, startDay] = tripStart.split("-").map(Number);
+
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const start = new Date(startYear, startMonth - 1, startDay);
+
+  const currentDay =
+    Math.round((today.getTime() - start.getTime()) / 86400000) + 1;
+
+  const todaySchedule = recommendationDays.find(
+    (item) => item.day === currentDay,
+  );
+
+  if (!todaySchedule) {
+    return {
+      places: [] as string[],
+      message: "현재 날짜에 해당하는 AI 추천 일정이 없습니다.",
+    };
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let hasMissingTime = false;
+
+  const remaining = todaySchedule.places.filter((place) => {
+    if (!place.endTime) {
+      hasMissingTime = true;
+      return true;
+    }
+
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(place.endTime);
+
+    if (!match) {
+      hasMissingTime = true;
+      return true;
+    }
+
+    const endMinutes = Number(match[1]) * 60 + Number(match[2]);
+
+    // 종료 예정 시각이 지나지 않은 장소는 남은 일정에 포함
+    return endMinutes > currentMinutes;
+  });
+
+  return {
+    places: remaining.map((place) => place.name),
+    message: hasMissingTime
+      ? `${currentDay}일차 일정 분석 완료 · 방문 시간이 없는 장소는 제외하지 않았어요.`
+      : `${currentDay}일차 일정 분석 완료 · 현재 시각 기준 남은 장소 ${remaining.length}곳`,
+  };
+}
+
 const KAKAO_JS_KEY = import.meta.env.VITE_KAKAO_MAP_JAVASCRIPT_KEY;
 
 function loadKakaoSdk(): Promise<void> {
@@ -103,12 +173,22 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 
 export default function TravelReplanningModal({
   plan,
+  recommendationDays,
   onClose,
 }: {
   plan: TravelPlan;
+  recommendationDays: Array<{
+    day: number;
+    places: Array<{
+      name: string;
+      description?: string;
+      estimatedCost?: number;
+    }>;
+  }>;
   onClose: () => void;
 }) {
   const [placesText, setPlacesText] = useState("");
+  const [remainingPlacesMessage, setRemainingPlacesMessage] = useState("");
   const [location, setLocation] = useState("");
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsMessage, setGpsMessage] = useState("");
@@ -123,6 +203,28 @@ export default function TravelReplanningModal({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [restoringId, setRestoringId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!plan.startDate) return;
+
+    const analyzed = getRemainingPlaces(plan.startDate, recommendationDays);
+
+    setPlacesText(analyzed.places.join("\n"));
+    setRemainingPlacesMessage(analyzed.message);
+  }, [plan.startDate, recommendationDays]);
+
+  function analyzeRemainingPlaces() {
+    if (!plan.startDate) {
+      setRemainingPlacesMessage("여행 시작일 정보가 없습니다.");
+      return;
+    }
+
+    const analyzed = getRemainingPlaces(plan.startDate, recommendationDays);
+
+    setPlacesText(analyzed.places.join("\n"));
+    setRemainingPlacesMessage(analyzed.message);
+  }
+
   const places = placesText
     .split(/[,\n]/)
     .map((s) => s.trim())
@@ -177,7 +279,7 @@ export default function TravelReplanningModal({
 
     try {
       const result = await getUltraShortForecastApi(latitude, longitude);
-      const data = result.current;     // 위 4-1의 빈칸과 같은 이름
+      const data = result.current; // 위 4-1의 빈칸과 같은 이름
 
       if (["CLEAR", "RAIN", "SNOW", "CLOUDY"].includes(data.weather)) {
         setWeather(data.weather);
@@ -438,6 +540,17 @@ export default function TravelReplanningModal({
               onChange={(e) => setPlacesText(e.target.value)}
             />
           </label>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">{remainingPlacesMessage}</p>
+
+            <button
+              type="button"
+              onClick={analyzeRemainingPlaces}
+              className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+            >
+              🔄 현재 시간으로 다시 분석
+            </button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="text-sm font-semibold text-slate-700">
               현재 위치 (GPS 자동 인식)
@@ -494,7 +607,7 @@ export default function TravelReplanningModal({
           <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-bold text-slate-900">
-                📋 AI 재계획 변경 이력
+                📋 AI 재계획 변경 내역
               </h3>
               <button
                 type="button"
@@ -515,7 +628,7 @@ export default function TravelReplanningModal({
             )}
             {!historyLoading && !historyError && histories.length === 0 && (
               <p className="text-sm text-slate-500">
-                아직 AI 재계획 변경 이력이 없어.
+                아직 AI 재계획 변경 내역이 없습니다.
               </p>
             )}
             {histories.map((history) => (
@@ -544,7 +657,7 @@ export default function TravelReplanningModal({
               </div>
             ))}
             <p className="text-xs text-slate-500">
-              ※ 현재 일정과 해당 변경 이력의 결과가 일치할 때만 복구할 수 있어.
+              ※ 현재 일정이 해당 변경 내역의 결과와 일치하는 경우에만 이전 일정으로 복구할 수 있습니다.
             </p>
           </div>
           <button

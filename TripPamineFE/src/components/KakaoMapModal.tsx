@@ -7,11 +7,13 @@ declare global {
 }
 
 export interface PlaceItem {
-  name: string;       // 장소명
-  address?: string;   // 주소
-  lat?: number;       // 위도
-  lng?: number;       // 경도
-  day?: number;       // 여행 일차
+  name: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  day?: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 interface KakaoMapModalProps {
