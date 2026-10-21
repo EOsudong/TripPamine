@@ -181,6 +181,7 @@ public class TravelReplanningService {
                 남은 예산: %s원
                 
                 [현재 여행 상황]
+                현재 시각: %s
                 기존 방문 예정 장소: %s
                 현재 위치: %s
                 현재 날씨: %s
@@ -271,6 +272,7 @@ public class TravelReplanningService {
                         request.weather(),
                         request.delayMinutes()
                 );
+
         try {
             String apiKey = System.getProperty("OPENAI_API_KEY");
             if (apiKey == null || apiKey.isBlank()) {
@@ -305,7 +307,7 @@ public class TravelReplanningService {
 
             BigDecimal sum = BigDecimal.ZERO;
 
-// SOS 실행 시각
+            // SOS 실행 시각
             LocalTime currentTime = ZonedDateTime
                     .now(ZoneId.of("Asia/Seoul"))
                     .toLocalTime();

@@ -109,12 +109,17 @@ public class OpenAiRecommendationService {
     public String generateDayRecommendation(TravelPlan plan, int day, java.util.List<String> currentPlaces) {
         String placesStr = String.join(", ", currentPlaces);
 
+        String companionCountText = plan.getCompanionCount() != null
+            ? plan.getCompanionCount() + "명(본인 포함)"
+            : "인원 미정";
+
         String prompt = """
                 당신은 대한민국 국내 여행 전문 플래너입니다.
                 
                 여행 이름: %s
                 총 예산: %s원
                 동행자: %s
+                여행 인원: %s
                 
                 사용자가 %d일차에 방문하고 싶어하는 장소 목록입니다: [%s]
                 
@@ -145,6 +150,7 @@ public class OpenAiRecommendationService {
                 plan.getPlanName(),
                 plan.getTotalBudget(),
                 plan.getCompanionType(),
+                companionCountText,
                 day,
                 placesStr,
                 day
