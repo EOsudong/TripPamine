@@ -1,0 +1,59 @@
+/* AiNego 오퍼와 마이리얼트립 상품 정보를 혼동하지 않도록 별도 다크 모달 사용 */
+.nego-partner-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(4 9 24 / 0.78);
+  backdrop-filter: blur(9px);
+}
+.nego-partner-dialog {
+  width: min(960px, 100%);
+  max-height: min(820px, 92dvh);
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 26px;
+  padding: clamp(18px, 3vw, 30px);
+  background: #10182a;
+  box-shadow: 0 36px 100px rgb(0 0 0 / 0.5);
+  color: #f8fafc;
+  color-scheme: dark;
+}
+.nego-partner-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.nego-partner-header h2 { margin-top: 8px; font-size: clamp(20px, 3vw, 28px); font-weight: 800; }
+.nego-partner-header p:last-child { margin-top: 8px; font-size: 13px; line-height: 1.7; color: #cbd5e1; }
+.nego-partner-kicker { display: flex; align-items: center; gap: 7px; color: #67e8f9; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.nego-partner-close { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; color: #cbd5e1; background: rgb(255 255 255 / .07); cursor: pointer; }
+.nego-partner-close:hover { background: rgb(255 255 255 / .13); }
+.nego-partner-search { margin-top: 24px; }
+.nego-partner-search label { display: block; margin-bottom: 9px; color: #cbd5e1; font-size: 12px; font-weight: 700; }
+.nego-partner-search-row { display: flex; gap: 10px; }
+.nego-partner-search-row input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 14px; border: 1px solid rgb(255 255 255 / .14); border-radius: 12px; background: #1b2840; color: #f8fafc; outline-offset: 3px; }
+.nego-partner-search-row input::placeholder { color: #94a3b8; }
+.nego-partner-search-row button { display: flex; align-items: center; justify-content: center; gap: 7px; flex: none; min-height: 44px; padding: 9px 16px; border-radius: 12px; background: #22d3ee; color: #0b1126; font-size: 13px; font-weight: 800; cursor: pointer; }
+.nego-partner-search-row button:disabled { opacity: .55; cursor: not-allowed; }
+.nego-partner-disclaimer { margin-top: 14px; color: #94a3b8; font-size: 11px; line-height: 1.7; }
+.nego-partner-message { margin-top: 18px; padding: 14px; border-radius: 12px; background: #1b2840; color: #cbd5e1; font-size: 13px; }
+.nego-partner-error { color: #fca5a5; }
+.nego-partner-count { margin: 22px 0 12px; color: #cbd5e1; font-size: 12px; }
+.nego-partner-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.nego-partner-card { min-width: 0; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgb(255 255 255 / .1); border-radius: 18px; background: #1b2840; }
+.nego-partner-image { aspect-ratio: 16 / 10; display: flex; justify-content: center; align-items: center; overflow: hidden; background: #27334e; color: #94a3b8; font-size: 12px; }
+.nego-partner-image img { width: 100%; height: 100%; object-fit: cover; }
+.nego-partner-card-body { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
+.nego-partner-category { color: #67e8f9; font-size: 11px; font-weight: 700; }
+.nego-partner-card h3 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 38px; color: #f8fafc; line-height: 1.5; font-size: 13px; font-weight: 700; }
+.nego-partner-card strong { font-size: 18px; color: #fff; font-variant-numeric: tabular-nums; }
+.nego-partner-review { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #cbd5e1; }
+.nego-partner-review svg { color: #fbbf24; fill: #fbbf24; }
+.nego-partner-tags { color: #94a3b8; font-size: 10px; line-height: 1.5; }
+.nego-partner-link { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; width: 100%; min-height: 38px; padding: 8px; border-radius: 10px; background: rgb(34 211 238 / .14); color: #67e8f9; font-size: 12px; font-weight: 750; text-decoration: none; cursor: pointer; }
+.nego-partner-link:disabled { opacity: .5; cursor: wait; }
+.nego-partner-link-ready { margin-top: 7px; background: rgb(16 185 129 / .14); color: #6ee7b7; }
+.nego-partner-no-link { color: #94a3b8; font-size: 11px; }
+.nego-partner-dialog :is(button,a,input):focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+@media (max-width: 760px) { .nego-partner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .nego-partner-backdrop { padding: 10px; } .nego-partner-dialog { max-height: 96dvh; border-radius: 18px; padding: 16px; } .nego-partner-grid { grid-template-columns: 1fr; } .nego-partner-search-row { flex-direction: column; } }

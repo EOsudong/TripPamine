@@ -1,0 +1,37 @@
+/* 기존 AI 추천 페이지의 다크 색상 체계를 유지하면서 검색 방식만 하나의 탭으로 통합한다. */
+.ar-hub {
+  min-width: 0;
+  margin: 18px 0 24px;
+  padding: clamp(14px, 2vw, 20px);
+  border: 1px solid var(--ar-border);
+  border-radius: 24px;
+  background: var(--ar-inset);
+  color: var(--ar-text);
+}
+.ar-hub-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ar-hub-eyebrow { display: flex; align-items: center; gap: 7px; color: var(--ar-accent); font-size: 10px; font-weight: 800; letter-spacing: .09em; }
+.ar-hub-header h3 { margin-top: 7px; font-size: clamp(18px, 2.1vw, 21px); font-weight: 800; }
+.ar-hub-header p:not(.ar-hub-eyebrow) { margin-top: 6px; color: var(--ar-secondary); font-size: 12px; line-height: 1.6; }
+.ar-hub-label { flex-shrink: 0; padding: 6px 9px; border-radius: 100px; background: rgb(34 211 238 / .12); color: var(--ar-accent); font-size: 11px; font-weight: 700; }
+.ar-hub-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 5px; margin-top: 17px; border-radius: 15px; background: rgb(0 0 0 / .22); }
+.ar-hub-switch button { display: flex; min-width: 0; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 7px 9px; border-radius: 11px; color: var(--ar-secondary); cursor: pointer; font-size: 12px; font-weight: 750; transition: background .15s ease, color .15s ease; }
+.ar-hub-switch button[aria-pressed="true"] { background: rgb(34 211 238 / .17); color: #a5f3fc; box-shadow: 0 2px 8px rgb(0 0 0 / .18); }
+.ar-hub-switch button:disabled { opacity: .4; cursor: not-allowed; }
+.ar-hub-hint { margin-top: 10px; color: var(--ar-secondary); font-size: 12px; line-height: 1.6; }
+.ar-hub-pane[hidden] { display: none !important; }
+/* 기존 컴포넌트의 중첩 카드 외곽선은 제거하고 공간으로 계층을 구분한다. */
+.ar-hub-pane .ar-smart,
+.ar-hub-pane .ar-deals { margin: 0; padding: 18px 0 0; border: 0; border-radius: 0; background: transparent; }
+.ar-hub :is(button, input, a):focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .ar-hub-switch button { font-size: 11px; gap: 5px; }
+  .ar-hub-label { display: none; }
+}
+
+/* 기존 카드 3열은 여행 결과 패널 안에서 너무 좁아지므로 2열로 조정한다. */
+.ar-hub .ar-smart-grid,
+.ar-hub .ar-deals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 600px) {
+  .ar-hub .ar-smart-grid,
+  .ar-hub .ar-deals-grid { grid-template-columns: minmax(0, 1fr); }
+}

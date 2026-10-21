@@ -44,6 +44,8 @@ export interface TravelPlan {
   planId: number;
   planName: string;
   totalBudget: number;
+  // Backend TravelPlanResponse에 존재하는 지역 코드. 구버전 응답을 고려해 optional.
+  locationCd?: string | null;
   companionType: string | null;
   companionCount: number | null;
   blindYn: string;

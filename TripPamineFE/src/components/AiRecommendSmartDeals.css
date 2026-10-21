@@ -1,0 +1,153 @@
+/* /ai-recommend 테마 변수를 재사용하고 검색 영역은 기존 카드와 패딩으로 구분한다. */
+.ar-smart {
+  margin-top: 24px;
+  padding: clamp(18px, 2.5vw, 28px);
+  border-radius: 28px;
+  border: 1px solid var(--ar-border);
+  color: var(--ar-text);
+}
+.ar-smart-header,
+.ar-smart-results-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.ar-smart-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ar-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.ar-smart h2 {
+  margin-top: 9px;
+  font-size: clamp(19px, 2.4vw, 26px);
+  font-weight: 800;
+}
+.ar-smart-subtitle {
+  margin-top: 8px;
+  color: var(--ar-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ar-smart-budget {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgb(34 211 238 / .12);
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 750;
+}
+.ar-smart-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(180px, .75fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 22px;
+}
+.ar-smart-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ar-smart-field span { color: var(--ar-secondary); font-size: 12px; font-weight: 700; }
+.ar-smart-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--ar-border);
+  border-radius: 12px;
+  background: var(--ar-inset);
+  color: var(--ar-text);
+  font-size: 13px;
+  outline-offset: 3px;
+}
+.ar-smart-field input::placeholder { color: var(--ar-muted); }
+.ar-smart-form > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: #22d3ee;
+  color: #0b1126;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ar-smart-form > button:disabled { cursor: wait; opacity: .6; }
+.ar-smart-quickwords { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ar-smart-quickwords button {
+  padding: 5px 11px;
+  border-radius: 100px;
+  background: rgb(255 255 255 / .07);
+  color: var(--ar-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ar-smart-quickwords button:hover { background: rgb(255 255 255 / .13); }
+.ar-smart-note, .ar-smart-footer {
+  margin-top: 16px;
+  color: var(--ar-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.ar-smart-note strong { color: var(--ar-secondary); font-weight: 700; }
+.ar-smart-message {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--ar-inset);
+  color: var(--ar-secondary);
+  font-size: 13px;
+}
+.ar-smart-error { color: #fda4af; }
+.ar-smart-results { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--ar-border); }
+.ar-smart-results-head h3 { margin-top: 8px; font-size: 18px; font-weight: 800; }
+.ar-smart-results-head p:not(.ar-smart-eyebrow) { margin-top: 6px; color: var(--ar-muted); font-size: 12px; }
+.ar-smart-results-head > span { color: var(--ar-secondary); font-size: 12px; }
+.ar-smart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.ar-smart-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 18px; background: var(--ar-inset); }
+.ar-smart-image { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; color: var(--ar-muted); font-size: 12px; }
+.ar-smart-image img { width: 100%; height: 100%; object-fit: cover; }
+.ar-smart-rank { position: absolute; top: 12px; left: 12px; border-radius: 9px; padding: 5px 9px; background: rgb(5 16 34 / .87); color: #fff; font-size: 11px; font-weight: 800; }
+.ar-smart-card-body { display: flex; flex: 1; flex-direction: column; gap: 9px; padding: 16px; }
+.ar-smart-card-top { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 11px; }
+.ar-smart-card-top span { color: #67e8f9; }
+.ar-smart-card-top strong { color: #a7f3d0; font-weight: 700; }
+.ar-smart-card h4 { min-height: 42px; font-size: 13px; font-weight: 750; line-height: 1.55; }
+.ar-smart-price { color: #fff; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ar-smart-review { display: flex; align-items: center; gap: 4px; color: var(--ar-secondary); font-size: 11px; }
+.ar-smart-review svg { color: #fbbf24; fill: #fbbf24; }
+.ar-smart-reasons { display: flex; flex-direction: column; gap: 5px; margin: 2px 0 8px; padding-left: 17px; list-style-type: disc; color: var(--ar-secondary); font-size: 11px; line-height: 1.5; }
+.ar-smart-open, .ar-smart-ready {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: auto;
+  border-radius: 11px;
+  background: rgb(34 211 238 / .14);
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ar-smart-open:disabled { opacity: .6; cursor: wait; }
+.ar-smart-ready { background: rgb(16 185 129 / .13); color: #6ee7b7; margin-top: 0; }
+.ar-smart-no-link { margin-top: auto; color: var(--ar-muted); font-size: 11px; }
+.ar-smart :is(button,input,a):focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+@media (max-width: 920px) { .ar-smart-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ar-smart-form > button { grid-column: 1 / -1; } .ar-smart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .ar-smart-form, .ar-smart-grid { grid-template-columns: 1fr; } .ar-smart-form > button { grid-column: auto; } }
+
+/* 빠른 지역 선택 상태와 추천 계산 중 상태를 명확하게 표시한다. */
+.ar-smart-quickwords button[aria-pressed="true"] { background: rgb(34 211 238 / .18); color: #a5f3fc; }
+.ar-smart-loading { display: flex; align-items: center; gap: 9px; margin-top: 18px; padding: 18px; border-radius: 14px; background: var(--ar-inset); color: var(--ar-secondary); font-size: 13px; }

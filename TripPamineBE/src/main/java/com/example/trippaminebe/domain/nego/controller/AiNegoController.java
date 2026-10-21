@@ -1,7 +1,7 @@
 package com.example.trippaminebe.domain.nego.controller;
 
 import com.example.trippaminebe.domain.nego.dto.response.AiNegoLogResponse;
-import com.example.trippaminebe.domain.nego.dto.resquest.NegoAcceptRequest;
+import com.example.trippaminebe.domain.nego.dto.request.NegoAcceptRequest;
 import com.example.trippaminebe.domain.nego.service.AiNegoService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;

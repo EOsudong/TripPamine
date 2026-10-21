@@ -35,6 +35,7 @@ import {
 } from "../api/recommendation";
 import { KakaoMapModal, type PlaceItem } from "../components/KakaoMapModal";
 import TravelReplanningModal from "../components/TravelReplanningModal";
+import AiRecommendDealsHub from "../components/AiRecommendDealsHub";
 import {
   getTripWeatherApi,
   getUltraShortForecastApi,
@@ -47,6 +48,8 @@ interface RecommendedPlace {
   name: string;
   description: string;
   estimatedCost: number;
+  startTime?: string;
+  endTime?: string;
 }
 interface ParsedRecommendation {
   title: string;
@@ -350,7 +353,9 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
         name: place.name,
         description:
           existing?.description || place.address || "사용자 추가 장소",
-        estimatedCost: existing?.estimatedCost || 0,
+        estimatedCost: existing?.estimatedCost ?? 0,
+        startTime: existing?.startTime,
+        endTime: existing?.endTime,
       });
     });
     const updatedParsed: ParsedRecommendation = {
@@ -423,6 +428,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
       name: place.name,
       address: place.description,
       day: dayNum,
+      startTime: place.startTime,
+      endTime: place.endTime,
     }));
   };
   const mapPlaces = useMemo(
@@ -432,6 +439,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
           name: place.name,
           address: place.name,
           day: day.day,
+          startTime: place.startTime,
+          endTime: place.endTime,
         })),
       ) ?? [],
     [result],
@@ -444,8 +453,14 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
     <>
       <div className="ar-page">
         <section className="ar-hero" aria-labelledby="ar-heading">
-          <div className="absolute inset-0 -z-10 tp-aurora" aria-hidden="true" />
-          <div className="absolute inset-0 -z-10 tp-dot-grid opacity-40" aria-hidden="true" />
+          <div
+            className="absolute inset-0 -z-10 tp-aurora"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute inset-0 -z-10 tp-dot-grid opacity-40"
+            aria-hidden="true"
+          />
           <div className="ar-hero-copy">
             <p className="ar-eyebrow">
               <Sparkles size={14} aria-hidden="true" />
@@ -454,7 +469,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
             <h1 id="ar-heading">AI 여행 추천</h1>
             <p className="ar-hero-description">
               나의 여행을 고르고, 예산과 일정에 맞는 코스를 확인하세요.
-              <br className="ar-desktop-break" /> 지도에서 장소를 바꾸고 새 여행으로 저장할 수 있어요.
+              <br className="ar-desktop-break" /> 지도에서 장소를 바꾸고 새
+              여행으로 저장할 수 있어요.
             </p>
           </div>
           <button
@@ -629,6 +645,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                   </p>
                 )}
               </div>
+              {/* 서로 중복되던 맞춤 추천/자유 검색을 여행 콘텐츠 안의 단일 탭으로 표시한다. */}
+              <AiRecommendDealsHub key={selectedPlan?.planId ?? "general"} plan={selectedPlan} />
               {!selectedPlan ? (
                 <div className="ar-empty">
                   <span className="ar-empty-icon">
@@ -842,6 +860,13 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                                           {formatWon(place.estimatedCost)}
                                         </span>
                                       </div>
+
+                                      {place.startTime && place.endTime && (
+                                        <p>
+                                          🕒 {place.startTime} ~ {place.endTime}
+                                        </p>
+                                      )}
+
                                       <p>{place.description}</p>
                                     </div>
                                   </li>
@@ -866,7 +891,9 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                       <details
                         className="ar-help"
                         open={helpOpen}
-                        onToggle={(event) => setHelpOpen(event.currentTarget.open)}
+                        onToggle={(event) =>
+                          setHelpOpen(event.currentTarget.open)
+                        }
                       >
                         <summary>
                           <LifeBuoy size={18} aria-hidden="true" />
@@ -882,7 +909,9 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                               <LifeBuoy size={18} aria-hidden="true" />
                               <span>
                                 <strong>계획대로 이동하기 어렵다면</strong>
-                                <small>여행 SOS에서 대체 일정을 찾아보세요.</small>
+                                <small>
+                                  여행 SOS에서 대체 일정을 찾아보세요.
+                                </small>
                               </span>
                             </div>
                             <button
@@ -901,8 +930,8 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                               <span>
                                 <strong>현재 위치의 날씨</strong>
                                 <small>
-                                  위치 확인을 허용하면 앞으로 6시간의 예보를 볼 수
-                                  있어요.
+                                  위치 확인을 허용하면 앞으로 6시간의 예보를 볼
+                                  수 있어요.
                                 </small>
                               </span>
                             </div>
@@ -955,6 +984,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
             {isSosOpen && selectedPlan && result && (
               <TravelReplanningModal
                 plan={selectedPlan}
+                recommendationDays={result.parsed.days}
                 onClose={() => setIsSosOpen(false)}
               />
             )}
@@ -1132,8 +1162,29 @@ function parseRecommendation(json: string): ParsedRecommendation {
         typeof place.name !== "string" ||
         typeof place.description !== "string" ||
         !money(place.estimatedCost)
-      )
+      ) {
         throw new SyntaxError("잘못된 장소 형식");
+      }
+
+      const validTime = (time: unknown): boolean =>
+        typeof time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+
+      // 시간 정보가 존재할 때만 형식 검증
+      if (
+        (place.startTime !== undefined && !validTime(place.startTime)) ||
+        (place.endTime !== undefined && !validTime(place.endTime))
+      ) {
+        throw new SyntaxError("잘못된 방문 시간 형식");
+      }
+
+      // 시작·종료 시간이 모두 있으면 순서 확인
+      if (
+        typeof place.startTime === "string" &&
+        typeof place.endTime === "string" &&
+        place.startTime >= place.endTime
+      ) {
+        throw new SyntaxError("방문 종료 시간이 시작 시간보다 빨라요.");
+      }
     }
   }
   return value as unknown as ParsedRecommendation;

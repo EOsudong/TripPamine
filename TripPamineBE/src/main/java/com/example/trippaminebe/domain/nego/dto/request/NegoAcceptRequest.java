@@ -1,4 +1,4 @@
-package com.example.trippaminebe.domain.nego.dto.resquest;
+package com.example.trippaminebe.domain.nego.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
