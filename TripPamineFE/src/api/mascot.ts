@@ -2,7 +2,7 @@ import api, { API_BASE_URL } from "./axios";
 
 // 백엔드 mascot/controller/MascotController.java와 1:1로 맞춘 타입 및 API 함수.
 //
-// 흐름: 주변 스폰 조회(GET /mascots/nearby) → 반경 안에서 조우(POST /mascots/spawns/{id}/encounter)
+// 주변 스폰 조회(GET /mascots/nearby) → 반경 안에서 조우(POST /mascots/spawns/{id}/encounter)
 //      → 포획 미니게임(웹 또는 안드로이드 AR) → 점수와 함께 포획 확정(POST /mascots/spawns/{id}/catch)
 //
 // 재포획 정책: 같은 마스코트를 여러 번 잡을 수 있지만, 포인트는 첫 포획(firstCatch=true)에만 지급된다.

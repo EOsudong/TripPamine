@@ -14,7 +14,7 @@ import java.util.List;
 public interface BoardCommentRepository extends JpaRepository<BoardComment, Long> {
 
   // 사용자 화면: 원댓글 페이지. 노출 중이거나, 원댓글은 지워졌어도 노출 중인 답글이 남아 있으면 포함
-  // (지워진 원댓글은 "삭제된 댓글입니다"로 가려서 답글 흐름이 끊기지 않게 한다)
+  // (지워진 원댓글은 "삭제된 댓글입니다"로 가려서 답글이 끊기지 않게 한다)
   @Query(
       value = "select c from BoardComment c"
           + " where c.post.postId = :postId and c.parent is null"

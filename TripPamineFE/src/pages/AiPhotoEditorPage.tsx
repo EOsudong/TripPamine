@@ -13,6 +13,9 @@ const assertPhotoResponse = (response: Response, fallback: string): void => {
   if (response.status === 413) {
     throw new Error("사진 용량이 제한을 초과했습니다. 파일 크기를 줄여 주세요.");
   }
+  if (response.status === 429) {
+    throw new Error("다른 사진을 AI로 처리하고 있습니다. 잠시 후 다시 시도해 주세요.");
+  }
   if (response.status === 503) {
     throw new Error("사진 편집 AI 서버에 연결할 수 없습니다. 서버 상태를 확인해 주세요.");
   }

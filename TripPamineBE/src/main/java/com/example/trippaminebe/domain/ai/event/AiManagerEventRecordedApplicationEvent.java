@@ -12,8 +12,6 @@ import java.time.LocalDateTime;
  * 별도의 Event가 필요한 이유
  * =========================================================
  *
- * 현재 흐름:
- *
  * Travel / Quest
  *      ↓
  * Domain Application Event

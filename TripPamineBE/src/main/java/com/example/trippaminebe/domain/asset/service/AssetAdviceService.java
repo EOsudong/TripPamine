@@ -499,7 +499,7 @@ public class AssetAdviceService {
 
                             .category("SAVING")
 
-                            .title("현재 현금흐름으로 목표 달성 가능")
+                            .title("현재 자산저축으로 목표 달성 가능")
 
                             .description(
                                     "목표일까지 매월 약 " +
@@ -604,7 +604,7 @@ public class AssetAdviceService {
 
         // =====================================================
         // CASE 5
-        // 현재 현금흐름으로 부족
+        // 현재 현금잔고로 부족
         // =====================================================
         else {
 

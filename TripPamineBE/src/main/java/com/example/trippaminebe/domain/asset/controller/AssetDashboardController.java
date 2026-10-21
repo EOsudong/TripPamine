@@ -231,7 +231,7 @@ public class AssetDashboardController {
 
 
     // =====================================================
-    // 기간별 자산 흐름 조회
+    // 기간별 자산 내역 조회
     // =====================================================
     //
     // WEEK
@@ -269,7 +269,7 @@ public class AssetDashboardController {
 
             System.out.println(
                     "[AssetDashboardController]"
-                            + " 자산흐름 조회 - 로그인 사용자 정보 없음"
+                            + " 자산내역 조회 - 로그인 사용자 정보 없음"
             );
 
             return ResponseEntity
@@ -321,7 +321,7 @@ public class AssetDashboardController {
 
 
         // =========================================
-        // 4. 기간별 자산 흐름 조회
+        // 4. 기간별 자산 내역 조회
         // =========================================
 
         AssetHistoryResponseDto history =

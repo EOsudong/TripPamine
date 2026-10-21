@@ -63,7 +63,14 @@ public class AiManagerVerifiedAnswerService {
 					+ "어느 여행을 휴식 중심으로 구성할까요?";
 		}
 
-		boolean personal = contains(
+		// 현재 등록된 여행 조회와 직전 조회에 대한 정정은 모델 대신 실제 DB로 처리한다.
+		boolean travelLookup =
+				AiManagerTravelInquiryPolicy.isPersonalTravelLookup(message);
+		boolean correctionFollowup =
+				AiManagerTravelInquiryPolicy.isCorrectionFollowup(
+						message, previousUserMessages);
+
+		boolean personal = travelLookup || contains(
 				q,
 				"내여행",
 				"나의여행",
@@ -75,9 +82,10 @@ public class AiManagerVerifiedAnswerService {
 				q, "몇개", "몇건", "총몇", "몇번"
 		);
 
-		boolean detailQuestion = personal && contains(
-				q, "일정", "예산", "계획", "보여", "알려", "언제"
-		);
+		boolean detailQuestion = travelLookup || correctionFollowup
+				|| (personal && contains(
+						q, "일정", "예산", "계획", "보여", "알려", "언제"
+				));
 
 		boolean budgetFollowup =
 				q.contains("예산")
@@ -95,7 +103,8 @@ public class AiManagerVerifiedAnswerService {
 
 		// 4. 여행계획 개수는 실제 조회 결과를 직접 출력
 		if (countQuestion) {
-			return "현재 저장된 여행계획은 총 "
+			return (correctionFollowup ? "다시 조회했습니다. " : "")
+					+ "현재 저장된 여행계획은 총 "
 					+ overview.totalPlanCount() + "개입니다. "
 					+ "여행 준비 중 " + overview.plannedCount() + "개, "
 					+ "여행 중 " + overview.activeCount() + "개, "
@@ -106,7 +115,8 @@ public class AiManagerVerifiedAnswerService {
 				overview.plans() == null ? List.of() : overview.plans();
 
 		if (plans.isEmpty()) {
-			return "현재 저장된 여행계획이 없습니다. "
+			return (correctionFollowup ? "다시 조회했습니다. " : "")
+					+ "현재 저장된 여행계획이 없습니다. "
 					+ "여행 플래너에서 새 여행을 만들 수 있어요.";
 		}
 
@@ -155,7 +165,9 @@ public class AiManagerVerifiedAnswerService {
 
 		// 6. 실제 저장된 여행 이름, 기간, 예산 출력
 		StringBuilder answer =
-				new StringBuilder("저장된 여행계획은 총 ")
+				new StringBuilder(correctionFollowup
+						? "다시 조회했습니다. 현재 저장된 여행계획은 총 "
+						: "저장된 여행계획은 총 ")
 						.append(overview.totalPlanCount())
 						.append("개입니다.\n");
 

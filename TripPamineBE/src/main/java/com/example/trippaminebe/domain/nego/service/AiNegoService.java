@@ -80,12 +80,27 @@ public class AiNegoService {
 			throw new IllegalArgumentException("이미 만료된 제안입니다.");
 		}
 
-		Account account = accountRepository.findByAccountIdAndUser_Id(accountId, userId)
+		// 동일 오퍼 잠금 후 실제 결제 계좌도 행 잠금으로 보호한다.
+		// 다른 오퍼 또는 일반 가계부 출금이 이 계좌의 잔액을 바꾸는 동안 기다렸다가
+		// 최신 잔액으로 다시 검증한다. 잠금은 현재 @Transactional 커밋까지 유지된다.
+		Account account = accountRepository.findOwnedForUpdate(accountId, userId)
 				.orElseThrow(() -> new IllegalArgumentException("본인 소유의 계좌가 아니거나 존재하지 않습니다."));
 		if (!account.isActive()) {
 			throw new IllegalArgumentException("연동이 해지된 계좌입니다.");
 		}
-		if (account.getBalance().compareTo(offer.getOfferedPrice()) < 0) {
+		// 0원·음수 오퍼 및 Long 범위를 넘는 금액은 모의 결제로 처리하지 않는다.
+		// TRANSACTIONS.AMOUNT는 Long, AI_NEGO_LOGS.OFFERED_PRICE는 BigDecimal이다.
+		BigDecimal offeredPrice = offer.getOfferedPrice();
+		if (offeredPrice == null || offeredPrice.signum() <= 0) {
+			throw new IllegalArgumentException("결제할 수 없는 네고 제안 금액입니다.");
+		}
+		long paymentAmount;
+		try {
+			paymentAmount = offeredPrice.longValueExact();
+		} catch (ArithmeticException e) {
+			throw new IllegalArgumentException("지원하지 않는 네고 제안 금액입니다.", e);
+		}
+		if (account.getBalance().compareTo(offeredPrice) < 0) {
 			throw new IllegalArgumentException("계좌 잔액이 부족합니다.");
 		}
 
@@ -95,10 +110,10 @@ public class AiNegoService {
 		// AI 타임 네고 결제로 생긴 가계부 항목임을 카테고리로 명시한다(프론트 CATEGORY_MAP의 NEGO와 대응).
 		transaction.setCategory("NEGO");
 		transaction.setDescription(offer.getItemName());
-		transaction.setAmount(offer.getOfferedPrice().longValue());
+		transaction.setAmount(paymentAmount);
 		transaction.setType("expense");
 		transaction.setAccountId(accountId);
-		accountBookService.saveTransaction(userId, transaction);
+		accountBookService.saveNegoTransaction(userId, transaction);
 
 		offer.setPaymentAccountId(accountId);
 		offer.setPaidAt(LocalDateTime.now());
@@ -112,6 +127,13 @@ public class AiNegoService {
 	public void generateOfferForPlan(TravelPlan plan) {
 		User user = userRepository.findById(plan.getUser().getId())
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + plan.getUser().getId()));
+
+		// DDL은 여행 예산 0원을 허용한다. 0원 여행에는 할인·결제 오퍼를 생성하지 않고,
+		// 지출 비율 계산 시 0으로 나누는 상황도 원천 차단한다.
+		if (plan.getTotalBudget() == null || plan.getTotalBudget().signum() <= 0) {
+			log.debug("네고 오퍼 미생성: 여행 예산이 0원 이하입니다. planId={}", plan.getPlanId());
+			return;
+		}
 
 		String itemName = plan.getPlanName() + " 막판 특가 패키지";
 

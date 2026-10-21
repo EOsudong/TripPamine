@@ -151,6 +151,12 @@ public class AiManagerTravelContextService {
 	) {
 		String current = normalize(message);
 
+		// 사실 조회와 일반 여행 문맥의 의도 판별 기준을 일치시킨다.
+		if (AiManagerTravelInquiryPolicy.isPersonalTravelLookup(message)
+				|| AiManagerTravelInquiryPolicy.isCorrectionFollowup(message, history)) {
+			return true;
+		}
+
 		if (isPersonalTravelQuestion(current)) {
 			return true;
 		}

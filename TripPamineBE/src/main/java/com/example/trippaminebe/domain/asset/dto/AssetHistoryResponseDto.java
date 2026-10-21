@@ -42,7 +42,7 @@ public class AssetHistoryResponseDto {
     // 조회 기간 총지출
     private Long totalExpense;
 
-    // 순현금흐름
+    // 순현금내역
     // totalIncome - totalExpense
     private Long netCashFlow;
 
@@ -74,7 +74,7 @@ public class AssetHistoryResponseDto {
 
 
     // =====================================================
-    // 현금 흐름 그래프 Point
+    // 현금 내역 그래프 Point
     // =====================================================
 
     @Getter

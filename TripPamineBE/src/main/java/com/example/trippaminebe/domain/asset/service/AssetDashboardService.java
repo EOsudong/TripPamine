@@ -172,7 +172,7 @@ public class AssetDashboardService {
         }
 
 
-        // 6. 그 달의 일별 흐름 (응답 호환용)
+        // 6. 그 달의 일별 내역 (응답 호환용)
         List<AssetDashboardResponseDto.AssetHistoryInfo> assetHistory =
                 buildMonthlyAssetHistory(
                         targetYearMonth,
@@ -650,7 +650,7 @@ public class AssetDashboardService {
     // =====================================================
     //
     // AssetSnapshotScheduler 가 매일 밤 호출한다.
-    // 사용자가 Dashboard 를 열지 않은 날에도 자산 흐름 그래프에 점이 생긴다.
+    // 사용자가 Dashboard 를 열지 않은 날에도 자산 내역 그래프에 점이 생긴다.
     //
     // 연동 계좌도 없고 이번 달 가계부 기록도 없으면 저장하지 않는다.
     // =====================================================
@@ -711,7 +711,7 @@ public class AssetDashboardService {
 
 
     // =====================================================
-    // 기간별 자산 흐름
+    // 기간별 자산 내역
     // =====================================================
     //
     // WEEK    : 최근 7일
@@ -1100,7 +1100,7 @@ public class AssetDashboardService {
 
 
     // =====================================================
-    // 내부 — 그 달 일별 흐름 (응답 호환용)
+    // 내부 — 그 달 일별 내역 (응답 호환용)
     // =====================================================
 
     private List<AssetDashboardResponseDto.AssetHistoryInfo>

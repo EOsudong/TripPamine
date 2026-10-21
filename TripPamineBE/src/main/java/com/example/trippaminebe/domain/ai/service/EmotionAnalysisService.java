@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 감정 분석 전체 흐름을 조정하는 Application Service.
+ * 감정 분석 전체 내역을 조정하는 Application Service.
  *
  * 역할:
  *

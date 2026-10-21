@@ -92,7 +92,9 @@ public class AccountBalanceService {
   }
 
   private Account getOwnedAccountOrThrow(Long userId, Long accountId) {
-    return accountRepository.findByAccountIdAndUser_Id(accountId, userId)
+    // 실제 잔액 변경의 공통 진입점에 행 잠금을 둔다.
+    // 일반 가계부 등록·수정·삭제와 AiNego 결제가 모두 동일 계좌 잠금을 공유한다.
+    return accountRepository.findOwnedForUpdate(accountId, userId)
         .orElseThrow(() -> new IllegalArgumentException(
             "본인 소유의 계좌가 아니거나 존재하지 않습니다. accountId=" + accountId));
   }

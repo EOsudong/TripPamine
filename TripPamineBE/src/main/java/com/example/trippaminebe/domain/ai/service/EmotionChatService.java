@@ -234,7 +234,9 @@ public class EmotionChatService {
                     .filter(turn -> "user".equals(turn.role()))
                     .map(ManagerSlmClient.ChatTurn::content)
                     .toList();
-            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0) {
+            // 단순 여행 조회·정정을 감정 표현으로 오인하지 않도록 추론 전에 선별한다.
+            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0
+                    && AiManagerEmotionAnalysisPolicy.shouldAnalyze(message, previousUserMessages)) {
                 try {
                     // FIRST2 정책이 최근 감정을 해석하도록 마지막 사용자 발화 2개만 사용한다.
                     List<String> recentHumanTurns = humanTurns.subList(humanTurns.size() - 2, humanTurns.size());

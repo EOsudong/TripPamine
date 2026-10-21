@@ -32,8 +32,28 @@ public class AccountBookService {
    private final UserRepository userRepository;
    private final AccountBalanceService accountBalanceService;
 
-   // 1. 거래 내역 추가
+   // NEGO는 내부 AiNegoService가 생성한 모의 결제 기록의 전용 카테고리다.
+   // 일반 가계부 API 요청이 같은 카테고리를 임의로 만들어 결제 기록을 위장하지 못하게 한다.
+   private static final String NEGO_CATEGORY = "NEGO";
+
+   // 1. 일반 가계부 거래 추가 (외부 API에서 호출)
    public TransactionEntity saveTransaction(Long userId, TransactionEntity transaction) {
+      if (isNegoTransaction(transaction)) {
+         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "네고 결제 내역은 직접 등록할 수 없습니다.");
+      }
+      return saveTransactionInternal(userId, transaction);
+   }
+
+   // AiNegoService가 사용하는 시스템 전용 거래 등록 진입점.
+   // 실제 외부 결제가 아닌 가상 계좌 차감이며, 다른 원장 기록과 같은 DB 트랜잭션에서 처리한다.
+   public TransactionEntity saveNegoTransaction(Long userId, TransactionEntity transaction) {
+      if (!isNegoTransaction(transaction)) {
+         throw new IllegalArgumentException("네고 거래의 카테고리가 올바르지 않습니다.");
+      }
+      return saveTransactionInternal(userId, transaction);
+   }
+
+   private TransactionEntity saveTransactionInternal(Long userId, TransactionEntity transaction) {
       requireUserId(userId);
       User user = userRepository.findById(userId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
@@ -75,6 +95,15 @@ public class AccountBookService {
       requireUserId(userId);
       TransactionEntity transaction = accountBookRepository.findByIdAndUserId(id, userId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "본인 가계부 내역을 찾을 수 없습니다."));
+      // 완료된 네고 가상 결제는 임의 수정/삭제하면 오퍼 전환 상태와 잔액이 불일치한다.
+      // 네고 취소·환불은 추후 별도의 검증된 역거래로만 처리한다.
+      if (isNegoTransaction(transaction)) {
+         throw new ResponseStatusException(HttpStatus.CONFLICT, "네고 결제 내역은 직접 수정하거나 삭제할 수 없습니다.");
+      }
+      // 일반 거래를 NEGO 카테고리로 변경하는 우회도 차단한다.
+      if (isNegoTransaction(updatedData)) {
+         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "네고 결제 카테고리로 변경할 수 없습니다.");
+      }
 
       transaction.setDescription(updatedData.getDescription());
       transaction.setAmount(updatedData.getAmount());
@@ -107,8 +136,17 @@ public class AccountBookService {
       requireUserId(userId);
       TransactionEntity transaction = accountBookRepository.findByIdAndUserId(id, userId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "본인 가계부 내역을 찾을 수 없습니다."));
+      // 완료된 네고 가상 결제는 임의 수정/삭제하면 오퍼 전환 상태와 잔액이 불일치한다.
+      // 네고 취소·환불은 추후 별도의 검증된 역거래로만 처리한다.
+      if (isNegoTransaction(transaction)) {
+         throw new ResponseStatusException(HttpStatus.CONFLICT, "네고 결제 내역은 직접 수정하거나 삭제할 수 없습니다.");
+      }
       accountBalanceService.reverseLedgerTransaction(userId, transaction.getId());
       accountBookRepository.delete(transaction);
+   }
+
+   private static boolean isNegoTransaction(TransactionEntity transaction) {
+      return transaction != null && NEGO_CATEGORY.equalsIgnoreCase(transaction.getCategory());
    }
 
    private static void requireUserId(Long userId) {

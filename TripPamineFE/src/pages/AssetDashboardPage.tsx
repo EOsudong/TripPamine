@@ -113,7 +113,7 @@ interface AssetHistoryInfo {
   totalExpense: number
 }
 // =====================================================
-// 기간별 자산 흐름 API 응답
+// 기간별 자산 내역 API 응답
 // =====================================================
 
 interface AssetHistoryPoint {
@@ -377,7 +377,7 @@ const [
   ] = useState<string | null>(null)
 
 
-  // Dashboard 응답 도착 여부 (기간별 흐름 조회 순서 제어용)
+  // Dashboard 응답 도착 여부 (기간별 내역 조회 순서 제어용)
   const dashboardReady =
       dashboard !== null
 
@@ -1038,7 +1038,7 @@ const simulatedForecast =
     ])
 
   // ===================================================
-  // 기간별 자산 흐름 API
+  // 기간별 자산 내역 API
   // ===================================================
 
   useEffect(() => {
@@ -1072,7 +1072,7 @@ const simulatedForecast =
         if (!response.ok) {
           const errorText = await response.text()
           console.error("Asset History API Error =", errorText)
-          throw new Error("자산 흐름 정보를 불러오지 못했습니다.")
+          throw new Error("자산 내역 정보를 불러오지 못했습니다.")
         }
 
        const data: AssetHistoryResponseData =
@@ -1166,7 +1166,7 @@ setPeriodAssetHistory(
         setAssetHistoryError(
             error instanceof Error
                 ? error.message
-                : "자산 흐름 정보를 불러오지 못했습니다.",
+                : "자산 내역 정보를 불러오지 못했습니다.",
         )
       } finally {
         setAssetHistoryLoading(false)
@@ -1175,7 +1175,7 @@ setPeriodAssetHistory(
 
     // [수정] 오늘 Snapshot은 Dashboard 조회(GET /api/assets/dashboard) 때 저장된다.
     // 두 요청을 동시에 보내면 첫 방문 날에는 오늘 데이터가 그래프에서 빠지므로
-    // Dashboard 응답을 받은 뒤에 기간별 흐름을 조회한다.
+    // Dashboard 응답을 받은 뒤에 기간별 내역을 조회한다.
     if (!dashboardReady) {
       return
     }
@@ -1925,7 +1925,7 @@ const handleUpdateGoal =
   // ===================================================
   // 차트 공통
   //
-  // [변경] 예전 자산 흐름 그래프는 총자산(왼쪽 축)과 수입·지출(오른쪽 축)을
+  // [변경] 예전 자산 내역 그래프는 총자산(왼쪽 축)과 수입·지출(오른쪽 축)을
   // 한 그래프에 겹쳐서, 어떤 선이 어떤 축을 따르는지 알기 어려웠다.
   // → 축이 하나인 그래프 두 개로 분리한다.
   //   1) 총자산 추이 : 선 하나 (보라)
@@ -2502,14 +2502,14 @@ const periodSummary =
 
         <section className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
 
-          {/* 자산 흐름 — 총자산 추이 + 수입/지출 (축이 하나인 그래프 두 개) */}
+          {/* 자산 내역 — 총자산 추이 + 수입/지출 (축이 하나인 그래프 두 개) */}
           <article className={CARD}>
             <div className={CARD_HEADER}>
               <div>
                 <span className={CARD_KICKER}>ASSET FLOW</span>
                 <h2 className={CARD_TITLE}>자산 내역</h2>
                 <p className={CARD_DESC}>
-                  {assetHistoryPeriodLabel[assetHistoryPeriod]} 동안 총자산과 돈의 흐름이에요.
+                  {assetHistoryPeriodLabel[assetHistoryPeriod]} 동안 총자산 수입·지출 내역이에요.
                 </p>
               </div>
 
@@ -2544,11 +2544,11 @@ const periodSummary =
             </div>
 
             {assetHistoryLoading ? (
-                <div className={EMPTY}>선택한 기간의 자산 흐름을 불러오는 중입니다.</div>
+                <div className={EMPTY}>선택한 기간의 자산 내역을 불러오는 중입니다.</div>
             ) : assetHistoryError ? (
                 <div className={EMPTY}>{assetHistoryError}</div>
             ) : assetHistory.length === 0 || !periodSummary ? (
-                <div className={EMPTY}>선택한 기간에 자산 흐름 데이터가 없습니다.</div>
+                <div className={EMPTY}>선택한 기간에 자산 데이터가 없습니다.</div>
             ) : (
                 <div className="space-y-6">
 

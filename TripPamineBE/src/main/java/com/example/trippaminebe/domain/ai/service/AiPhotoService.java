@@ -91,6 +91,11 @@ public class AiPhotoService {
              "AI 사진 편집 서버에 연결할 수 없습니다.", e);
       } catch (WebClientResponseException e) {
          log.warn("[Vision AI] {} 처리 실패: HTTP {}", operation, e.getStatusCode().value());
+         // 동시 추론 요청 제한(429)은 입력 오류(400)와 구분하여 클라이언트에 전달한다.
+         if (e.getStatusCode().value() == 429) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                "다른 사진을 처리 중입니다. 잠시 후 다시 시도해 주세요.", e);
+         }
          HttpStatus status = e.getStatusCode().is4xxClientError()
              ? HttpStatus.BAD_REQUEST : HttpStatus.BAD_GATEWAY;
          throw new ResponseStatusException(status,

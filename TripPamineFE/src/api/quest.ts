@@ -2,7 +2,7 @@ import api from "./axios";
 
 // 백엔드 QuestService/QuestController와 1:1로 맞춘 타입 및 API 함수.
 //
-// 흐름: 목록 조회(GET /quests) → 유저가 퀘스트를 고르면 시작(POST /quests/{id}/start)
+// 목록 조회(GET /quests) → 유저가 퀘스트를 고르면 시작(POST /quests/{id}/start)
 //      → 실시간 GPS로 현재 위치를 반복 전송해 클리어 시도(POST /quests/{id}/clear)
 // userId는 더 이상 프론트에서 넘기지 않는다. JWT(Authorization 헤더)로 로그인한 사용자를
 // 백엔드가 @AuthenticationPrincipal로 직접 식별하므로, 클라이언트가 임의의 userId를 보내
