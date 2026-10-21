@@ -17,6 +17,7 @@ public class TravelPlanResponse {
     private String planName;
     private BigDecimal totalBudget;
     private String companionType;
+    private Integer companionCount;
     private String locationCd;
     private String blindYn;
     private LocalDateTime startDate;
@@ -28,6 +29,7 @@ public class TravelPlanResponse {
             .planName(plan.getPlanName())
             .totalBudget(plan.getTotalBudget())
             .companionType(plan.getCompanionType())
+            .companionCount(plan.getCompanionCount())
             .locationCd(plan.getLocationCd())
             .blindYn(plan.getBlindYn())
             .startDate(plan.getStartDate())

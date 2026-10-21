@@ -24,15 +24,28 @@ public class OpenAiRecommendationService {
 
   public String generateRecommendation(TravelPlan plan) {
 
+    String companionCountText = plan.getCompanionCount() != null
+        ? plan.getCompanionCount() + "명(본인 포함)"
+        : "인원 미정";
+
     String prompt = """
                 당신은 대한민국 국내 여행 전문 플래너입니다.
 
-                아래 사용자의 여행 조건을 분석해서
-                실제 여행에 사용할 수 있는 구체적인 여행 일정을 추천해주세요.
-
+                제시된 사용자의 여행 조건을 분석하여, 실제 실행 가능한 구체적인 여행 일정을 추천해주세요.
+                
+                [작성 지침]
+                1. 인원 및 이동:
+                  - 여행 인원 수에 적합한 장소와 이동 수단을 고려해주세요.
+                  - 인원이 미정인 경우 일반적인 기준으로 추천해주세요.
+                2. 예산 산정 기준:
+                  - 제공된 '총 예산'은 모든 동행 인원을 포함한 총 금액입니다.
+                  - '예상 비용'(estimatedCost)은 전체와 장소별 모두 '모든 인원의 총합 비용' 기준으로 산정해주세요.
+                  - 전체 여행 비용 합계가 입력된 '총 예산'을 초과하지 않도록 구성해주세요.
+                
                 여행 이름: %s
                 총 예산: %s원
                 동행자: %s
+                여행 인원: %s
                 출발일: %s
                 종료일: %s
                 미스터리 투어 여부: %s
@@ -63,6 +76,7 @@ public class OpenAiRecommendationService {
         plan.getPlanName(),
         plan.getTotalBudget(),
         plan.getCompanionType(),
+        companionCountText,
         plan.getStartDate(),
         plan.getEndDate(),
         plan.getBlindYn()

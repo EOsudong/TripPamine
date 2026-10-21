@@ -104,6 +104,10 @@ public class TravelPlanService {
             request.getCompanionType()
         );
 
+        travelPlan.setCompanionCount(
+            request.getCompanionCount()
+        );
+
         travelPlan.setBlindYn(
             request.getBlindYn() != null
                 ? request.getBlindYn()
@@ -254,6 +258,10 @@ public class TravelPlanService {
 
         travelPlan.setCompanionType(
             request.getCompanionType()
+        );
+
+        travelPlan.setCompanionCount(
+            request.getCompanionCount()
         );
 
         /*

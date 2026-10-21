@@ -592,7 +592,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                         </span>
                         <span>
                           <Users size={13} aria-hidden="true" />
-                          {companionLabel(plan.companionType)}
+                          {companionSummary(plan.companionType, plan.companionCount)}
                         </span>
                       </span>
                     </button>
@@ -625,7 +625,7 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                     {formatDate(selectedPlan.startDate)} ~{" "}
                     {formatDate(selectedPlan.endDate)}
                     <span>·</span>
-                    {companionLabel(selectedPlan.companionType)}
+                    {companionSummary(selectedPlan.companionType, selectedPlan.companionCount)}
                   </p>
                 )}
               </div>
@@ -746,7 +746,13 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
                       <dl className="ar-trip-facts">
                         <div>
                           <dt>예상 총 비용</dt>
-                          <dd>{formatWon(result.parsed.estimatedCost)}</dd>
+                          <dd>
+                            {formatWon(
+                                result.parsed.days
+                                    .flatMap((day) => day.places)
+                                    .reduce((sum, place) => sum + place.estimatedCost, 0),
+                            )}
+                          </dd>
                         </div>
                         <div>
                           <dt>등록한 예산</dt>
@@ -1057,6 +1063,8 @@ function DayWeather({ weather }: { weather: TripDayWeather | undefined }) {
           {summary.notices.map((notice, index) => (
             <li key={index}>{notice}</li>
           ))}
+          <li>날씨로 인해 일정에 문제가 생긴 경우,
+            페이지 하단의 '여행 중 도움' 을 이용해보세요.</li>
         </ul>
       )}
     </details>
@@ -1077,6 +1085,11 @@ function companionLabel(type: string | null): string {
     "동행자 미설정"
   );
 }
+
+function companionSummary(type: string | null, count: number | null): string {
+  return `${companionLabel(type)} · ${count === null ? "인원 미설정" : `${count}명`}`;
+}
+
 function formatDate(value: string | null): string {
   return value ? value.slice(0, 10).replaceAll("-", ".") : "날짜 미정";
 }

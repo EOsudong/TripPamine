@@ -30,6 +30,7 @@ const EMPTY_FORM: TravelPlanFormState = {
   planName: "",
   totalBudget: "",
   companionType: "",
+  companionCount: "",
   blindYn: "N",
   startDate: "",
   endDate: "",
@@ -83,7 +84,14 @@ export default function Hero() {
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = event.target;
-    setForm((previous) => ({ ...previous, [name]: value }));
+    setForm((previous) => {
+      const next = {...previous, [name]: value};
+      if (name === "companionType") {
+        if (value === "ALONE") next.companionCount = "1";
+        else if (previous.companionType === "ALONE") next.companionCount = "";
+      }
+      return next;
+    });
     setFormError("");
   };
 
@@ -106,6 +114,16 @@ export default function Hero() {
       setFormError("예산은 0원 이상의 숫자로 입력해 주세요.");
       return;
     }
+    const count = form.companionCount.trim() === "" ? null : Number(form.companionCount);
+    if (count !== null && (!Number.isInteger(count) || count < 1 || count > 20)) {
+      setFormError("여행 인원은 본인 포함 최소 1명, 최대 20명까지 가능합니다.");
+      return;
+    }
+    const isGroup = ["FRIEND", "FAMILY", "COUPLE"].includes(form.companionType);
+    if (count !== null && isGroup && count < 2) {
+      setFormError("친구, 가족, 연인은 본인 포함 2명 이상이어야 합니다.");
+      return;
+    }
     // 백엔드와 동일하게 과거 출발 일시와 역전된 기간을 차단한다.
     if (form.startDate && new Date(form.startDate).getTime() < Date.now()) {
       setFormError("출발 일시는 현재 이후로 선택해 주세요.");
@@ -119,6 +137,7 @@ export default function Hero() {
       planName: form.planName.trim(),
       totalBudget: budget,
       companionType: form.companionType || null,
+      companionCount: count,
       blindYn: form.blindYn,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
@@ -159,6 +178,7 @@ export default function Hero() {
       planName: plan.planName,
       totalBudget: String(plan.totalBudget),
       companionType: plan.companionType || "",
+      companionCount: plan.companionType === "ALONE" ? "1" : String(plan.companionCount ?? ""),
       blindYn: plan.blindYn || "N",
       startDate: plan.startDate?.slice(0, 16) || "",
       endDate: plan.endDate?.slice(0, 16) || "",
@@ -344,6 +364,27 @@ export default function Hero() {
                     </select>
                   </div>
                   <div className="tw-field">
+                    <label htmlFor="tw-companion-count">
+                      동행 인원 <span>선택</span>
+                    </label>
+                    <div className="tw-input-unit">
+                      <input
+                        id="tw-companion-count"
+                        type="number"
+                        name="companionCount"
+                        min="1"
+                        max="20"
+                        step="1"
+                        inputMode="numeric"
+                        value={form.companionCount}
+                        onChange={handleChange}
+                        placeholder="예: 3"
+                        disabled={form.companionType === "ALONE"}
+                      />
+                      <span>명 (본인 포함)</span>
+                    </div>
+                  </div>
+                  <div className="tw-field">
                     <label htmlFor="tw-start">
                       출발 일시 <span>선택</span>
                     </label>
@@ -511,9 +552,9 @@ export default function Hero() {
                         <div>
                           <dt>
                             <Users size={13} aria-hidden="true" />
-                            동행자
+                            여행 인원
                           </dt>
-                          <dd>{companionLabel(plan.companionType)}</dd>
+                          <dd>{companionSummary(plan.companionType, plan.companionCount)}</dd>
                         </div>
                       </dl>
                       <div className="tw-plan-actions">
@@ -574,6 +615,10 @@ function companionLabel(type: string | null): string {
     )[type ?? ""] ??
     (type || "동행자 미정")
   );
+}
+
+function companionSummary(type: string | null, count: number | null): string {
+  return `${companionLabel(type)} · ${count === null ? "인원 미설정" : `${count}명`}`;
 }
 
 function formatDate(value: string | null): string {

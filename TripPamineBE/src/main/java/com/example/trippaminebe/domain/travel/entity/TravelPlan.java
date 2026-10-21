@@ -35,6 +35,9 @@ public class TravelPlan {
     @Column(name = "COMPANION_TYPE", length = 30)
     private String companionType;
 
+    @Column(name = "COMPANION_COUNT")
+    private Integer companionCount;
+
     // 💡 [추가] DB NOT NULL 제약조건 대응용 지역 코드
     @Column(name = "LOCATION_CD", length = 20)
     private String locationCd;

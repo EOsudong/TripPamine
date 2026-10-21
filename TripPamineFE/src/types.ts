@@ -45,6 +45,7 @@ export interface TravelPlan {
   planName: string;
   totalBudget: number;
   companionType: string | null;
+  companionCount: number | null;
   blindYn: string;
   startDate: string | null;
   endDate: string | null;
@@ -55,6 +56,7 @@ export interface TravelPlanFormState {
   planName: string;
   totalBudget: string;
   companionType: string;
+  companionCount: string;
   blindYn: string;
   startDate: string;
   endDate: string;

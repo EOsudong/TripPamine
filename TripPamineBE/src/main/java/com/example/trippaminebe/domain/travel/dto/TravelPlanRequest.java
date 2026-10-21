@@ -1,6 +1,7 @@
 package com.example.trippaminebe.domain.travel.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -20,6 +21,10 @@ public class TravelPlanRequest {
     private BigDecimal totalBudget;
 
     private String companionType;
+
+    @Min(value = 1, message = "한 명 이상을 선택해야 합니다")
+    @Max(value = 20, message = "최대 20명까지 지원합니다")
+    private Integer companionCount;
 
     private String locationCd; // 💡 추가
 

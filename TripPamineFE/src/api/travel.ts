@@ -6,6 +6,7 @@ export interface TravelPlanRequest {
     planName: string
     totalBudget: number
     companionType: string | null
+    companionCount: number | null
     blindYn: string
     startDate: string | null
     endDate: string | null
