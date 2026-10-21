@@ -41,7 +41,6 @@ public class AccountBookService {
       // 요청 본문의 id, username, userId는 신뢰하지 않는다.
       transaction.setId(null);
       transaction.setUserId(user.getId());
-      transaction.setUsername(user.getUserName()); // 기존 USERNAME NOT NULL 컬럼 호환용
       if (transaction.getTransactionDate() == null) {
          transaction.setTransactionDate(LocalDateTime.now());
       }
