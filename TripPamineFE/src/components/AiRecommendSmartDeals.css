@@ -151,3 +151,68 @@
 /* 빠른 지역 선택 상태와 추천 계산 중 상태를 명확하게 표시한다. */
 .ar-smart-quickwords button[aria-pressed="true"] { background: rgb(34 211 238 / .18); color: #a5f3fc; }
 .ar-smart-loading { display: flex; align-items: center; gap: 9px; margin-top: 18px; padding: 18px; border-radius: 14px; background: var(--ar-inset); color: var(--ar-secondary); font-size: 13px; }
+
+/* STEP 1I: 자동 검색 대신 지역 제안 근거를 보여주고 언제든 검색어를 수정할 수 있게 한다. */
+.ar-smart-region-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgb(34 211 238 / .07);
+  color: var(--ar-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ar-smart-region-hint strong { color: #a5f3fc; }
+.ar-smart-region-hint button {
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgb(34 211 238 / .16);
+  color: #a5f3fc;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* STEP 1J: 여행 조건을 보이되 날짜/인원 확정가를 보장하는 UI로 오인하지 않게 한다. */
+.ar-smart-trip-context {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 18px;
+}
+.ar-smart-trip-context > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--ar-inset);
+}
+.ar-smart-trip-context span { color: var(--ar-muted); font-size: 11px; }
+.ar-smart-trip-context strong { color: var(--ar-text); font-size: 12px; font-weight: 700; }
+.ar-smart-region-select { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.ar-smart-region-select span { flex-shrink: 0; color: var(--ar-secondary); font-size: 12px; font-weight: 700; }
+.ar-smart-region-select select {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--ar-border);
+  border-radius: 11px;
+  background: var(--ar-inset);
+  color: var(--ar-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+@media (max-width: 850px) {
+  .ar-smart-trip-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .ar-smart-trip-context { grid-template-columns: 1fr; }
+  .ar-smart-region-select { align-items: stretch; flex-direction: column; gap: 7px; }
+  .ar-smart-region-select select { width: 100%; }
+}

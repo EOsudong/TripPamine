@@ -4,6 +4,34 @@ import { API_BASE_URL as SPRING_API_BASE_URL } from "../api/axios";
 
 const API_BASE_URL = `${SPRING_API_BASE_URL}/api/v1/ai-photo`;
 
+// 서버 내부 예외 내용을 그대로 노출하지 않고 HTTP 상태별로 사용 가능한 안내만 보여준다.
+const assertPhotoResponse = (response: Response, fallback: string): void => {
+  if (response.ok) return;
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
+  }
+  if (response.status === 413) {
+    throw new Error("사진 용량이 제한을 초과했습니다. 파일 크기를 줄여 주세요.");
+  }
+  if (response.status === 503) {
+    throw new Error("사진 편집 AI 서버에 연결할 수 없습니다. 서버 상태를 확인해 주세요.");
+  }
+  if (response.status === 502 || response.status === 504) {
+    throw new Error("AI 모델 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+  if (response.status === 400 || response.status === 422) {
+    throw new Error("사진 형식 또는 요청 내용을 확인해 주세요.");
+  }
+  throw new Error(`${fallback} (HTTP ${response.status})`);
+};
+
+const photoErrorMessage = (error: unknown): string => {
+  if (error instanceof TypeError) {
+    return "Spring Boot 서버에 연결할 수 없습니다. 서버 실행 상태를 확인해 주세요.";
+  }
+  return error instanceof Error ? error.message : "서버 통신 실패";
+};
+
 // 🔑 인증 헤더 생성 공통 헬퍼 함수
 const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -82,16 +110,12 @@ export default function AiPhotoEditorPage() {
         body: formData,
       });
 
-      if (res.status === 401) {
-        throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
-      }
-
-      if (!res.ok) throw new Error("베스트 샷 분석 중 오류가 발생했습니다.");
+      assertPhotoResponse(res, "베스트 샷 분석 중 오류가 발생했습니다.");
 
       const data = await res.json();
       setBestShotResults(data.results || []);
-    } catch (err: any) {
-      setError(err.message || "서버 통신 실패");
+    } catch (err: unknown) {
+      setError(photoErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -145,17 +169,12 @@ export default function AiPhotoEditorPage() {
         body: formData,
       });
 
-      if (res.status === 401) {
-        throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
-      }
-
-      if (!res.ok)
-        throw new Error("자동 모자이크 처리 중 오류가 발생했습니다.");
+      assertPhotoResponse(res, "자동 모자이크 처리 중 오류가 발생했습니다.");
 
       const data = await res.json();
       setMultiMosaicResults(data.results || []);
-    } catch (err: any) {
-      setError(err.message || "서버 통신 실패");
+    } catch (err: unknown) {
+      setError(photoErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -263,16 +282,12 @@ export default function AiPhotoEditorPage() {
           body: formData,
         });
 
-        if (res.status === 401) {
-          throw new Error("로그인이 만료되었거나 권한이 없습니다. 다시 로그인해 주세요.");
-        }
-
-        if (!res.ok) throw new Error("수동 모자이크 처리 실패");
+        assertPhotoResponse(res, "수동 모자이크 처리 실패");
 
         const resultBlob = await res.blob();
         setManualResult(URL.createObjectURL(resultBlob));
-      } catch (err: any) {
-        setError(err.message || "서버 통신 실패");
+      } catch (err: unknown) {
+        setError(photoErrorMessage(err));
       } finally {
         setLoading(false);
       }

@@ -25,14 +25,17 @@ export interface MyRealTripCatalogResponse {
 }
 
 export const myRealTripCatalogApi = {
-  searchTours: async (keyword: string): Promise<MyRealTripCatalogResponse> => {
+  searchTours: async (keyword: string, page = 1): Promise<MyRealTripCatalogResponse> => {
+    if (!Number.isSafeInteger(page) || page < 1 || page > 200) {
+      throw new Error("조회할 수 없는 페이지입니다.");
+    }
     const normalized = keyword.trim();
     if (!normalized) {
       throw new Error("검색어를 입력해주세요.");
     }
     const response = await api.post<MyRealTripCatalogResponse>(
       "/nego/partners/myrealtrip/tours/search/normalized",
-      { keyword: normalized },
+      { keyword: normalized, page },
     );
     return response.data;
   },

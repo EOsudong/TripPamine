@@ -236,3 +236,8 @@
     width: 100%;
   }
 }
+/* 같은 행의 카드 높이를 맞춰 버튼이 항상 아래쪽에 정렬되도록 한다. */
+.ar-deals-grid { align-items: stretch; grid-auto-rows: 1fr; }
+.ar-deals-card { display: flex; flex-direction: column; height: 100%; }
+.ar-deals-card-body { flex: 1; }
+.ar-deals-results { scroll-margin-top: 88px; }

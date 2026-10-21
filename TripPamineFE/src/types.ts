@@ -44,10 +44,11 @@ export interface TravelPlan {
   planId: number;
   planName: string;
   totalBudget: number;
-  // Backend TravelPlanResponse에 존재하는 지역 코드. 구버전 응답을 고려해 optional.
-  locationCd?: string | null;
   companionType: string | null;
+  // 백엔드 TravelPlanResponse의 COMPANION_COUNT: 본인 포함 인원, 미설정 시 null.
   companionCount: number | null;
+  // 백엔드 TravelPlanResponse가 제공하는 지역 코드. 기존 화면 호환을 위해 선택 필드로 둔다.
+  locationCd?: string | null;
   blindYn: string;
   startDate: string | null;
   endDate: string | null;
@@ -59,6 +60,8 @@ export interface TravelPlanFormState {
   totalBudget: string;
   companionType: string;
   companionCount: string;
+  // 여행 등록에서 선택한 지역 (지역명 또는 기존 저장 코드).
+  locationCd: string;
   blindYn: string;
   startDate: string;
   endDate: string;

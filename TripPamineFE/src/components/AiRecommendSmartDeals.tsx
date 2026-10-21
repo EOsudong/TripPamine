@@ -6,7 +6,11 @@ import {
   type MyRealTripSmartDealResponse,
 } from "../api/myrealtripSmartDeals";
 import type { TravelPlan } from "../types";
-import { getTravelDealKeyword } from "../utils/travelDealKeyword";
+import {
+  getTravelRegionCandidates,
+  suggestTravelKeyword,
+  TRAVEL_SEARCH_REGIONS,
+} from "../utils/suggestTravelKeyword";
 import "./AiRecommendSmartDeals.css";
 
 interface Props {
@@ -50,10 +54,29 @@ function won(value: number): string {
   return `${value.toLocaleString("ko-KR")}원`;
 }
 
+/** 날짜의 시간대 변환 없이 저장된 여행 일시를 읽기 쉽게 표시한다. */
+function displayTravelDate(value: string | null): string {
+  return value ? value.slice(0, 16).replace("T", " ") : "미등록";
+}
+
+// 기존 여행 등록 화면의 동행 유형 값만 사용한다. 유형만으로 인원 수를 추정하지 않는다.
+const COMPANION_LABELS: Readonly<Record<string, string>> = {
+  ALONE: "혼자",
+  FRIEND: "친구",
+  FAMILY: "가족",
+  COUPLE: "연인",
+};
+
 /** 여행 계획의 총예산과 조회된 제휴사 시작가를 비교해 규칙 기반 추천을 보여준다. */
 export default function AiRecommendSmartDeals({ plan }: Props) {
-  // 확인된 지역 코드나 여행명에 명시된 지역만 검색어로 제안하고 API 호출은 하지 않는다.
-  const [keyword, setKeyword] = useState(() => getTravelDealKeyword(plan)?.keyword ?? "");
+  // 저장된 지역 코드 또는 여행명에서 단일 지역을 확인한 경우에만 검색어를 제안한다.
+  // 지역이 불확실하면 임의의 여행명을 자동 검색어로 사용하지 않는다.
+  const regionSuggestion = suggestTravelKeyword(plan);
+  const regionCandidates = getTravelRegionCandidates(plan);
+  const companion = plan.companionType
+    ? COMPANION_LABELS[plan.companionType] ?? plan.companionType
+    : "미등록";
+  const [keyword, setKeyword] = useState(regionSuggestion.keyword);
   const [priceCeiling, setPriceCeiling] = useState("");
   const [result, setResult] = useState<MyRealTripSmartDealResponse | null>(null);
   const [error, setError] = useState("");
@@ -152,15 +175,53 @@ export default function AiRecommendSmartDeals({ plan }: Props) {
   };
 
   return (
-    <section className="ar-smart tp-card-dark" aria-labelledby="ar-smart-title">
-      <div className="ar-smart-header">
+    <section className="ar-stay" aria-labelledby="ar-stay-title">
+      <div className="ar-stay-header">
         <div>
-          <p className="ar-smart-eyebrow"><Sparkles size={15} /> TRIPPAMINE SMART DEAL</p>
-          <h2 id="ar-smart-title">내 여행 맞춤 제휴 상품 추천</h2>
+          <p className="ar-hub-eyebrow"><Sparkles size={14} aria-hidden="true" /> TRIPPAMINE SMART DEAL</p>
+          <h2 id="ar-stay-title">내 여행 맞춤 제휴 상품 추천</h2>
           <p className="ar-smart-subtitle">여행 계획의 예산에 맞는 실제 상품을 골라 가격·평점·후기로 순위를 매겨요.</p>
         </div>
-        <span className="ar-smart-budget"><Wallet size={15} /> 여행 총예산 {won(plan.totalBudget)}</span>
+        <span className="ar-smart-budget"><Wallet size={14} /> 여행 총예산 {won(plan.totalBudget)}</span>
       </div>
+
+      {/* 여행 등록에서 저장된 실제 인원과 일정을 표시한다. 제휴사 가격/예약 필터에 전달하지는 않는다. */}
+      <div className="ar-smart-trip-context" aria-label="선택한 여행 조건">
+        <div><span>출발</span><strong>{displayTravelDate(plan.startDate)}</strong></div>
+        <div><span>종료</span><strong>{displayTravelDate(plan.endDate)}</strong></div>
+        <div><span>동행 유형</span><strong>{companion}</strong></div>
+        <div><span>실제 여행 인원</span><strong>{plan.companionCount === null ? "미등록" : `${plan.companionCount}명 (본인 포함)`}</strong></div>
+      </div>
+
+      <div className="ar-smart-region-hint" aria-live="polite">
+        {regionSuggestion.keyword ? (
+          <>
+            <span>여행 지역 제안: <strong>{regionSuggestion.keyword}</strong>
+              {regionSuggestion.source === "PLAN_NAME" ? " (여행명에서 확인)" : " (저장된 지역)"}
+            </span>
+            <button type="button" onClick={() => setKeyword(regionSuggestion.keyword)}>
+              추천 지역 입력
+            </button>
+          </>
+        ) : regionCandidates.length > 1 ? (
+          <span>여행명에 여러 지역이 있어요. 아래에서 실제 검색할 지역을 골라주세요.</span>
+        ) : (
+          <span>확인된 지역 정보가 없어요. 지역을 선택하거나 활동명을 직접 입력해주세요.</span>
+        )}
+      </div>
+
+      <label className="ar-smart-region-select">
+        <span>검색할 지역 선택 (선택 사항)</span>
+        <select
+          value={TRAVEL_SEARCH_REGIONS.some((region) => region === keyword) ? keyword : ""}
+          onChange={(event) => setKeyword(event.target.value)}
+        >
+          <option value="">직접 입력 / 활동명 검색</option>
+          {TRAVEL_SEARCH_REGIONS.map((region) => (
+            <option key={region} value={region}>{region}</option>
+          ))}
+        </select>
+      </label>
 
       <form className="ar-smart-form" onSubmit={(event) => void search(event)}>
         <label className="ar-smart-field">
@@ -179,17 +240,6 @@ export default function AiRecommendSmartDeals({ plan }: Props) {
           {searching ? "추천 계산 중…" : "맞춤 추천 보기"}
         </button>
       </form>
-      <div className="ar-smart-quickwords" role="group" aria-label="빠른 검색 지역">
-        {(["제주", "부산", "서울", "강릉"] as const).map((city) => (
-          <button type="button" key={city} aria-pressed={keyword === city}
-            onClick={() => setKeyword(city)}>{city}</button>
-        ))}
-      </div>
-      <p className="ar-smart-note">
-        현재는 실시간 협상 AI가 아닌 <strong>규칙 기반 1차 추천</strong>입니다. 상품 가격은 검색 결과의
-        표시 시작가이며 인원별 총액, 여행 날짜 예약 가능 여부, 실제 할인액은 검증되지 않았습니다.
-        상품 선택 시 제휴사에서 최종 정보를 확인하세요. 제휴 링크 구매에 따른 수수료가 발생할 수 있습니다.
-      </p>
 
       {searching && (
         <div className="ar-smart-loading" role="status" aria-live="polite">

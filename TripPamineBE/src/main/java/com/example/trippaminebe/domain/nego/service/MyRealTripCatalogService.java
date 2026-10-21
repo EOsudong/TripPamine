@@ -4,7 +4,6 @@ import com.example.trippaminebe.domain.nego.client.MyRealTripApiClient;
 import com.example.trippaminebe.domain.nego.dto.response.MyRealTripCatalogResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,13 +11,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 /** 기존 검색 클라이언트의 원본 JSON을 상품 카탈로그 응답으로 변환한다. */
@@ -26,93 +24,95 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class MyRealTripCatalogService {
 
-    private static final int MAX_CACHE_ENTRIES = 100;
-    private static final int MAX_CACHE_TTL_SECONDS = 60;
+    private static final long CACHE_TTL_NANOS = TimeUnit.MINUTES.toNanos(3);
+    private static final int MAX_CACHED_SEARCHES = 128;
 
     private final MyRealTripApiClient myRealTripApiClient;
 
-    // 상품 가격의 캐시 보관 정책이 계약상 허용된 경우에만 TTL을 설정한다(기본 0초).
-    @Value("${MYREALTRIP_SEARCH_CACHE_SECONDS:0}")
-    private int cacheSeconds;
+    // 사용자 정보와 계좌·추천 결과는 보관하지 않고, 제공사 공통 상품 목록만 단기 캐싱한다.
+    // 접근 순서 기반 LRU이므로 여러 사용자가 검색하더라도 저장 크기가 제한된다.
+    private final Object cacheLock = new Object();
+    private final Map<String, CacheEntry> cachedSearches = new LinkedHashMap<>(16, 0.75f, true);
+    private final Map<String, CompletableFuture<MyRealTripCatalogResponse>> inFlightSearches = new HashMap<>();
 
-    // 사용자 식별 정보는 캐시하지 않는다. 동일 검색어의 공개 상품 목록만 공유한다.
-    private final ConcurrentMap<String, CachedCatalog> cache = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, CompletableFuture<MyRealTripCatalogResponse>> inFlight =
-            new ConcurrentHashMap<>();
-
-    private record CachedCatalog(MyRealTripCatalogResponse response, long storedAtNanos) {
+    private record CacheEntry(MyRealTripCatalogResponse response, long savedAtNanos) {
+        boolean isFresh(long nowNanos) {
+            return nowNanos - savedAtNanos < CACHE_TTL_NANOS;
+        }
     }
 
     public MyRealTripCatalogResponse searchTours(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
+        return searchTours(keyword, 1);
+    }
+
+    public MyRealTripCatalogResponse searchTours(String keyword, int page) {
+        if (page < 1 || page > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지는 1~200 사이여야 합니다.");
+        }
+        // 공백 표기를 통일해 '  제주  '와 '제주'가 동일한 캐시 엔트리를 사용하도록 한다.
+        String normalizedKeyword = keyword == null ? "" : keyword.trim().replaceAll("\\s+", " ");
+        if (normalizedKeyword.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "상품 검색어를 입력해주세요.");
         }
-        // 동일한 검색어라도 공백과 대소문자 차이가 있으면 중복 호출되지 않도록 정규화한다.
-        String normalized = keyword.trim().replaceAll("\\s+", " ");
-        if (normalized.length() > 80) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "상품 검색어는 80자 이내로 입력해주세요.");
-        }
-        String key = normalized.toLowerCase(Locale.ROOT);
-        int ttl = Math.max(0, Math.min(cacheSeconds, MAX_CACHE_TTL_SECONDS));
-        if (ttl > 0) {
-            CachedCatalog entry = cache.get(key);
-            if (entry != null) {
-                if (System.nanoTime() - entry.storedAtNanos() < TimeUnit.SECONDS.toNanos(ttl)) {
-                    return entry.response();
+
+        // 캐시 키에 페이지를 포함해야 다른 페이지가 첫 페이지 결과를 덮지 않는다.
+        String cacheKey = page + ":" + normalizedKeyword;
+        CompletableFuture<MyRealTripCatalogResponse> waiting;
+        boolean owner = false;
+        synchronized (cacheLock) {
+            CacheEntry cached = cachedSearches.get(cacheKey);
+            if (cached != null) {
+                if (cached.isFresh(System.nanoTime())) {
+                    return cached.response();
                 }
-                cache.remove(key, entry);
+                cachedSearches.remove(cacheKey);
+            }
+
+            // 동시 요청이 이미 진행 중이라면 새 외부 API 호출을 시작하지 않는다.
+            waiting = inFlightSearches.get(cacheKey);
+            if (waiting == null) {
+                waiting = new CompletableFuture<>();
+                inFlightSearches.put(cacheKey, waiting);
+                owner = true;
             }
         }
 
-        // 동일 키의 동시 요청은 미래 결과를 공유하고, 실제 제휴사 호출은 한 번만 수행한다.
-        CompletableFuture<MyRealTripCatalogResponse> pending = new CompletableFuture<>();
-        CompletableFuture<MyRealTripCatalogResponse> existing = inFlight.putIfAbsent(key, pending);
-        if (existing != null) {
+        if (!owner) {
             try {
-                return existing.join();
+                return waiting.join();
             } catch (CompletionException e) {
-                // 외부 API 오류 상태가 CompletionException으로 포장돼 500으로 바뀌지 않게 한다.
-                if (e.getCause() instanceof RuntimeException original) {
-                    throw original;
-                }
+                // 최초 외부 요청 오류를 동일하게 전달하되 실패 응답 자체는 캐싱하지 않는다.
+                if (e.getCause() instanceof RuntimeException cause) throw cause;
                 throw e;
             }
         }
 
         try {
-            MyRealTripCatalogResponse result = fetchAndNormalize(normalized);
-            if (ttl > 0) {
-                putCache(key, result, ttl);
+            MyRealTripCatalogResponse loaded = fetchAndNormalize(normalizedKeyword, page);
+            synchronized (cacheLock) {
+                cachedSearches.put(cacheKey, new CacheEntry(loaded, System.nanoTime()));
+                // 3분 만료와 최대 128개 제한을 모두 적용한다.
+                cachedSearches.entrySet().removeIf(entry -> !entry.getValue().isFresh(System.nanoTime()));
+                Iterator<String> iterator = cachedSearches.keySet().iterator();
+                while (cachedSearches.size() > MAX_CACHED_SEARCHES && iterator.hasNext()) {
+                    iterator.next();
+                    iterator.remove();
+                }
             }
-            pending.complete(result);
-            return result;
-        } catch (RuntimeException e) {
-            // 실패 응답은 캐시하지 않으므로 재시도 가능하다.
-            pending.completeExceptionally(e);
+            waiting.complete(loaded);
+            return loaded;
+        } catch (RuntimeException | Error e) {
+            waiting.completeExceptionally(e);
             throw e;
         } finally {
-            inFlight.remove(key, pending);
+            synchronized (cacheLock) {
+                inFlightSearches.remove(cacheKey, waiting);
+            }
         }
     }
 
-    private void putCache(String key, MyRealTripCatalogResponse response, int ttl) {
-        synchronized (cache) {
-            if (cache.size() >= MAX_CACHE_ENTRIES) {
-                long now = System.nanoTime();
-                cache.entrySet().removeIf(entry ->
-                        now - entry.getValue().storedAtNanos() >= TimeUnit.SECONDS.toNanos(ttl));
-            }
-            if (cache.size() >= MAX_CACHE_ENTRIES) {
-                // 새 데이터가 들어올 공간을 한 건만 확보한다. 무제한 메모리 증가 방지.
-                Iterator<String> iterator = cache.keySet().iterator();
-                if (iterator.hasNext()) cache.remove(iterator.next());
-            }
-            cache.put(key, new CachedCatalog(response, System.nanoTime()));
-        }
-    }
-
-    private MyRealTripCatalogResponse fetchAndNormalize(String keyword) {
-        JsonNode payload = myRealTripApiClient.searchTours(keyword);
+    private MyRealTripCatalogResponse fetchAndNormalize(String keyword, int requestedPage) {
+        JsonNode payload = myRealTripApiClient.searchTours(keyword, requestedPage);
         JsonNode data = payload.path("data");
         JsonNode items = data.path("items");
 
@@ -155,12 +155,16 @@ public class MyRealTripCatalogService {
         int page = positiveInt(data.path("page"), 1);
         int perPage = positiveInt(data.path("perPage"), items.size());
         int totalCount = positiveInt(data.path("totalCount"), products.size());
+        if (page != requestedPage) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "요청한 투어·티켓 페이지 번호와 제공사 응답이 일치하지 않습니다.");
+        }
+        // hasNextPage가 응답에서 누락되어도 검증된 page/perPage/totalCount로 다음 페이지를 판별한다.
+        boolean hasNextPage = data.path("hasNextPage").isBoolean()
+                ? data.path("hasNextPage").booleanValue()
+                : perPage > 0 && (long) page * perPage < totalCount;
         return new MyRealTripCatalogResponse(
-                List.copyOf(products),
-                totalCount,
-                page,
-                perPage,
-                data.path("hasNextPage").asBoolean(false)
+                List.copyOf(products), totalCount, page, perPage, hasNextPage
         );
     }
 

@@ -28,6 +28,7 @@ public class MyRealTripProductController {
         // Spring Boot 4의 기본 Jackson 3 처리기에 Jackson 2 JsonNode를 직접 넘기지 않는다.
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(myRealTripApiClient.searchTours(request.keyword().trim()).toString());
+                .body(myRealTripApiClient.searchTours(
+                        request.keyword().trim(), request.page() == null ? 1 : request.page()).toString());
     }
 }

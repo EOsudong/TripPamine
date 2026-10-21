@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Search, Sparkles, Ticket } from "lucide-react";
+import { BedDouble, Search, Sparkles, Ticket } from "lucide-react";
 import type { TravelPlan } from "../types";
-import { getTravelDealKeyword } from "../utils/travelDealKeyword";
+import { suggestTravelKeyword } from "../utils/suggestTravelKeyword";
+import AiRecommendAccommodationDeals from "./AiRecommendAccommodationDeals";
 import AiRecommendPartnerDeals from "./AiRecommendPartnerDeals";
 import AiRecommendSmartDeals from "./AiRecommendSmartDeals";
 import "./AiRecommendDealsHub.css";
 
-type DealMode = "smart" | "search";
+type DealMode = "smart" | "search" | "stay";
 
 interface Props {
   plan: TravelPlan | null;
@@ -16,7 +17,9 @@ interface Props {
 export default function AiRecommendDealsHub({ plan }: Props) {
   // 여행을 선택했다면 맞춤 추천, 선택 전에는 자유 검색을 먼저 보여준다.
   const [mode, setMode] = useState<DealMode>(plan ? "smart" : "search");
-  const suggested = getTravelDealKeyword(plan);
+  // 여행 선택이 해제된 경우 비활성 맞춤 추천 탭이 화면을 비우지 않도록 자유 검색으로 전환한다.
+  const activeMode: DealMode = !plan && mode === "smart" ? "search" : mode;
+  const suggestedKeyword = plan ? suggestTravelKeyword(plan).keyword : "";
 
   return (
     <section className="ar-hub" aria-label="마이리얼트립 제휴 상품">
@@ -24,30 +27,26 @@ export default function AiRecommendDealsHub({ plan }: Props) {
         <div>
           <p className="ar-hub-eyebrow"><Ticket size={14} aria-hidden="true" /> MYREALTRIP PARTNER</p>
           <h3>실제 여행 상품 탐색</h3>
-          <p>맞춤 추천과 자유 검색을 한곳에서 확인할 수 있어요.</p>
+          <p>맞춤 추천과 자유 검색, 숙박 상품까지 한곳에서 비교할 수 있어요.</p>
         </div>
         <span className="ar-hub-label">제휴 상품</span>
       </div>
       <div className="ar-hub-switch" role="group" aria-label="제휴 상품 검색 방식">
-        <button type="button" aria-pressed={mode === "smart"}
+        <button type="button" aria-pressed={activeMode === "smart"}
           disabled={!plan} onClick={() => setMode("smart")}>
           <Sparkles size={16} aria-hidden="true" /> 내 여행 맞춤 추천
         </button>
-        <button type="button" aria-pressed={mode === "search"}
+        <button type="button" aria-pressed={activeMode === "search"}
           onClick={() => setMode("search")}>
-          <Search size={16} aria-hidden="true" /> 자유 상품 검색
+          <Search size={16} aria-hidden="true" /> 투어·티켓 검색
+        </button>
+        <button type="button" aria-pressed={activeMode === "stay"}
+          onClick={() => setMode("stay")}>
+          <BedDouble size={16} aria-hidden="true" /> 숙소 찾기
         </button>
       </div>
-      {!plan ? (
+      {!plan && (
         <p className="ar-hub-hint">여행을 선택하면 예산에 맞춰 상품을 추천받을 수 있어요. 지금은 자유 검색을 이용해 주세요.</p>
-      ) : suggested ? (
-        <p className="ar-hub-hint">
-          검색어 제안: <strong>{suggested.keyword}</strong> · {suggested.source === "LOCATION_CODE"
-            ? "등록된 여행 지역 코드 기준" : "여행명에 포함된 지역 기준"}.
-          검색어를 확인하고 원하는 상품을 조회해 주세요.
-        </p>
-      ) : (
-        <p className="ar-hub-hint">여행 지역을 확정할 수 없어 자동 입력하지 않았어요. 아래 검색창에 지역 또는 활동명을 입력해 주세요.</p>
       )}
       {/* hidden을 사용해 탭 전환 시 검색 결과와 검색어를 유지한다. 비활성 검색 UI는 표시되지 않는다. */}
       {plan && (
@@ -56,7 +55,11 @@ export default function AiRecommendDealsHub({ plan }: Props) {
         </div>
       )}
       <div className="ar-hub-pane" hidden={mode !== "search"}>
-        <AiRecommendPartnerDeals planName={suggested?.keyword ?? ""} />
+        <AiRecommendPartnerDeals planName={plan?.planName ?? ""} suggestedKeyword={suggestedKeyword} />
+      </div>
+      {/* 숙박 검색은 투어와 별도 API를 사용하며 날짜·성인 인원을 필수 확인한다. */}
+      <div className="ar-hub-pane" hidden={mode !== "stay"}>
+        <AiRecommendAccommodationDeals key={plan?.planId ?? "free"} plan={plan} suggestedKeyword={suggestedKeyword} />
       </div>
     </section>
   );

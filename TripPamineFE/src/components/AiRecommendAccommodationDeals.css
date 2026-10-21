@@ -1,0 +1,55 @@
+/* 기존 AI 추천의 다크 카드 디자인에 맞춘 숙박 검색 UI. */
+.ar-stay { margin-top: 18px; min-width: 0; color: var(--ar-text); }
+.ar-stay-header { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; }
+.ar-stay-header h2 { font-size: clamp(18px, 2.2vw, 22px); font-weight: 800; margin-top: 6px; }
+.ar-stay-header p:not(.ar-hub-eyebrow) { font-size: 12px; line-height: 1.6; color: var(--ar-secondary); margin-top: 6px; }
+.ar-stay-tag { font-size: 11px; font-weight: 700; color: #a5f3fc; background: rgb(34 211 238 / .1); padding: 7px 11px; border-radius: 99px; }
+.ar-stay-form { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.ar-stay-field { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.ar-stay-field > span { display: flex; align-items: center; gap: 6px; color: var(--ar-secondary); font-size: 11px; font-weight: 700; }
+.ar-stay-field input { min-width: 0; width: 100%; min-height: 44px; padding: 0 11px; border-radius: 12px; border: 1px solid var(--ar-border); background: rgb(6 16 32 / .8); color: var(--ar-text); font-size: 13px; color-scheme: dark; }
+.ar-stay-field input:focus { outline: 2px solid rgb(34 211 238 / .5); outline-offset: 2px; }
+.ar-stay-search { grid-column: 1 / -1; display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; border-radius: 12px; background: linear-gradient(105deg, #0891b2, #2563eb); color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 16px rgb(3 105 161 / .24); }
+.ar-stay-search:disabled { opacity: .55; cursor: not-allowed; }
+.ar-stay-context { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ar-stay-context span { border-radius: 99px; background: rgb(148 163 184 / .1); padding: 5px 10px; font-size: 11px; color: #cbd5e1; }
+.ar-stay-disclaimer { margin-top: 16px; color: var(--ar-secondary); font-size: 11px; line-height: 1.75; }
+.ar-stay-message, .ar-stay-error { margin-top: 13px; padding: 12px; border-radius: 12px; background: rgb(148 163 184 / .09); font-size: 12px; line-height: 1.65; }
+.ar-stay-error { background: rgb(248 113 113 / .1); color: #fda4af; }
+.ar-stay-results { margin-top: 22px; }
+.ar-stay-results-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 13px; }
+.ar-stay-results-title h3 { font-size: 16px; font-weight: 800; }
+.ar-stay-results-title span { font-size: 11px; color: var(--ar-secondary); }
+.ar-stay-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ar-stay-card { overflow: hidden; border: 1px solid var(--ar-border); background: rgb(15 23 42 / .55); border-radius: 16px; }
+.ar-stay-image { height: 130px; display: flex; align-items: center; justify-content: center; background: rgb(30 41 59 / .65); color: #64748b; }
+.ar-stay-image img { width: 100%; height: 100%; object-fit: cover; }
+.ar-stay-card-body { display: flex; flex-direction: column; gap: 7px; padding: 13px; }
+.ar-stay-card-label { font-size: 10px; color: var(--ar-accent); }
+.ar-stay-card-body h4 { font-size: 14px; font-weight: 800; line-height: 1.5; }
+.ar-stay-card-body strong { font-size: 16px; font-weight: 800; color: #a5f3fc; }
+.ar-stay-card-body p { display: flex; gap: 5px; align-items: center; font-size: 11px; color: #e2e8f0; }
+.ar-stay-card-note { font-size: 10px; line-height: 1.55; color: var(--ar-secondary); }
+@media (max-width: 780px) { .ar-stay-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ar-stay-field--wide { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .ar-stay-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ar-stay-grid { grid-template-columns: minmax(0, 1fr); } .ar-stay-tag { display: none; } }
+
+/* 숙박 실제 응답의 성급·가격 상태·추적 링크 표시. */
+.ar-stay-card-badges { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.ar-stay-stars { border-radius: 99px; background: rgb(251 191 36 / .11); padding: 3px 8px; color: #fcd34d; font-size: 10px; font-weight: 800; }
+.ar-stay-pricing { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ar-stay-pricing del { font-size: 11px; color: var(--ar-secondary); }
+.ar-stay-pricing small { color: var(--ar-secondary); font-size: 10px; }
+.ar-stay-pricing--unknown strong { color: #fbbf24; font-size: 14px; }
+.ar-stay-review { display: flex; align-items: center; gap: 5px; }
+.ar-stay-link { margin-top: auto; min-height: 40px; width: 100%; display: inline-flex; justify-content: center; align-items: center; gap: 7px; border-radius: 10px; padding: 8px 10px; background: linear-gradient(105deg, #0891b2, #2563eb); color: #fff; font-size: 12px; font-weight: 800; text-decoration: none; cursor: pointer; }
+.ar-stay-link:disabled, .ar-stay-link--disabled { opacity: .55; cursor: not-allowed; }
+.ar-stay-link--ready { background: rgb(34 197 94 / .14); color: #bbf7d0; }
+
+/* 카드 제목·가격·후기 길이 차이가 버튼의 세로 위치를 바꾸지 않도록 높이를 채운다. */
+.ar-stay-grid { align-items: stretch; grid-auto-rows: 1fr; }
+.ar-stay-card { display: flex; flex-direction: column; height: 100%; min-width: 0; }
+.ar-stay-card-body { flex: 1; }
+.ar-stay-card-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+.ar-stay-card-actions .ar-stay-link { margin-top: 0; }
+.ar-stay-card-body h4 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 42px; }
+.ar-stay-results { scroll-margin-top: 88px; }

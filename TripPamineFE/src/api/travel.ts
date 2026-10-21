@@ -7,6 +7,8 @@ export interface TravelPlanRequest {
     totalBudget: number
     companionType: string | null
     companionCount: number | null
+    // 백엔드 TravelPlanRequest.locationCd에 대응 (기존 Oracle 컬럼 재사용).
+    locationCd: string
     blindYn: string
     startDate: string | null
     endDate: string | null

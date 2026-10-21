@@ -48,6 +48,14 @@ public class MyRealTripApiClient {
     }
 
     public JsonNode searchTours(String keyword) {
+        return searchTours(keyword, 1);
+    }
+
+    public JsonNode searchTours(String keyword, int page) {
+        // 제휴사 투어 검색은 1부터 시작한다. 기존 첫 페이지 요청은 변경하지 않는다.
+        if (page < 1 || page > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지는 1~200 사이여야 합니다.");
+        }
         if (apiKey == null || apiKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "마이리얼트립 API 키가 서버에 설정되지 않았습니다.");
@@ -58,11 +66,16 @@ public class MyRealTripApiClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
 
+        // 1페이지는 기존 요청과 동일하게 keyword만 보낸다.
+        // 다음 페이지는 응답의 page 필드를 기준으로 요청하며, 실제 반영 여부를 아래에서 검증한다.
+        Map<String, Object> body = page == 1
+                ? Map.of("keyword", keyword)
+                : Map.of("keyword", keyword, "page", page);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
                     baseUrl + TNA_SEARCH_PATH,
                     HttpMethod.POST,
-                    new HttpEntity<>(Map.of("keyword", keyword), headers),
+                    new HttpEntity<>(body, headers),
                     String.class
             );
 
@@ -70,7 +83,13 @@ public class MyRealTripApiClient {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "마이리얼트립 API가 빈 응답을 반환했습니다.");
             }
-            return objectMapper.readTree(response.getBody());
+            JsonNode payload = objectMapper.readTree(response.getBody());
+            if (page > 1 && payload.path("data").path("page").asInt(-1) != page) {
+                // 제휴사가 페이지 파라미터를 무시하면 첫 페이지를 중복 표시하지 않는다.
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "투어 검색 페이지 요청이 반영되지 않았습니다. 제휴사 API의 페이지 파라미터를 확인해주세요.");
+            }
+            return payload;
         } catch (HttpStatusCodeException e) {
             // 파트너 API의 401을 그대로 반환하면 기존 프론트가 사용자 JWT 만료로 오판한다.
             log.warn("마이리얼트립 상품 검색 실패: upstreamStatus={}", e.getStatusCode().value());

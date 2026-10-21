@@ -56,7 +56,7 @@ export default function MyRealTripCatalogPanel() {
     <section className="rounded-3xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm sm:p-7">
       <div className="mb-5">
         <p className="text-xs font-bold tracking-widest text-sky-600">TRIPPAMINE PARTNERS</p>
-        <h2 className="mt-2 text-xl font-bold">마이리얼트립 여행 상품 찾기</h2>
+        <h2 className="mt-2 text-xl font-bold">여행 상품 찾기</h2>
         <p className="mt-1 text-sm text-slate-500">
           실제 등록된 투어·티켓 가격을 확인할 수 있습니다. 예약 가능 여부와 최종 가격은 판매처에서 확인해주세요.
         </p>

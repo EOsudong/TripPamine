@@ -57,7 +57,7 @@ public class AiNegoService {
 
 	public List<AiNegoLogResponse> findActiveOffers(Long userId) {
 		return aiNegoLogRepository
-				.findByUser_IdAndExpiredAtAfterOrderByNegoIdDesc(userId, LocalDateTime.now())
+				.findByUser_IdAndConversionYnAndExpiredAtAfterOrderByNegoIdDesc(userId, "N", LocalDateTime.now())
 				.stream()
 				.map(AiNegoLogResponse::from)
 				.toList();
@@ -65,11 +65,16 @@ public class AiNegoService {
 
 	// 시간 내 결제 완료 처리 (전환)
 	public AiNegoLogResponse accept(Long userId, Long negoId, Long accountId) {
-		AiNegoLog offer = aiNegoLogRepository.findById(negoId)
+		// 동일 오퍼에 대한 동시 요청은 하나씩 처리한다.
+		AiNegoLog offer = aiNegoLogRepository.findByIdForUpdate(negoId)
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 네고 제안입니다. id=" + negoId));
 
 		if (!offer.getUser().getId().equals(userId)) {
 			throw new IllegalArgumentException("본인에게 발송된 제안만 수락할 수 있습니다.");
+		}
+		// 이미 수락된 오퍼를 재요청하더라도 가계부 등록과 잔액 차감을 반복하지 않는다.
+		if (offer.isConverted()) {
+			return AiNegoLogResponse.from(offer);
 		}
 		if (offer.isExpired()) {
 			throw new IllegalArgumentException("이미 만료된 제안입니다.");
@@ -109,6 +114,12 @@ public class AiNegoService {
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + plan.getUser().getId()));
 
 		String itemName = plan.getPlanName() + " 막판 특가 패키지";
+
+		// 과거에 거래 완료된 같은 여행명은 TTL이 지나도 새 오퍼를 발송하지 않는다.
+		// 현재 DB에 PLAN_ID가 없으므로 기존 ITEM_NAME 생성 규칙을 동일 여행 판단 기준으로 사용한다.
+		if (aiNegoLogRepository.existsByUser_IdAndItemNameAndConversionYn(user.getId(), itemName, "Y")) {
+			return;
+		}
 
 		boolean alreadyOffered = aiNegoLogRepository
 				.findFirstByUser_IdAndItemNameAndExpiredAtAfter(user.getId(), itemName, LocalDateTime.now())

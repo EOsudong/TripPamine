@@ -25,6 +25,7 @@ public class MyRealTripCatalogController {
     public ResponseEntity<MyRealTripCatalogResponse> searchTours(
             @Valid @RequestBody MyRealTripTourSearchRequest request
     ) {
-        return ResponseEntity.ok(myRealTripCatalogService.searchTours(request.keyword().trim()));
+        return ResponseEntity.ok(myRealTripCatalogService.searchTours(
+                request.keyword().trim(), request.page() == null ? 1 : request.page()));
     }
 }

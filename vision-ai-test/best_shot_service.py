@@ -130,9 +130,14 @@ class BestShotService:
                 eval_res["path"] = path
                 eval_res["original_index"] = idx
                 results.append(eval_res)
-            except:
-                pass
-        
+            except Exception as exc:
+                # 한 장만 실패하면 나머지 사진은 계속 평가한다. 실패 이유는 서버 로그에 기록한다.
+                print(f"[BestShot] {idx + 1}번째 사진 평가 실패: {type(exc).__name__}: {exc}")
+
+        if not results:
+            # 전부 실패했는데 빈 결과를 HTTP 200으로 보내는 상황을 막는다.
+            raise RuntimeError("베스트 샷으로 분석 가능한 사진이 없습니다.")
+
         results.sort(key=lambda x: x["total_score"], reverse=True)
         for rank, item in enumerate(results, start=1):
             item["rank"] = rank

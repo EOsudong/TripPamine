@@ -25,12 +25,14 @@ import {
   deleteTravelPlanApi,
 } from "../api/travel";
 import MysteryTour from "./MysteryTour";
+import { TRAVEL_SEARCH_REGIONS, suggestTravelKeyword } from "../utils/suggestTravelKeyword";
 
 const EMPTY_FORM: TravelPlanFormState = {
   planName: "",
   totalBudget: "",
   companionType: "",
   companionCount: "",
+  locationCd: "",
   blindYn: "N",
   startDate: "",
   endDate: "",
@@ -114,9 +116,15 @@ export default function Hero() {
       setFormError("예산은 0원 이상의 숫자로 입력해 주세요.");
       return;
     }
+    // 실제 여행 지역이 없으면 AiNego가 여행명으로 지역을 추측하게 된다.
+    const selectedRegion = form.locationCd.trim();
+    if (!selectedRegion || selectedRegion === "ETC") {
+      setFormError("여행 지역을 선택해 주세요.");
+      return;
+    }
     const count = form.companionCount.trim() === "" ? null : Number(form.companionCount);
-    if (count !== null && (!Number.isInteger(count) || count < 1 || count > 20)) {
-      setFormError("여행 인원은 본인 포함 최소 1명, 최대 20명까지 가능합니다.");
+    if (count === null || !Number.isInteger(count) || count < 1 || count > 20) {
+      setFormError("여행 인원은 본인 포함 1~20명으로 입력해 주세요.");
       return;
     }
     const isGroup = ["FRIEND", "FAMILY", "COUPLE"].includes(form.companionType);
@@ -138,6 +146,9 @@ export default function Hero() {
       totalBudget: budget,
       companionType: form.companionType || null,
       companionCount: count,
+      // DB에서 확인된 영문 코드 JEJU만 사용하고, 그 외에는 선택한 한글 지역명을 그대로 보낸다.
+      // Oracle에 LOCATION_CD의 별도 CHECK 제약조건이 있다면 먼저 허용 값을 확인해야 한다.
+      locationCd: selectedRegion === "제주" ? "JEJU" : selectedRegion,
       blindYn: form.blindYn,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
@@ -179,6 +190,8 @@ export default function Hero() {
       totalBudget: String(plan.totalBudget),
       companionType: plan.companionType || "",
       companionCount: plan.companionType === "ALONE" ? "1" : String(plan.companionCount ?? ""),
+      // 기존 저장 코드는 보존하되, ETC는 지역 미지정이므로 새로 선택하도록 안내한다.
+      locationCd: plan.locationCd === "JEJU" ? "제주" : (plan.locationCd === "ETC" ? "" : (plan.locationCd ?? "")),
       blindYn: plan.blindYn || "N",
       startDate: plan.startDate?.slice(0, 16) || "",
       endDate: plan.endDate?.slice(0, 16) || "",
@@ -299,8 +312,8 @@ export default function Hero() {
                 {editingId !== null ? "여행 계획 수정" : "새 여행 등록"}
               </h2>
               <p className="tw-section-description">
-                이름과 예산을 입력해 주세요. 일정·동행자는 나중에 정해도
-                괜찮아요.
+                여행 이름·지역·예산·인원 수를 입력해 주세요. 일정과 동행 유형은
+                나중에 정해도 괜찮아요.
               </p>
               <form onSubmit={handleSubmit} aria-busy={pending === "save"}>
                 <fieldset disabled={busy} className="tw-fields">
@@ -347,6 +360,30 @@ export default function Hero() {
                       )}
                   </div>
                   <div className="tw-field">
+                    <label htmlFor="tw-location">
+                      여행 지역 <span>필수</span>
+                    </label>
+                    <select
+                      id="tw-location"
+                      name="locationCd"
+                      value={form.locationCd}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">여행 지역을 선택해 주세요</option>
+                      {/* 기존 데이터에만 존재하는 지역 코드는 수정 중에도 표시하고 보존한다. */}
+                      {form.locationCd &&
+                        !TRAVEL_SEARCH_REGIONS.some((region) => region === form.locationCd) &&
+                        form.locationCd !== "ETC" && (
+                          <option value={form.locationCd}>기존 지역 코드: {form.locationCd}</option>
+                        )}
+                      {TRAVEL_SEARCH_REGIONS.map((region) => (
+                        <option key={region} value={region}>{region}</option>
+                      ))}
+                    </select>
+                    <p className="tw-field-hint">선택한 지역은 AI 제휴 상품 추천의 기본 검색어로 사용돼요.</p>
+                  </div>
+                  <div className="tw-field">
                     <label htmlFor="tw-companion">
                       동행자 <span>선택</span>
                     </label>
@@ -365,20 +402,21 @@ export default function Hero() {
                   </div>
                   <div className="tw-field">
                     <label htmlFor="tw-companion-count">
-                      동행 인원 <span>선택</span>
+                      실제 여행 인원 <span>필수 · 본인 포함</span>
                     </label>
                     <div className="tw-input-unit">
                       <input
                         id="tw-companion-count"
                         type="number"
                         name="companionCount"
-                        min="1"
+                        min={form.companionType === "FRIEND" || form.companionType === "FAMILY" || form.companionType === "COUPLE" ? "2" : "1"}
                         max="20"
                         step="1"
                         inputMode="numeric"
                         value={form.companionCount}
                         onChange={handleChange}
                         placeholder="예: 3"
+                        required
                         disabled={form.companionType === "ALONE"}
                       />
                       <span>명 (본인 포함)</span>
@@ -500,7 +538,7 @@ export default function Hero() {
                 <div className="tw-state tp-card-dark">
                   <MapPin size={32} aria-hidden="true" />
                   <h3>첫 여행을 계획해 볼까요?</h3>
-                  <p>이름과 예산만 등록해도 시작할 수 있어요.</p>
+                  <p>이름, 지역, 예산, 인원을 입력하면 여행 맞춤 추천을 시작할 수 있어요.</p>
                   <button
                     type="button"
                     className="tw-button tw-button--secondary"
@@ -522,7 +560,9 @@ export default function Hero() {
                       <div className="tw-plan-top">
                         <span>
                           <MapPin size={12} aria-hidden="true" />
-                          여행 계획
+                          {suggestTravelKeyword(plan).source === "LOCATION_CODE"
+                            ? `${suggestTravelKeyword(plan).keyword} 여행`
+                            : "여행 계획"}
                         </span>
                         {plan.blindYn === "Y" && (
                           <span>

@@ -114,14 +114,31 @@ public class MyRealTripMylinkService {
         try {
             URI uri = URI.create(value.trim());
             if (!"https".equalsIgnoreCase(uri.getScheme())
-                    || !PRODUCT_HOST.equalsIgnoreCase(uri.getHost())
                     || uri.getPort() != -1
                     || uri.getUserInfo() != null
-                    || uri.getRawQuery() != null
-                    || uri.getRawFragment() != null
-                    || !("/products/" + gid).equals(uri.getRawPath())) {
+                    || uri.getRawFragment() != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "상품 ID와 마이리얼트립 상품 주소가 일치하지 않습니다.");
+                        "마이리얼트립 공식 HTTPS 상품 주소만 사용할 수 있습니다.");
+            }
+
+            String host = uri.getHost();
+            String path = uri.getRawPath();
+            String query = uri.getRawQuery();
+            // 기존 투어 URL 정책은 변경하지 않는다.
+            boolean isTour = PRODUCT_HOST.equalsIgnoreCase(host)
+                    && ("/products/" + gid).equals(path)
+                    && query == null;
+
+            // 숙박 검색 실제 응답에서 검증된 URL 형식만 추가 허용한다.
+            // 일반 호스트/임의 쿼리를 허용하면 추적·보안상 문제가 생길 수 있다.
+            boolean isAccommodation = "accommodation.myrealtrip.com".equalsIgnoreCase(host)
+                    && ("/union/products/" + gid).equals(path)
+                    && query != null
+                    && query.matches("checkIn=\\d{4}-\\d{2}-\\d{2}&checkOut=\\d{4}-\\d{2}-\\d{2}&adultCount=(?:[1-9]|1\\d|20)&childCount=0&childAges=");
+
+            if (!isTour && !isAccommodation) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "상품 ID와 공식 상품 URL 형식이 일치하지 않습니다.");
             }
             return uri.toASCIIString();
         } catch (IllegalArgumentException e) {

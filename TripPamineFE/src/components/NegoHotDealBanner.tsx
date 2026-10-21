@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NegoPartnerDealsDialog from "./NegoPartnerDealsDialog";
 import { useNego } from "../context/NegoContext";
 import { extractNegoErrorMessage } from "../api/nego";
@@ -13,12 +13,20 @@ export default function NegoHotDealBanner() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [snoozeOneHour, setSnoozeOneHour] = useState(false);
+  const acceptingRef = useRef(false);
   // 수락 성공 시 activeOffer가 비워지므로, 결제 완료 패널에 보여줄 금액은 따로 잡아둔다.
   const [paidAmount, setPaidAmount] = useState<number | null>(null);
   const [showPartnerDeals, setShowPartnerDeals] = useState(false);
   const [partnerOfferName, setPartnerOfferName] = useState("");
 
   const negoId = activeOffer?.negoId ?? null;
+
+  // 다른 오퍼로 전환되면 이전 오퍼의 숨김 선택·오류를 가져가지 않는다.
+  useEffect(() => {
+    setSnoozeOneHour(false);
+    setError(null);
+  }, [negoId]);
 
   // 카운트다운
   useEffect(() => {
@@ -99,7 +107,9 @@ export default function NegoHotDealBanner() {
     phase === "submitting" || noAccount || selected == null || insufficient;
 
   const handleAccept = async () => {
-    if (selectedAccountId == null) return;
+    // 빠른 연속 클릭에 의한 중복 요청을 렌더링 이전에도 차단한다.
+    if (selectedAccountId == null || acceptingRef.current) return;
+    acceptingRef.current = true;
     setError(null);
     setPhase("submitting");
     const amount = activeOffer?.offeredPrice ?? 0;
@@ -110,8 +120,10 @@ export default function NegoHotDealBanner() {
     } catch (e) {
       setPhase("idle");
       setError(
-        extractNegoErrorMessage(e, "결제에 실패했습니다. 다시 시도해주세요."),
+        extractNegoErrorMessage(e, "거래 처리에 실패했습니다. 다시 시도해주세요."),
       );
+    } finally {
+      acceptingRef.current = false;
     }
   };
 
@@ -122,7 +134,7 @@ export default function NegoHotDealBanner() {
         ? "계좌 연동 필요"
         : insufficient
           ? "잔액 부족"
-          : "결제 수락";
+          : "모의 거래 수락";
 
   return (
     <>
@@ -131,9 +143,11 @@ export default function NegoHotDealBanner() {
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-sky-500">AI 타임 네고 · 오퍼</span>
         <button
-          onClick={dismiss}
-          className="text-slate-400 hover:text-slate-600 text-sm"
-          aria-label="닫기"
+          type="button"
+          onClick={() => dismiss(snoozeOneHour)}
+          disabled={phase === "submitting"}
+          className="text-slate-400 hover:text-slate-600 text-sm disabled:opacity-40"
+          aria-label={snoozeOneHour ? "1시간 동안 숨기고 닫기" : "닫기"}
         >
           ✕
         </button>
@@ -180,6 +194,17 @@ export default function NegoHotDealBanner() {
       </button>
 
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+
+      <label className="mb-3 flex cursor-pointer items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <input
+          type="checkbox"
+          checked={snoozeOneHour}
+          disabled={phase === "submitting"}
+          onChange={(event) => setSnoozeOneHour(event.target.checked)}
+          className="h-4 w-4 accent-sky-500"
+        />
+        <span>1시간 동안 보지 않음 <span className="text-slate-400">(체크 후 닫기)</span></span>
+      </label>
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-red-500 font-bold">

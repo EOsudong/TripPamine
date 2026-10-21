@@ -143,7 +143,7 @@ export default function NegoPartnerDealsDialog({
     const popup = window.open("about:blank", "_blank");
     if (popup) {
       popup.opener = null;
-      popup.document.title = "마이리얼트립 제휴 링크 연결 중";
+      popup.document.title = "제휴 링크 연결 중";
       popup.document.body.textContent = "안전한 제휴 링크를 확인하고 있습니다.";
     }
     try {
@@ -213,9 +213,9 @@ export default function NegoPartnerDealsDialog({
           </div>
         </form>
         <p className="nego-partner-disclaimer">
-          표시 금액은 마이리얼트립 검색 시점의 판매 가격입니다. 기존 할인과는
+          표시 금액은 검색 시점의 판매 가격입니다. 기존 할인과는
           관련이 없으며 추가 할인은 제공하지 않습니다. 구매 및 최종 금액·인원·예약 가능 여부는
-          판매처에서 확인해 주세요. 제휴 링크 구매 시 TripPamine이 수수료를 받을 수 있습니다.
+          판매처에서 확인해 주세요.
         </p>
 
         {loading && <p className="nego-partner-message" role="status">상품을 조회하고 있습니다…</p>}
@@ -286,7 +286,7 @@ export default function NegoPartnerDealsDialog({
             )}
             {catalog.hasNextPage && (
               <p className="nego-partner-disclaimer">
-                추가 검색 결과가 있습니다. API의 다음 페이지 요청 형식은 아직 검증되지 않아 첫 결과만 표시합니다.
+                추가 검색 결과가 있습니다. 다음 페이지 요청은 아직 준비중 입니다.
               </p>
             )}
           </>

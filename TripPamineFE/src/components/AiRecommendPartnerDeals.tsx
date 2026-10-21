@@ -5,10 +5,12 @@ import {
   myRealTripCatalogApi,
   type MyRealTripCatalogResponse,
 } from "../api/myrealtripCatalog";
+import PartnerSearchPagination from "./PartnerSearchPagination";
 import "./AiRecommendPartnerDeals.css";
 
 interface AiRecommendPartnerDealsProps {
   planName: string;
+  suggestedKeyword?: string;
 }
 
 function safeProductUrl(value: string | null, gid: string): string | null {
@@ -56,46 +58,69 @@ function safeImageUrl(value: string | null): string | null {
 }
 
 /** 여행명이 실제 지역명과 다를 수 있으므로 자동 검색하지 않고 검색어만 제안한다. */
-export default function AiRecommendPartnerDeals({ planName }: AiRecommendPartnerDealsProps) {
-  const [keyword, setKeyword] = useState(planName);
+export default function AiRecommendPartnerDeals({ planName, suggestedKeyword }: AiRecommendPartnerDealsProps) {
+  // 여행명이 지역과 다를 수 있으므로 미확인 여행명을 검색어로 넣지 않는다.
+  const [keyword, setKeyword] = useState(suggestedKeyword ?? "");
   const [searchedKeyword, setSearchedKeyword] = useState("");
   const [catalog, setCatalog] = useState<MyRealTripCatalogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [linkLoadingGid, setLinkLoadingGid] = useState<string | null>(null);
   const [linkError, setLinkError] = useState("");
   const [preparedLinks, setPreparedLinks] = useState<Record<string, string>>({});
   const linkRequestRef = useRef(new Set<string>());
   const requestIdRef = useRef(0);
+  // 페이지 이동 중에는 기존 검색어를 유지한다. 입력창 수정만으로 이전 목록을 바꾸지 않는다.
+  const lastQueryRef = useRef("");
+  const busyRef = useRef(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // 페이지 이동/여행 변경 이후 도착한 이전 검색 응답은 화면에 적용하지 않는다.
   useEffect(() => () => {
     requestIdRef.current += 1;
   }, []);
 
-  const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = keyword.trim();
-    if (!query || loading) return;
-
+  /** 새 검색은 1페이지로, 페이지 이동은 직전 성공 검색어로 요청한다. */
+  const loadPage = async (query: string, page: number, freshSearch: boolean) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError("");
-    setCatalog(null);
-    setSearchedKeyword(query);
-    setShowAll(false);
     setLinkError("");
-    setPreparedLinks({});
+    if (freshSearch) setCatalog(null);
     try {
-      const response = await myRealTripCatalogApi.searchTours(query);
-      if (requestId === requestIdRef.current) setCatalog(response);
+      const response = await myRealTripCatalogApi.searchTours(query, page);
+      if (requestId !== requestIdRef.current) return;
+      if (response.page !== page) {
+        throw new Error("요청 페이지와 응답 페이지가 다릅니다.");
+      }
+      setCatalog(response);
+      setSearchedKeyword(query);
+      lastQueryRef.current = query;
+      setPreparedLinks({});
+      if (!freshSearch) resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch {
-      if (requestId === requestIdRef.current)
-        setError("상품을 불러오지 못했어요. 검색어를 확인하고 다시 시도해 주세요.");
+      if (requestId === requestIdRef.current) {
+        setError("상품 페이지를 불러오지 못했어요. 제휴사 페이지 지원 여부와 서버 로그를 확인해주세요.");
+      }
     } finally {
+      busyRef.current = false;
       if (requestId === requestIdRef.current) setLoading(false);
     }
+  };
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = keyword.trim();
+    if (!query) return;
+    void loadPage(query, 1, true);
+  };
+
+  const changePage = (page: number) => {
+    if (!catalog || page === catalog.page || page < 1 || page > 200) return;
+    if (!lastQueryRef.current) return;
+    void loadPage(lastQueryRef.current, page, false);
   };
 
   // 팝업 차단을 피하려고 사용자 클릭 순간 새 창을 확보한다.
@@ -132,24 +157,28 @@ export default function AiRecommendPartnerDeals({ planName }: AiRecommendPartner
     }
   };
 
-  const visibleProducts = catalog?.items.slice(0, showAll ? undefined : 6) ?? [];
+  const visibleProducts = catalog?.items ?? [];
+  // 카탈로그는 제공사의 페이지 하나만 표시하므로 중복 누적되지 않는다.
+  const totalPages = catalog ? Math.min(200, Math.max(1, Math.ceil(catalog.totalCount / Math.max(catalog.perPage, 1)))) : 1;
 
   return (
-    <section className="ar-deals tp-card-dark" aria-labelledby="ar-deals-heading">
-      <div className="ar-deals-heading">
+    <section className="ar-stay" aria-labelledby="ar-stay-title">
+      <div className="ar-stay-header">
         <div>
-          <p className="ar-eyebrow">
+          <p className="ar-hub-eyebrow">
             <Ticket size={14} aria-hidden="true" />
             MYREALTRIP PARTNER PRODUCTS
           </p>
-          <h2 id="ar-deals-heading">실제 여행 상품 찾아보기</h2>
+          <h2 id="ar-stay-title">실제 여행 상품 찾아보기</h2>
           <p className="ar-deals-description">
-            {planName
-              ? "여행 정보를 기준으로 검색어를 제안했어요. 실제 지역이 맞는지 확인하고 검색해 주세요."
-              : "여행 계획을 선택하지 않아도 지역이나 활동명으로 자유롭게 검색할 수 있어요."}
+            {suggestedKeyword
+              ? `선택한 여행에서 '${suggestedKeyword}' 지역을 제안했어요. 자유롭게 변경해 검색할 수 있어요.`
+              : planName
+                ? "여행 지역을 확정하지 못했어요. 실제 지역이나 활동명을 직접 입력해 주세요."
+                : "여행 계획을 선택하지 않아도 지역이나 활동명으로 자유롭게 검색할 수 있어요."}
           </p>
         </div>
-        <span className="ar-deals-provider">마이리얼트립</span>
+        <span className="ar-stay-tag">투어·티켓</span>
       </div>
 
       <form className="ar-deals-search" onSubmit={(event) => void handleSearch(event)}>
@@ -173,20 +202,20 @@ export default function AiRecommendPartnerDeals({ planName }: AiRecommendPartner
         </div>
       </form>
 
-      <p className="ar-deals-disclaimer">
-        표시 가격은 검색 시점 기준입니다. 예약 가능 여부·인원별 최종 금액은 판매처에서 확인하세요.
-        TripPamine에서 추가 할인이나 결제를 제공하는 것은 아닙니다.
-        제휴 링크로 구매 시 TripPamine이 수수료를 받을 수 있습니다.
+      <p className="ar-stay-disclaimer">
+        표시가는 검색 시점의 숙소 판매 표시가이며 1박 가격 또는 최종 결제 총액으로 확정할 수 없습니다.
+        숙박 조건·객실 옵션·예약 가능 여부는 구매처에서 확인하세요. 0원은 무료가 아닌 가격 미확인으로 표시합니다.
+        제휴 링크를 통해 예약하면 TripPamine이 수수료를 받을 수 있습니다.
       </p>
 
       {loading && <p className="ar-deals-status" role="status">마이리얼트립 상품을 찾고 있어요…</p>}
       {error && <p className="ar-deals-error" role="alert">{error}</p>}
       {linkError && <p className="ar-deals-error" role="alert">{linkError}</p>}
       {catalog && (
-        <>
+        <div ref={resultsRef} className="ar-deals-results">
           <p className="ar-deals-count" role="status">
             ‘{searchedKeyword}’ 검색 결과 {catalog.totalCount.toLocaleString("ko-KR")}개 ·
-            현재 조회한 {catalog.items.length}개 중 {visibleProducts.length}개 표시
+            {catalog.page}페이지 · 현재 {visibleProducts.length}개 표시
           </p>
           {catalog.items.length === 0 ? (
             <p className="ar-deals-status">검색된 상품이 없어요. 검색어를 바꿔 주세요.</p>
@@ -257,15 +286,13 @@ export default function AiRecommendPartnerDeals({ planName }: AiRecommendPartner
               })}
             </div>
           )}
-          {!showAll && catalog.items.length > 6 && (
-            <button type="button" className="ar-deals-more" onClick={() => setShowAll(true)}>
-              현재 조회된 나머지 {catalog.items.length - 6}개 상품 보기
-            </button>
+          <PartnerSearchPagination currentPage={catalog.page}
+            totalPages={Math.min(totalPages, catalog.hasNextPage ? 200 : catalog.page)}
+            loading={loading} onPageChange={changePage} />
+          {catalog.totalCount > catalog.perPage * 200 && (
+            <p className="ar-deals-disclaimer">제휴사 조회 부하 방지를 위해 앞의 200페이지까지만 이동할 수 있습니다.</p>
           )}
-          {catalog.hasNextPage && (
-            <p className="ar-deals-disclaimer">추가 검색 결과가 있지만 다음 페이지 조회는 아직 지원하지 않습니다.</p>
-          )}
-        </>
+        </div>
       )}
     </section>
   );

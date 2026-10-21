@@ -1,0 +1,9 @@
+/* 투어·숙박 공통: 페이지 이동 시 누를 수 있는 영역을 40px 이상 확보한다. */
+.ar-partner-pager { display: flex; justify-content: center; align-items: center; gap: 9px; flex-wrap: wrap; padding: 20px 0 2px; }
+.ar-partner-pager button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 40px; min-height: 40px; padding: 8px 11px; border: 1px solid var(--ar-border); border-radius: 12px; background: rgb(255 255 255 / .055); color: var(--ar-text); font-size: 12px; font-weight: 750; cursor: pointer; }
+.ar-partner-pager button:hover:not(:disabled) { background: rgb(34 211 238 / .14); }
+.ar-partner-pager button:disabled { opacity: .4; cursor: not-allowed; }
+.ar-partner-pager-pages { display: flex; align-items: center; gap: 5px; }
+.ar-partner-pager-pages button[aria-current="page"] { background: rgb(34 211 238 / .20); border-color: rgb(34 211 238 / .5); color: #a5f3fc; }
+.ar-partner-pager-count { flex-basis: 100%; text-align: center; margin-top: 1px; color: var(--ar-secondary); font-size: 11px; }
+@media (max-width: 560px) { .ar-partner-pager { gap: 5px; } .ar-partner-pager button { min-width: 36px; padding: 7px; } .ar-partner-pager-pages { gap: 3px; } }

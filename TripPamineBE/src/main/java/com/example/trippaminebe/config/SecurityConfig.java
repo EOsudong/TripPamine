@@ -117,6 +117,9 @@ public class SecurityConfig {
                         // [게시판 추가] 게시글 목록/상세/댓글 목록 조회와 첨부 이미지는 비로그인도 볼 수 있게 GET만 허용.
                         // 작성/수정/삭제/좋아요/댓글 작성은 아래 anyRequest().authenticated()에 걸려 로그인 필수.
                         .requestMatchers(HttpMethod.GET, "/boards/**", "/board-images/**").permitAll()
+                        // 카카오 장소 검색만 공개 유지. 여행 추천 CRUD와 AI 재생성은 JWT 인증 필수.
+                        // 이 검색 API의 요청 제한/쿼터는 별도 후속 단계에서 적용한다.
+                        .requestMatchers(HttpMethod.GET, "/recommendations/places/search").permitAll()
                         //인증 없이 접근 허용할 엔드포인트 (로그인, 회원가입, Swagger 등)
                         .requestMatchers(
                                 "/ws/**",
@@ -136,7 +139,6 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/tour/**",
-                                "/recommendations/**",
                                 // [Mock 은행 연동 추가] Mock 오픈뱅킹 서버 엔드포인트.
                                 // 실제 은행 API도 우리 서비스의 사용자 JWT를 알지 못하는 것과 동일하게,
                                 // MockOpenBankingClient가 서버 대 서버로 호출하는 이 경로는 인증 없이 열어둔다.
