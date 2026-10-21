@@ -24,9 +24,9 @@ public class OpenAiRecommendationService {
 
     public String generateRecommendation(TravelPlan plan) {
 
-    String companionCountText = plan.getCompanionCount() != null
-        ? plan.getCompanionCount() + "명(본인 포함)"
-        : "인원 미정";
+        String companionCountText = plan.getCompanionCount() != null
+            ? plan.getCompanionCount() + "명(본인 포함)"
+            : "인원 미정";
 
         String prompt = """
                 당신은 대한민국 국내 여행 전문 플래너입니다.
@@ -41,7 +41,7 @@ public class OpenAiRecommendationService {
                   - 제공된 '총 예산'은 모든 동행 인원을 포함한 총 금액입니다.
                   - '예상 비용'(estimatedCost)은 전체와 장소별 모두 '모든 인원의 총합 비용' 기준으로 산정해주세요.
                   - 전체 여행 비용 합계가 입력된 '총 예산'을 초과하지 않도록 구성해주세요.
-                                
+                
                 여행 이름: %s
                 총 예산: %s원
                 동행자: %s
@@ -85,7 +85,7 @@ public class OpenAiRecommendationService {
                 plan.getTotalBudget(),
                 plan.getCompanionType(),
                 companionCountText,
-        plan.getStartDate(),
+                plan.getStartDate(),
                 plan.getEndDate(),
                 plan.getBlindYn()
         );
