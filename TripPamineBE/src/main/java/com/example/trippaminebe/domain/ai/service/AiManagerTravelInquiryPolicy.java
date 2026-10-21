@@ -50,13 +50,7 @@ final class AiManagerTravelInquiryPolicy {
         if (question.isBlank() || question.length() > 120
                 || previousUserMessages == null || previousUserMessages.isEmpty()
                 || contains(question, "삭제해줘", "지워줘", "수정해줘", "변경해줘", "등록해줘")
-                || !contains(
-                        question,
-                        "아닌데", "아니야", "아니라고", "틀렸", "잘못",
-                        "다시조회", "재조회", "다시확인", "확인해봐",
-                        "삭제했", "삭제됐", "삭제된", "삭제한여행",
-                        "없는데", "계속나와", "다시봐"
-                )) {
+                || !isCorrectionSignal(question)) {
             return false;
         }
 
@@ -69,14 +63,24 @@ final class AiManagerTravelInquiryPolicy {
                 return true;
             }
 
-            // 다른 도메인을 명확하게 조회했다면 오래된 여행 질문으로 돌아가지 않는다.
-            String previousQuestion = normalize(previous);
-            if (contains(previousQuestion, "내포인트", "내퀘스트", "마스코트도감", "가계부조회")) {
+            // 중간 발화가 정정이 아니면 오래된 여행 질문까지 거슬러 올라가지 않는다.
+            // 예: 여행 조회 → 일상 대화 → "아닌데?" 는 여행 재조회가 아니다.
+            if (!isCorrectionSignal(normalize(previous))) {
                 return false;
             }
         }
 
         return false;
+    }
+
+    private static boolean isCorrectionSignal(String question) {
+        return contains(
+                question,
+                "아닌데", "아니야", "아니라고", "틀렸", "잘못",
+                "다시조회", "재조회", "다시확인", "확인해봐",
+                "삭제했", "삭제됐", "삭제된", "삭제한여행",
+                "없는데", "계속나와", "다시봐"
+        );
     }
 
     private static boolean contains(String text, String... words) {
