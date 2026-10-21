@@ -162,6 +162,11 @@ public class TravelReplanningService {
         String currentDateTime = ZonedDateTime
                 .now(ZoneId.of("Asia/Seoul"))
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        String companionCountText = plan.getCompanionCount() != null
+            ? plan.getCompanionCount() + "명(본인 포함)"
+            : "인원 미정";
+
         String prompt = """
                 당신은 국내 여행 일정 재계획 전문 AI Agent입니다.
                 반드시 JSON 객체만 반환하세요.
@@ -169,6 +174,7 @@ public class TravelReplanningService {
                 [기존 여행 정보]
                 여행 이름: %s
                 동행자: %s
+                여행 인원: %s
                 여행 시작: %s / 종료: %s
                 총 예산: %s원
                 실제 사용 금액: %s원
@@ -253,6 +259,7 @@ public class TravelReplanningService {
                 .formatted(
                         plan.getPlanName(),
                         plan.getCompanionType(),
+                        companionCountText,
                         plan.getStartDate(),
                         plan.getEndDate(),
                         budget,
