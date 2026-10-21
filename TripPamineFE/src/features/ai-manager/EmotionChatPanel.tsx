@@ -174,6 +174,8 @@ function EmotionChatSession({
     sendingRef.current = true;
     setLoading(true);
     setError(null);
+    // 새 발화에는 이전 감정 분류를 재사용하지 않는다.
+    setEmotionName(null);
     setInput("");
     const previous = [...messages];
     setMessages([...previous, { role: "user", content: message }]);
@@ -192,7 +194,7 @@ function EmotionChatSession({
         ...current,
         { role: "assistant", content: result.answer },
       ]);
-      if (result.emotionName) setEmotionName(result.emotionName);
+      setEmotionName(result.emotionName ?? null);
     } catch (cause) {
       setMessages(previous);
       setInput(message);
@@ -402,7 +404,7 @@ function EmotionChatSession({
               : "bg-sky-50 px-4 py-2 text-xs text-sky-800"
           }
         >
-          최근 분석: <strong>{emotionName}</strong> · 추정 결과이며 감정을
+          감정 추정 (참고용): <strong>{emotionName}</strong> · 감정을
           단정하지 않습니다.
         </p>
       )}
