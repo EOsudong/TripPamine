@@ -23,7 +23,7 @@ __pycache__/
 data/
 
 # AI model artifacts
-models/
+/models/
 artifacts/
 checkpoints/
 

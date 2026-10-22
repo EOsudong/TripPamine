@@ -22,7 +22,14 @@ import {
 } from "../../api/aiManagerSettings";
 import { useAuth } from "../../context/AuthContext";
 import type { ManagerPhase } from "./AiManagerCore";
+import { requestCurrentGpsPosition } from "../../custom/usePreciseGeolocation";
 import "./ai-manager.css";
+
+/** 위치가 필요한 현재 날씨 질문에만 GPS 권한을 요청한다. 지역명·여행 예보는 제외한다. */
+function needsGpsForWeather(message: string): boolean {
+  const normalized = message.toLowerCase().replace(/[\s?!.,]+/g, "");
+  return /^(?:지금여기|현재여기|오늘|지금|현재|여기|내주변|내위치|우리동네)?(?:의)?(?:날씨|기온|온도|습도)(?:좀)?(?:알려줘|알려주세요|알려줄래|어때|어때요|확인해줘|봐줘)?$/.test(normalized);
+}
 
 export interface ManagerChatState {
   phase: ManagerPhase;
@@ -180,8 +187,21 @@ function EmotionChatSession({
     const previous = [...messages];
     setMessages([...previous, { role: "user", content: message }]);
     try {
+      // 날씨 질문일 때에만 기존 GPS 모듈로 현재 좌표를 1회 요청한다.
+      // 브라우저 권한 거부·시간 초과 시 좌표 없이 전송해 서버가 안내하도록 한다.
+      let position: { latitude: number; longitude: number } | null = null;
+      if (needsGpsForWeather(message)) {
+        try {
+          position = await requestCurrentGpsPosition();
+        } catch {
+          // 위치 정보는 수집하지 않았으며 사용자에게 별도 동의를 강제하지 않는다.
+        }
+      }
+
       const result = await sendEmotionChatApi({
         message,
+        latitude: position?.latitude ?? null,
+        longitude: position?.longitude ?? null,
         conversationId: saveHistory ? conversationId : null,
         saveHistory,
         analyzeEmotion: settingsLoaded && emotionEnabled,

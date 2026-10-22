@@ -88,3 +88,27 @@ export const usePreciseGeolocation = (active: boolean = true) => {
 
   return state;
 };
+
+/**
+ * AI 매니저의 날씨 질문에서만 현재 위치를 한 번 요청한다.
+ * 기존 화면의 GPS watchPosition과 달리 지속적으로 위치를 추적하지 않는다.
+ * 위치 권한은 브라우저가 사용자에게 요청하며 좌표를 저장하지 않는다.
+ */
+export function requestCurrentGpsPosition(): Promise<{
+  latitude: number;
+  longitude: number;
+}> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("브라우저 위치 서비스를 사용할 수 없습니다."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) =>
+        resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+      reject,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
+    );
+  });
+}

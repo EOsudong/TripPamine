@@ -13,7 +13,10 @@ public record EmotionChatRequest(
         boolean saveHistory,
         boolean analyzeEmotion,
         @Min(1) int humanTurnCount,
-        @Size(max = 11) List<@Valid EmotionChatTurn> history
+        @Size(max = 11) List<@Valid EmotionChatTurn> history,
+        // 현재 날씨 질문에 한 번만 전달되는 좌표. DB 대화 메시지에는 저장하지 않는다.
+        Double latitude,
+        Double longitude
 ) {
     public record EmotionChatTurn(
             @NotBlank String role,

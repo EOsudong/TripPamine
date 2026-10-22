@@ -27,6 +27,11 @@ public class AiNegoLog {
 	@JoinColumn(name = "USER_ID", nullable = false)
 	private User user;
 
+	// 여행 계획의 고유 ID. 과거 오퍼를 보존하기 위해 DB에서는 NULL을 허용한다.
+	// 신규 오퍼 생성 시에는 서비스에서 반드시 PLAN_ID를 지정한다.
+	@Column(name = "PLAN_ID")
+	private Long planId;
+
 	@Column(name = "ITEM_NAME", nullable = false, length = 100)
 	private String itemName;
 

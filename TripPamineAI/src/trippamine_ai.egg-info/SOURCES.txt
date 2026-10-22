@@ -6,6 +6,9 @@ src/trippamine_ai.egg-info/SOURCES.txt
 src/trippamine_ai.egg-info/dependency_links.txt
 src/trippamine_ai.egg-info/requires.txt
 src/trippamine_ai.egg-info/top_level.txt
+src/trippamine_ai/api/__init__.py
+src/trippamine_ai/api/app.py
+src/trippamine_ai/api/schemas.py
 src/trippamine_ai/datasets/__init__.py
 src/trippamine_ai/datasets/emotion/__init__.py
 src/trippamine_ai/datasets/emotion/classification.py
@@ -34,15 +37,8 @@ src/trippamine_ai/evaluation/emotion/context_ablation.py
 src/trippamine_ai/evaluation/emotion/persistent_ensemble_error_analysis.py
 src/trippamine_ai/evaluation/emotion/structural_error_audit.py
 src/trippamine_ai/evaluation/emotion/taxonomy_collision_audit.py
-src/trippamine_ai/models/__init__.py
-src/trippamine_ai/models/emotion/hierarchical_transformer_training.py
-src/trippamine_ai/models/emotion/label_mapping.py
-src/trippamine_ai/models/emotion/layernorm_transformer.py
-src/trippamine_ai/models/emotion/multitask_transformer.py
-src/trippamine_ai/models/emotion/multitask_transformer_dataset.py
-src/trippamine_ai/models/emotion/transformer_dataset.py
-src/trippamine_ai/models/emotion/transformer_training.py
 src/trippamine_ai/runtime/__init__.py
 src/trippamine_ai/runtime/emotion/__init__.py
 src/trippamine_ai/runtime/emotion/locked_context_classifier.py
+src/trippamine_ai/runtime/emotion/metrics.py
 tests/test_environment.py

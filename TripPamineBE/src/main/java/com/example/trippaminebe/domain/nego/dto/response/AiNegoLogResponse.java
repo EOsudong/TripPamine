@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 public class AiNegoLogResponse {
 
     private Long negoId;
+    // 신규 오퍼에는 여행 ID가 제공된다. 레거시 오퍼는 null이다.
+    private Long planId;
     private String itemName;
     private BigDecimal offeredPrice;
     private LocalDateTime expiredAt;
@@ -27,6 +29,7 @@ public class AiNegoLogResponse {
 
         return AiNegoLogResponse.builder()
             .negoId(log.getNegoId())
+            .planId(log.getPlanId())
             .itemName(log.getItemName())
             .offeredPrice(log.getOfferedPrice())
             .expiredAt(log.getExpiredAt())

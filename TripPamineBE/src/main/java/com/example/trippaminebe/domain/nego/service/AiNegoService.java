@@ -10,14 +10,17 @@ import com.example.trippaminebe.domain.nego.dto.response.AiNegoLogResponse;
 import com.example.trippaminebe.domain.nego.entity.AiNegoLog;
 import com.example.trippaminebe.domain.nego.repository.AiNegoLogRepository;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
+import com.example.trippaminebe.domain.travel.repository.TravelPlanRepository;
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,12 +55,14 @@ public class AiNegoService {
 	private final UserRepository userRepository;
 	private final SimpMessagingTemplate messagingTemplate;
 	private final TravelLedgerRepository travelLedgerRepository;
+	private final TravelPlanRepository travelPlanRepository;
 	private final AccountRepository accountRepository;
 	private final AccountBookService accountBookService;
 
 	public List<AiNegoLogResponse> findActiveOffers(Long userId) {
-		return aiNegoLogRepository
-				.findByUser_IdAndConversionYnAndExpiredAtAfterOrderByNegoIdDesc(userId, "N", LocalDateTime.now())
+		// 동일 PLAN_ID가 결제됐거나 여행이 삭제되면 숨긴다.
+		// PLAN_ID가 없는 이전 미수락 오퍼도 숨기며, 사용자별 격리는 Repository에서 확인한다.
+		return aiNegoLogRepository.findDisplayableOffers(userId, LocalDateTime.now())
 				.stream()
 				.map(AiNegoLogResponse::from)
 				.toList();
@@ -65,7 +70,12 @@ public class AiNegoService {
 
 	// 시간 내 결제 완료 처리 (전환)
 	public AiNegoLogResponse accept(Long userId, Long negoId, Long accountId) {
-		// 동일 오퍼에 대한 동시 요청은 하나씩 처리한다.
+		// 서로 다른 NEGO_ID가 동일 PLAN_ID로 동시에 수락되는 상황을 막는다.
+		// 사용자 → 오퍼 → 계좌 순서로 잠금을 획득하며, 생성 작업도 동일한 사용자 잠금을 사용한다.
+		userRepository.findByIdForUpdate(userId)
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+
+		// 동일 오퍼에 대한 중복 요청도 기존처럼 개별 오퍼 행을 잠가 직렬화한다.
 		AiNegoLog offer = aiNegoLogRepository.findByIdForUpdate(negoId)
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 네고 제안입니다. id=" + negoId));
 
@@ -80,7 +90,34 @@ public class AiNegoService {
 			throw new IllegalArgumentException("이미 만료된 제안입니다.");
 		}
 
-		// 동일 오퍼 잠금 후 실제 결제 계좌도 행 잠금으로 보호한다.
+		// PLAN_ID 없는 과거 미결제 오퍼는 어떤 여행의 것인지 확인할 수 없다.
+		// 이미 결제한 같은 오퍼는 위에서 멱등 반환하고, 미결제 레거시는 차감 전에 409로 차단한다.
+		if (offer.getPlanId() == null) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"기존 네고 제안은 여행 연결 정보가 없어 수락할 수 없습니다. 새로운 제안을 이용해주세요.");
+		}
+
+		// 결제 직전에 사용자 소유·삭제 여부를 다시 확인한다. 이름은 여행 식별자로 사용하지 않는다.
+		TravelPlan plan = travelPlanRepository.findByPlanIdAndUser_IdAndDelYn(
+				offer.getPlanId(), userId, "N")
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+						"삭제되었거나 접근할 수 없는 여행의 네고 제안입니다."));
+
+		// 사용자 행 잠금 *이후* PLAN_ID 기준으로 다른 완료 오퍼가 있는지 다시 검사한다.
+		if (aiNegoLogRepository.existsByUser_IdAndPlanIdAndConversionYn(userId, plan.getPlanId(), "Y")) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"해당 여행에 이미 결제 완료된 네고 오퍼가 있습니다.");
+		}
+
+		// [전환 보호] 아직 PLAN_ID가 없는 과거 완료 이력을 이름으로 찾는다.
+		// 같은 이름의 다른 여행을 일시적으로 막을 수 있으나, 레거시 정리 전까지 이중 결제를 우선 방지한다.
+		if (aiNegoLogRepository.existsByUser_IdAndPlanIdIsNullAndItemNameAndConversionYn(
+				userId, offer.getItemName(), "Y")) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"이름이 일치하는 과거 결제 내역이 있어 중복 결제를 확인해야 합니다.");
+		}
+
+		// [H1-B] 동일 오퍼 잠금 후 실제 결제 계좌도 행 잠금으로 보호한다.
 		// 다른 오퍼 또는 일반 가계부 출금이 이 계좌의 잔액을 바꾸는 동안 기다렸다가
 		// 최신 잔액으로 다시 검증한다. 잠금은 현재 @Transactional 커밋까지 유지된다.
 		Account account = accountRepository.findOwnedForUpdate(accountId, userId)
@@ -88,7 +125,7 @@ public class AiNegoService {
 		if (!account.isActive()) {
 			throw new IllegalArgumentException("연동이 해지된 계좌입니다.");
 		}
-		// 0원·음수 오퍼 및 Long 범위를 넘는 금액은 모의 결제로 처리하지 않는다.
+		// [H1-B] 0원·음수 오퍼 및 Long 범위를 넘는 금액은 모의 결제로 처리하지 않는다.
 		// TRANSACTIONS.AMOUNT는 Long, AI_NEGO_LOGS.OFFERED_PRICE는 BigDecimal이다.
 		BigDecimal offeredPrice = offer.getOfferedPrice();
 		if (offeredPrice == null || offeredPrice.signum() <= 0) {
@@ -122,59 +159,90 @@ public class AiNegoService {
 		return AiNegoLogResponse.from(offer);
 	}
 
-	// 출발 임박 여행 계획(TravelPlan) 하나에 대해 AI 핫딜 제안을 1건 생성
-	// - 이미 유효한 제안이 있으면 중복 발송하지 않음
+	// 출발 임박 여행 한 건에 대해 PLAN_ID를 포함한 신규 오퍼 발급.
+	// 스케줄러가 전달한 여행 객체는 오래된 값일 수 있으므로 사용자 잠금 뒤 DB에서 다시 조회한다.
 	public void generateOfferForPlan(TravelPlan plan) {
-		User user = userRepository.findById(plan.getUser().getId())
-				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + plan.getUser().getId()));
-
-		// DDL은 여행 예산 0원을 허용한다. 0원 여행에는 할인·결제 오퍼를 생성하지 않고,
-		// 지출 비율 계산 시 0으로 나누는 상황도 원천 차단한다.
-		if (plan.getTotalBudget() == null || plan.getTotalBudget().signum() <= 0) {
-			log.debug("네고 오퍼 미생성: 여행 예산이 0원 이하입니다. planId={}", plan.getPlanId());
+		if (plan == null || plan.getPlanId() == null || plan.getUser() == null) {
 			return;
 		}
 
-		String itemName = plan.getPlanName() + " 막판 특가 패키지";
-
-		// 과거에 거래 완료된 같은 여행명은 TTL이 지나도 새 오퍼를 발송하지 않는다.
-		// 현재 DB에 PLAN_ID가 없으므로 기존 ITEM_NAME 생성 규칙을 동일 여행 판단 기준으로 사용한다.
-		if (aiNegoLogRepository.existsByUser_IdAndItemNameAndConversionYn(user.getId(), itemName, "Y")) {
+		Long userId = plan.getUser().getId();
+		if (userId == null) {
 			return;
 		}
 
-		boolean alreadyOffered = aiNegoLogRepository
-				.findFirstByUser_IdAndItemNameAndExpiredAtAfter(user.getId(), itemName, LocalDateTime.now())
-				.isPresent();
-		if (alreadyOffered) {
+		// 생성과 수락이 동일한 사용자 잠금을 공유해 중복 발급·결제 검사 구간을 직렬화한다.
+		User user = userRepository.findByIdForUpdate(userId)
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+
+		// 삭제되거나 소유자가 변경된 여행은 오퍼를 발행하지 않는다.
+		TravelPlan currentPlan = travelPlanRepository
+				.findByPlanIdAndUser_IdAndDelYn(plan.getPlanId(), userId, "N")
+				.orElse(null);
+		if (currentPlan == null) {
 			return;
 		}
 
-		// [알고리즘 고도화] 지출 패턴 기반으로 할인율/트리거 사유 결정
-		DiscountDecision decision = decideDiscount(plan);
+		// 발급 전 최신 출발일이 스케줄러의 24시간 대상 범위에 여전히 속하는지 확인한다.
+		LocalDateTime now = LocalDateTime.now();
+		if (currentPlan.getStartDate() == null
+				|| !currentPlan.getStartDate().isAfter(now)
+				|| currentPlan.getStartDate().isAfter(now.plusHours(24))) {
+			return;
+		}
 
-		BigDecimal offeredPrice = plan.getTotalBudget()
+		// 예산 0원·음수 여행에서는 계산 불가 또는 0원 오퍼가 발생하므로 발급하지 않는다.
+		if (currentPlan.getTotalBudget() == null || currentPlan.getTotalBudget().signum() <= 0) {
+			log.debug("네고 오퍼 미생성: 여행 예산이 0원 이하입니다. planId={}", currentPlan.getPlanId());
+			return;
+		}
+
+		Long planId = currentPlan.getPlanId();
+		String itemName = currentPlan.getPlanName() + " 막판 특가 패키지";
+
+		// [신규] 여행명이 같더라도 PLAN_ID가 다르면 서로 다른 여행이다.
+		if (aiNegoLogRepository.existsByUser_IdAndPlanIdAndConversionYn(userId, planId, "Y")) {
+			return;
+		}
+
+		// [레거시 보호] PLAN_ID=NULL인 과거 완료 내역이 있으면 자동 추가 발급을 막는다.
+		// 정식 이관 전에는 같은 이름의 다른 여행까지 제한할 수 있다.
+		if (aiNegoLogRepository.existsByUser_IdAndPlanIdIsNullAndItemNameAndConversionYn(
+				userId, itemName, "Y")) {
+			return;
+		}
+
+		if (aiNegoLogRepository.existsByUser_IdAndPlanIdAndConversionYnAndExpiredAtAfter(
+				userId, planId, "N", now)) {
+			return;
+		}
+
+		DiscountDecision decision = decideDiscount(currentPlan);
+		BigDecimal offeredPrice = currentPlan.getTotalBudget()
 				.multiply(BigDecimal.ONE.subtract(decision.rate()))
 				.setScale(0, RoundingMode.HALF_UP);
+		if (offeredPrice.signum() <= 0) {
+			log.debug("네고 오퍼 미생성: 계산된 가격이 0원입니다. planId={}", planId);
+			return;
+		}
 
 		AiNegoLog offer = AiNegoLog.builder()
 				.user(user)
+				.planId(planId)
 				.itemName(itemName)
 				.offeredPrice(offeredPrice)
-				.expiredAt(LocalDateTime.now().plusSeconds(OFFER_TTL_SECONDS))
+				.expiredAt(now.plusSeconds(OFFER_TTL_SECONDS))
 				.conversionYn("N")
 				.discountRate(decision.rate())
 				.triggerReason(decision.reason())
 				.build();
 
 		aiNegoLogRepository.save(offer);
-		log.info("AI 타임 네고 발송: userId={}, item={}, offeredPrice={}, rate={}, reason={}",
-				user.getId(), itemName, offeredPrice, decision.rate(), decision.reason());
+		log.info("AI 타임 네고 발송: userId={}, planId={}, offeredPrice={}, rate={}, reason={}",
+				userId, planId, offeredPrice, decision.rate(), decision.reason());
 
-		// WebSocket으로 해당 유저에게 실시간 푸시.
-		// NegoStompAuthInterceptor가 CONNECT 시 Principal.name을 이메일(CustomUserDetails.getUsername())로
-		// 세팅하므로, convertAndSendToUser의 첫 인자도 이메일이어야 클라이언트의 /user/queue/nego 구독과 매칭된다.
-		// 폴링(/nego/active)은 소켓이 끊긴 사이의 누락을 메우는 백업 경로로 유지한다.
+		// 기존 WebSocket 메시지 계약을 유지하고 응답에 planId만 추가한다.
+		// 주의: 전송이 DB 커밋보다 앞서는 기존 구조는 별도의 outbox/커밋 후 전송 단계에서 개선한다.
 		messagingTemplate.convertAndSendToUser(
 				user.getEmail(),
 				"/queue/nego",

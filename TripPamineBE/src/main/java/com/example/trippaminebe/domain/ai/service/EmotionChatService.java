@@ -43,6 +43,10 @@ public class EmotionChatService {
     private final AiManagerCompositeAnswerService compositeAnswerService;
     private final AiManagerFinanceAnswerService financeAnswerService;
     private final AiManagerTravelWeatherAnswerService travelWeatherAnswerService;
+    // 사용자가 허용한 GPS 좌표로 현재 날씨를 실제 API에서 조회한다.
+    private final AiManagerCurrentWeatherAnswerService currentWeatherAnswerService;
+    // 실제 추천 JSON에 저장된 날짜·순서·시간을 사용자 질문과 연결한다.
+    private final AiManagerItineraryAnswerService itineraryAnswerService;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -131,8 +135,23 @@ public class EmotionChatService {
         if (verifiedAnswer == null) {
             verifiedAnswer = travelWeatherAnswerService.findAnswer(
                 userId,
-                message
+                message,
+                previousUserMessages
             );
+        }
+
+        // 현재 위치 날씨 질문은 Qwen3 추측을 차단하고 기존 날씨 API로 직접 조회한다.
+        // 요청 좌표는 대화 기록에 저장하지 않는다.
+        if (verifiedAnswer == null) {
+            verifiedAnswer = currentWeatherAnswerService.findAnswer(
+                    message, request.latitude(), request.longitude());
+        }
+
+        // 날씨·GPS 질의가 아니라 실제 방문 순서/시간을 묻는 경우 검증된 JSON으로 답한다.
+        // 새로운 LLM 추천을 생성하거나 기존 여행 데이터를 저장하지 않는다.
+        if (verifiedAnswer == null) {
+            verifiedAnswer = itineraryAnswerService.findAnswer(
+                    userId, message, previousUserMessages);
         }
 
         // 기존 복합 질문과 불명확한 후속 질문 처리

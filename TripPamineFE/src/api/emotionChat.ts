@@ -12,6 +12,9 @@ export interface EmotionChatRequest {
   analyzeEmotion: boolean;
   humanTurnCount: number;
   history: EmotionChatTurn[];
+  // 현재 위치 날씨를 질문할 때만 포함한다. 대화 이력에는 저장하지 않는다.
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface EmotionChatResponse {

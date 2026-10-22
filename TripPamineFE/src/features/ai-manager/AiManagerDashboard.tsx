@@ -13,7 +13,7 @@ import {
   Wallet,
   BookOpen,
   Landmark,
-  Compass,
+  Compass, User,
 } from "lucide-react";
 import {
   getAiManagerHomeApi,
@@ -90,6 +90,12 @@ const WORKSPACES = [
     description: "수입·지출 기록",
     path: "/mypage",
     icon: BookOpen,
+  },
+  {
+    label: "마이페이지",
+    description: "내 정보",
+    path: "/mypage",
+    icon: User,
   },
   {
     label: "금융상품",
