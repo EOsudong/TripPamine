@@ -48,6 +48,9 @@ public class EmotionChatService {
     // 실제 추천 JSON에 저장된 날짜·순서·시간을 사용자 질문과 연결한다.
     private final AiManagerItineraryAnswerService itineraryAnswerService;
 
+    // 일정 기준 주변 실내 장소를 검증된 좌표에서 검색한다.
+    private final AiManagerNearbyIndoorAnswerService nearbyIndoorAnswerService;
+
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
     }
@@ -130,6 +133,12 @@ public class EmotionChatService {
             message,
             previousUserMessages
         );
+
+        // "그 장소 근처" 요청은 일반 날씨 안내보다 먼저 실제 일정의 좌표로 검색한다.
+        if (verifiedAnswer == null) {
+            verifiedAnswer = nearbyIndoorAnswerService.findAnswer(
+                    userId, message, previousUserMessages);
+        }
 
         // 저장된 여행계획과 실제 날씨 예보 연결
         if (verifiedAnswer == null) {

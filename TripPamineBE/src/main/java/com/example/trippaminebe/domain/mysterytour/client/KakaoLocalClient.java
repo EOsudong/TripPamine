@@ -101,6 +101,53 @@ public class KakaoLocalClient {
         }
     }
 
+    /**
+     * 검증된 방문지 좌표를 기준으로 검색 반경과 거리순 정렬을 API 단계에서 적용한다.
+     * 기존 searchPlaces() 동작과 인증 키 정책은 변경하지 않는다.
+     */
+    public List<KakaoPlace> searchNearbyPlaces(
+            String keyword, double latitude, double longitude, int radiusMeters, int size
+    ) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException("장소 검색어가 필요합니다.");
+        }
+        if (!Double.isFinite(latitude) || !Double.isFinite(longitude)
+                || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180
+                || radiusMeters < 0 || radiusMeters > 20000) {
+            throw new IllegalArgumentException("검색 좌표 또는 반경이 올바르지 않습니다.");
+        }
+        int boundedSize = Math.max(1, Math.min(size, 15));
+        URI uri = UriComponentsBuilder
+                .fromUriString(baseUrl + "/v2/local/search/keyword.json")
+                .queryParam("query", keyword.strip())
+                .queryParam("x", longitude)
+                .queryParam("y", latitude)
+                .queryParam("radius", radiusMeters)
+                .queryParam("sort", "distance")
+                .queryParam("size", boundedSize)
+                .build().encode().toUri();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.AUTHORIZATION, "KakaoAK " + restApiKey);
+        try {
+            ResponseEntity<KakaoKeywordSearchResponse> response = restTemplate.exchange(
+                    uri, HttpMethod.GET, new HttpEntity<>(headers), KakaoKeywordSearchResponse.class);
+            KakaoKeywordSearchResponse body = response.getBody();
+            List<KakaoKeywordSearchResponse.Document> documents =
+                    body == null || body.documents() == null ? List.of() : body.documents();
+            return documents.stream().map(this::toPlace).toList();
+        } catch (HttpStatusCodeException exception) {
+            // 사용자 위치·좌표를 로그에 남기지 않는다.
+            log.warn("Kakao Local 주변 검색 실패. status={}", exception.getStatusCode());
+            throw new KakaoLocalApiException("주변 장소 검색에 실패했습니다.", exception);
+        } catch (KakaoLocalApiException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn("Kakao Local 주변 장소 검색 중 오류");
+            throw new KakaoLocalApiException("주변 장소 검색 중 오류가 발생했습니다.", exception);
+        }
+    }
+
     private KakaoPlace toPlace(KakaoKeywordSearchResponse.Document document) {
         try {
             // Kakao Local 응답은 x=경도, y=위도다.

@@ -1,7 +1,9 @@
 package com.example.trippaminebe.domain.ai.controller;
 
 import com.example.trippaminebe.domain.ai.dto.TravelItinerarySnapshot;
+import com.example.trippaminebe.domain.ai.dto.NearbyIndoorAlternativesResponse;
 import com.example.trippaminebe.domain.ai.service.TravelItineraryContextService;
+import com.example.trippaminebe.domain.ai.service.TravelNearbyIndoorPoiService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AiManagerItineraryController {
 
     private final TravelItineraryContextService itineraryContextService;
+    private final TravelNearbyIndoorPoiService nearbyIndoorPoiService;
 
     @GetMapping("/{planId}")
     public TravelItinerarySnapshot getItinerary(
@@ -39,4 +42,25 @@ public class AiManagerItineraryController {
         TravelItinerarySnapshot snapshot = itineraryContextService.load(userId, planId);
         return resolvePlaces ? itineraryContextService.withCoordinates(snapshot) : snapshot;
     }
+
+    /**
+     * 저장된 방문지의 좌표가 검증된 경우에만 인근 실내 시설을 반환한다.
+     * GET /api/ai-manager/itineraries/{planId}/days/{day}/places/{sequence}/indoor-alternatives
+     */
+    @GetMapping("/{planId}/days/{day}/places/{sequence}/indoor-alternatives")
+    public NearbyIndoorAlternativesResponse findIndoorAlternatives(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId,
+            @PathVariable int day,
+            @PathVariable int sequence,
+            @RequestParam(defaultValue = "1500") int radiusMeters
+    ) {
+        if (userDetails == null || userDetails.getUser() == null
+                || userDetails.getUser().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        return nearbyIndoorPoiService.suggest(
+                userDetails.getUser().getId(), planId, day, sequence, radiusMeters);
+    }
+
 }
