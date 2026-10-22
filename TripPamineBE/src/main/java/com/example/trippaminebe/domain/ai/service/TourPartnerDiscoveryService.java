@@ -121,6 +121,11 @@ public class TourPartnerDiscoveryService {
                                 && p.salePrice().compareTo(BigDecimal.ZERO) >= 0
                                 && normalize(p.itemName()).contains(normalizedReference)
                                 && officialTourUrl(p.gid(), p.productUrl()))
+                        // 제공사의 원본 검색 순서만 따르지 않고 실제 제목·후기 메타데이터로 정렬한다.
+                        // 상품 상세/판매가는 추가 API를 호출하지 않고 이미 검증된 카탈로그 필드만 사용한다.
+                        .sorted(Comparator.comparingInt(
+                                (MyRealTripCatalogResponse.Product p) -> relevanceScore(p, normalizedReference))
+                                .reversed())
                         .limit(MAX_PARTNER_PRODUCTS)
                         .map(p -> new NearbyTourPartnerResponse.PartnerProduct(
                                 p.gid(), safe(p.itemName()), p.salePrice(), p.productUrl(),
@@ -160,6 +165,28 @@ public class TourPartnerDiscoveryService {
         } catch (IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    /**
+     * 관광지명을 제목에서 직접 확인한 상품만 대상으로 점수를 부여한다.
+     * '입장권'이 명시되지 않은 투어를 입장권이라고 표시하지 않는다.
+     */
+    private static int relevanceScore(MyRealTripCatalogResponse.Product product, String reference) {
+        String name = normalize(product.itemName());
+        int score = name.startsWith(reference) ? 20 : 0;
+        if (containsAny(name, "입장권", "티켓")) score += 6;
+        if (containsAny(name, "투어", "도보", "가이드", "해설")) score += 5;
+        if (containsAny(name, "체험", "미션", "클래스")) score += 3;
+        // 제공사의 평점 척도는 고정 가정하지 않는다. 확인 가능한 후기 수만 보조 지표로 사용한다.
+        if (product.reviewCount() != null && product.reviewCount() > 0) {
+            score += (int) Math.min(5L, product.reviewCount() / 20);
+        }
+        return score;
+    }
+
+    private static boolean containsAny(String source, String... words) {
+        for (String word : words) if (source.contains(word)) return true;
+        return false;
     }
 
     private static String normalize(String value) {

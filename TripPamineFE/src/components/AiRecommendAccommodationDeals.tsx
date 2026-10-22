@@ -213,7 +213,7 @@ export default function AiRecommendAccommodationDeals({ plan, suggestedKeyword }
       <p className="ar-stay-disclaimer">
         표시가는 검색 시점의 숙소 판매 표시가이며 1박 가격 또는 최종 결제 총액으로 확정할 수 없습니다.
         숙박 조건·객실 옵션·예약 가능 여부는 구매처에서 확인하세요. 0원은 무료가 아닌 가격 미확인으로 표시합니다.
-        제휴 링크를 통해 예약하면 TripPamine이 수수료를 받을 수 있습니다.
+        제휴 링크를 통해 확인하고 예약이 가능합니다.
       </p>
 
       {loading && <p className="ar-stay-message" role="status">마이리얼트립에서 숙소를 확인하고 있어요…</p>}

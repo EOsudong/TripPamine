@@ -25,7 +25,8 @@ import java.util.Set;
 @Slf4j
 @Component
 public class KakaoCategoryLocalClient {
-    private static final Set<String> ALLOWED_CODES = Set.of("CE7", "FD6", "CT1", "AT4");
+    // AD5는 숙박 후보의 좌표 검증에만 사용한다. 기존 관광지 검색에는 영향을 주지 않는다.
+    private static final Set<String> ALLOWED_CODES = Set.of("CE7", "FD6", "CT1", "AT4", "AD5");
     private final RestTemplate restTemplate;
     private final String baseUrl;
     private final String restApiKey;

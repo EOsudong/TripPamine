@@ -2,8 +2,6 @@ package com.example.trippaminebe.domain.ai.service;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * STEP 7.2: 최근 발화를 오래된 순서부터 재생하여 각 조건을 갱신한다.
@@ -11,8 +9,6 @@ import java.util.regex.Pattern;
  */
 final class AiManagerItineraryContextResolver {
 
-    private static final Pattern DAY = Pattern.compile("([1-9]\\d?)일차");
-    private static final Pattern ORDER = Pattern.compile("([1-9]\\d?)번째");
     private static final int MAX_HISTORY = 12;
 
     private AiManagerItineraryContextResolver() {
@@ -42,9 +38,9 @@ final class AiManagerItineraryContextResolver {
             return null;
         }
 
-        Integer newDay = parseDay(q);
-        Integer newOrder = parseOrder(q);
-        boolean bareDay = q.matches("(?:[1-9]\\d?일차|첫날|둘째날)[?？]?");
+        Integer newDay = KoreanVisitOrderParser.day(q);
+        Integer newOrder = KoreanVisitOrderParser.sequence(q);
+        boolean bareDay = KoreanVisitOrderParser.bareDay(q);
         boolean wantsNext = contains(q, "그다음", "그다음장소", "다음장소", "다음방문지", "다음곳");
         boolean wantsPrevious = contains(q, "그전", "그이전", "이전장소", "앞장소");
         boolean ref = isReference(q);
@@ -150,23 +146,6 @@ final class AiManagerItineraryContextResolver {
                 || (order != null && contains(q, "장소", "방문", "몇시", "여행"))
                 || contains(q, "전체일정", "일정전체", "전체방문지", "방문지목록", "장소목록", "앞뒤", "전후")
                 || (q.contains("여행") && contains(q, "몇시에가", "몇시에방문"));
-    }
-
-    private static Integer parseDay(String q) {
-        Matcher matcher = DAY.matcher(q);
-        if (matcher.find()) return Integer.valueOf(matcher.group(1));
-        if (q.contains("첫날")) return 1;
-        if (q.contains("둘째날")) return 2;
-        return null;
-    }
-
-    private static Integer parseOrder(String q) {
-        Matcher matcher = ORDER.matcher(q);
-        if (matcher.find()) return Integer.valueOf(matcher.group(1));
-        if (q.contains("첫번째")) return 1;
-        if (q.contains("두번째")) return 2;
-        if (q.contains("세번째")) return 3;
-        return null;
     }
 
     private static boolean contains(String q, String... words) {
