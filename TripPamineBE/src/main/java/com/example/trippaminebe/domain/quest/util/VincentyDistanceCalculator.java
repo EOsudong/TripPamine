@@ -1,12 +1,10 @@
 package com.example.trippaminebe.domain.quest.util;
 
 import java.math.BigDecimal;
-import org.springframework.stereotype.Component;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 
 @Service
-@Component
 public class VincentyDistanceCalculator {
 
 	// 타원체 상수 정의

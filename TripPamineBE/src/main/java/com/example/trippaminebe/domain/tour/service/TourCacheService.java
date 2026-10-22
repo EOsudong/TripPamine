@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -79,33 +80,63 @@ public class TourCacheService {
   private final TourCacheEntryRepository cacheEntryRepository;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  /** 사용자 요청 처리 경로 — DB 캐시만 읽는다. 캐시가 아직 없으면(최초 기동 직후 등) 빈 목록. */
+  // 10개 관광 JSON 캐시를 60초간 재사용하여 매 요청의 원격 Oracle 조회를 줄입니다.
+  // 다중 서버의 외부 갱신도 최대 약 60초 후 다시 읽으며, 이 서비스의 성공 갱신은 즉시 반영합니다.
+  private static final long MEMORY_CACHE_TTL_NANOS = java.time.Duration.ofSeconds(60).toNanos();
+  private final Map<String, CachedPayload> memoryCache = new ConcurrentHashMap<>();
+
+  private record CachedPayload(String json, long loadedAtNanos) {
+    boolean isFresh() {
+      return System.nanoTime() - loadedAtNanos < MEMORY_CACHE_TTL_NANOS;
+    }
+  }
+
+  /**
+   * 사용자 요청 경로: 메모리 캐시 적중 시 Oracle 조회를 생략합니다.
+   * 메모리에는 JSON만 보관하고 DTO는 매 요청 새로 역직렬화해 수정 가능한 객체를 공유하지 않습니다.
+   */
   public List<TourItemResponse> getCached(String cacheKey) {
     long begin = System.nanoTime();
-    Optional<TourCacheEntry> entry = cacheEntryRepository.findByCacheKey(cacheKey);
-    long afterDb = System.nanoTime();
+    CachedPayload cached = memoryCache.get(cacheKey);
+    boolean hit = cached != null && cached.isFresh();
+    long[] dbNanos = {0L};
+    if (!hit) {
+      // 같은 키의 동시 요청은 한 요청만 Oracle을 읽게 하여 캐시 미스 폭주를 방지합니다.
+      cached = memoryCache.compute(cacheKey, (key, current) -> {
+        if (current != null && current.isFresh()) {
+          return current;
+        }
+        long dbStart = System.nanoTime();
+        try {
+          return cacheEntryRepository.findByCacheKey(key)
+              .map(entry -> new CachedPayload(entry.getPayloadJson(), System.nanoTime()))
+              .orElse(null);
+        } finally {
+          dbNanos[0] = System.nanoTime() - dbStart;
+        }
+      });
+    }
+    long afterLookup = System.nanoTime();
 
-    List<TourItemResponse> result = entry
-        .map(cached -> deserialize(cached.getPayloadJson()))
-        .orElseGet(() -> {
-          log.warn("TourAPI 캐시가 아직 없습니다 (cacheKey={}). 다음 새로고침 전까지는 빈 목록을 반환합니다.", cacheKey);
-          return List.of();
-        });
+    List<TourItemResponse> result;
+    if (cached == null) {
+      log.warn("TourAPI 캐시가 아직 없습니다 (cacheKey={}). 다음 새로고침 전까지는 빈 목록을 반환합니다.", cacheKey);
+      result = List.of();
+    } else {
+      result = deserialize(cached.json());
+    }
 
     long completed = System.nanoTime();
-    // DEBUG 설정 시 Oracle 조회와 JSON 변환의 실제 구간별 지연을 확인합니다.
-    log.debug("[TourCachePerf] key={} db_ms={} deserialize_ms={} total_ms={}",
-        cacheKey,
-        (afterDb - begin) / 1_000_000.0,
-        (completed - afterDb) / 1_000_000.0,
+    log.debug("[TourCachePerf] key={} source={} db_ms={} lookup_ms={} deserialize_ms={} total_ms={}",
+        cacheKey, hit ? "memory" : dbNanos[0] > 0 ? "oracle" : "memory_after_wait",
+        dbNanos[0] / 1_000_000.0,
+        (afterLookup - begin) / 1_000_000.0,
+        (completed - afterLookup) / 1_000_000.0,
         (completed - begin) / 1_000_000.0);
     return result;
   }
 
-  /**
-   * 여러 캐시 키를 한 번에 읽되, 반환 목록은 호출자가 전달한 키 순서로 합칩니다.
-   * 관광산업 전체 보기처럼 4개 캐시를 순차 조회하던 구간의 DB 왕복을 줄입니다.
-   */
+  /** 기존 관광산업 전체 조회의 키 순서와 데이터 중복 항목은 그대로 유지합니다. */
   public List<TourItemResponse> getCachedMany(List<String> cacheKeys) {
     if (cacheKeys == null || cacheKeys.isEmpty()) {
       return List.of();
@@ -124,23 +155,43 @@ public class TourCacheService {
     return merged;
   }
 
-  // DB 결과는 IN 절 정렬을 보장하지 않으므로 키별로 매핑하여 원래 순서를 복원합니다.
+  // 미스가 발생한 키만 IN 절로 한 번에 읽고 캐시에 적재합니다.
+  // putIfAbsent 대신 compute를 사용해 정기 갱신 중인 키에 오래된 조회값을 덮어쓰지 않습니다.
   private Map<String, String> findCachedPayloads(List<String> cacheKeys) {
-    return cacheEntryRepository.findByCacheKeyIn(cacheKeys).stream()
+    Map<String, String> payloads = new HashMap<>();
+    List<String> missedKeys = new ArrayList<>();
+    for (String key : cacheKeys) {
+      CachedPayload cached = memoryCache.get(key);
+      if (cached != null && cached.isFresh()) {
+        payloads.put(key, cached.json());
+      } else if (!missedKeys.contains(key)) {
+        missedKeys.add(key);
+      }
+    }
+    if (missedKeys.isEmpty()) {
+      return payloads;
+    }
+
+    Map<String, String> loaded = cacheEntryRepository.findByCacheKeyIn(missedKeys).stream()
         .collect(Collectors.toMap(TourCacheEntry::getCacheKey, TourCacheEntry::getPayloadJson));
+    for (String key : missedKeys) {
+      String json = loaded.get(key);
+      if (json == null) {
+        continue;
+      }
+      CachedPayload result = memoryCache.compute(key, (k, current) ->
+          current != null && current.isFresh()
+              ? current : new CachedPayload(json, System.nanoTime()));
+      payloads.put(key, result.json());
+    }
+    return payloads;
   }
 
-  /**
-   * 상세 페이지(TourController "/tour/detail/{contentId}")에서 사용.
-   * 캐시된 10개 키를 전부 뒤져서 contentId가 일치하는 항목 하나를 찾는다.
-   * 목록 페이지에서 이미 한 번 노출됐던 항목이라 카테고리 라벨/축제 기간 등 기본 정보를 여기서 복원하고,
-   * 개요/전화번호/홈페이지 같은 나머지 상세 필드는 TourService가 TourApiClient로 직접 채운다.
-   */
+  /** 관광 상세에서 목록의 기본 정보를 찾되, 조회한 키 10개를 다른 페이지와 재사용합니다. */
   public Optional<TourItemResponse> findByContentId(String contentId) {
     if (contentId == null || contentId.isBlank()) {
       return Optional.empty();
     }
-    // 최대 10회 조회하던 작업을 키 10개에 대한 단일 DB 조회로 변경합니다.
     Map<String, String> payloads = findCachedPayloads(List.of(ALL_CACHE_KEYS));
     for (String cacheKey : ALL_CACHE_KEYS) {
       String payload = payloads.get(cacheKey);
@@ -224,6 +275,8 @@ public class TourCacheService {
         .orElseGet(() -> TourCacheEntry.builder().cacheKey(cacheKey).payloadJson(json).fetchedAt(now).build());
     entry.refresh(json, now);
     cacheEntryRepository.save(entry);
+    // Oracle 저장이 성공한 뒤에만 새 JSON을 게시합니다. 실패 시 기존 메모리 캐시를 유지합니다.
+    memoryCache.put(cacheKey, new CachedPayload(json, System.nanoTime()));
   }
 
   private String serialize(List<TourItemResponse> items) {

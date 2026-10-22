@@ -197,7 +197,7 @@ public class TravelNearbyCategoryPoiService {
         };
     }
 
-    private static boolean genericName(String value) {
+    static boolean genericName(String value) {
         String name = normalize(value);
         return Set.of("한강공원", "한강", "공원", "홍대거리", "이태원").contains(name);
     }

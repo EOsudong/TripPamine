@@ -14,11 +14,19 @@ import org.springframework.web.server.ResponseStatusException;
 import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** 자유 대화 + 선택적 저장 + 사용자가 동의한 경우에만 감정 분석. */
 @Service
 @RequiredArgsConstructor
 public class EmotionChatService {
+
+    // 과거 답변 속의 다른 여행지·날씨가 새 질문에 섞이지 않도록 범위를 분리한다.
+    // 목록은 대화 맥락 선택용일 뿐, POI 검증이나 여행지 추천 목록이 아니다.
+    private static final List<String> KNOWN_TRAVEL_REGIONS = List.of(
+            "제주", "서울", "부산", "인천", "대구", "대전", "광주", "울산",
+            "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남"
+    );
 
     private static final String SYSTEM_PROMPT = """
             /no_think
@@ -30,6 +38,10 @@ public class EmotionChatService {
             기대와 걱정이 함께 표현되면 한쪽 감정으로 단순화하지 말고 두 상황을 자연스럽게 고려한다.
             단순한 정보 질문에는 억지로 공감 문장을 덧붙이지 말고 필요한 정보를 먼저 안내한다.
             여행 날씨·일정이 걱정된다는 이야기에는 말한 상황을 짧게 짚고 실제 준비 방법이나 필요한 조건을 안내한다.
+            비가 올까 봐 걱정된다는 말만으로 현재 비가 온다거나 여행을 그대로 진행할 수 있다고 확정하지 않는다.
+            비 예보를 별도로 조회하지 않았다면 우산·방수 준비물이나 실내 대안처럼 확인 없이도 유용한 대비 방법만 제안한다.
+            이전 대화에 나온 지역·기상 상황을 현재 질문에 자동으로 적용하지 않는다.
+            '준비를 준비', '많이 불어지므로'처럼 어색한 반복·어휘와 한국어 단어 중간의 한자 혼용을 피한다.
             사용자가 '불안하지 않다'처럼 자신의 감정을 정정하면 그 설명을 우선하여 받아들이고 여행 준비 질문에 답한다.
             준비물과 일정을 묻는 일반 질문에는 날짜·동행·교통·예약·우천 대비를 짧게 안내하고, 맥락과 무관한 항목을 덧붙이지 않는다.
             특정 계절의 날씨나 강수 빈도는 조회 결과가 없으면 추측하지 않는다.
@@ -246,9 +258,12 @@ public class EmotionChatService {
         if (verifiedAnswer != null) {
             answer = verifiedAnswer;
         } else {
+            // 여행지가 명확한 독립 질문은 과거 다른 여행·날씨 답변의 영향을 줄이기 위해
+            // 새 주제로 취급한다. '그 여행', '아까' 같은 후속 질문은 기존 이력을 유지한다.
+            List<ManagerSlmClient.ChatTurn> slmTurns = selectSlmTurns(message, turns);
             answer = slmClient.generateWithHistory(
                 systemPrompt,
-                turns
+                slmTurns
             );
             // AI가 첫 문장에서 사용자의 감정을 확정하더라도, 뒤의 실제 안내 내용은 살린다.
             // 검증된 DB/API 직접 답변은 수정하지 않는다.
@@ -297,5 +312,30 @@ public class EmotionChatService {
             }
         }
         return new EmotionChatResponse(conversationId, answer, emotionName, AiTimeProvider.nowInServiceZone());
+    }
+
+    /**
+     * 사용자가 지역을 명시하면서 독립적인 여행 질문을 할 때는 이번 발화만 Qwen3에 보낸다.
+     * 저장/감정분석/검증된 DB 응답에 사용하는 원본 turns는 변경하지 않는다.
+     * 후속 질문에서는 기존의 최대 12턴 대화 이력을 그대로 사용한다.
+     */
+    private static List<ManagerSlmClient.ChatTurn> selectSlmTurns(
+            String message,
+            List<ManagerSlmClient.ChatTurn> turns
+    ) {
+        String text = message.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        boolean hasRegion = KNOWN_TRAVEL_REGIONS.stream().anyMatch(text::contains);
+        boolean travelTopic = text.contains("여행") || text.contains("날씨")
+                || text.contains("숙소") || text.contains("일정");
+        boolean followsPrevious = text.startsWith("그") || text.contains("그여행")
+                || text.contains("그곳")
+                || text.contains("거기") || text.contains("아까")
+                || text.contains("앞서") || text.contains("방금")
+                || text.contains("이어서") || text.contains("위에서");
+
+        if (hasRegion && travelTopic && !followsPrevious) {
+            return List.of(turns.get(turns.size() - 1));
+        }
+        return turns;
     }
 }

@@ -209,6 +209,18 @@ public class ManagerSlmClient {
 			List<Map<String, String>> messages,
 			String userContent
 	) {
+		return complete(messages, userContent, true);
+	}
+
+	/**
+	 * 한국어 단어 중간에 한자가 끼어드는 출력은 한 번만 재생성한다.
+	 * 두 번째 생성도 같은 문제라면 기존 502 검증 정책대로 거부한다.
+	 */
+	private String complete(
+			List<Map<String, String>> messages,
+			String userContent,
+			boolean canRetryMixedScript
+	) {
 		// Qwen3 Non-Thinking 요청
 		Map<String, Object> request =
 				new LinkedHashMap<>();
@@ -216,11 +228,13 @@ public class ManagerSlmClient {
 		request.put("model", model);
 		request.put("messages", messages);
 
-		request.put("temperature", 0.7);
+		// Qwen3 1.7B의 높은 presence_penalty는 단어 회피가 과해져
+		// 부자연스러운 어휘가 섞일 수 있다. 사실 중심의 짧은 답변에 맞춰 완화한다.
+		request.put("temperature", 0.65);
 		request.put("top_p", 0.8);
 		request.put("top_k", 20);
 		request.put("min_p", 0.0);
-		request.put("presence_penalty", 1.5);
+		request.put("presence_penalty", 1.0);
 
 		request.put(
 				"chat_template_kwargs",
@@ -366,6 +380,16 @@ public class ManagerSlmClient {
 				);
 			}
 
+			// 한국어 단어 한가운데 한자가 삽입된 비정상 혼합 출력을 탐지한다.
+			// 사용자가 한자를 직접 입력한 경우에는 원문 설명을 막지 않는다.
+			if (!containsCjk(userContent) && containsMixedKoreanCjk(answer)) {
+				if (canRetryMixedScript) {
+					log.warn("Manager SLM mixed-script output detected; retrying once.");
+					return complete(withKoreanOnlyInstruction(messages), userContent, false);
+				}
+				throw rejectOutput("UNEXPECTED_MIXED_KOREAN_CJK");
+			}
+
 			// 모든 검증을 통과한 경우에만 반환
 			return answer;
 
@@ -384,6 +408,60 @@ public class ManagerSlmClient {
 					exception
 			);
 		}
+	}
+
+	/**
+	 * 사용자가 한자 의미를 물었다면 답변에 한자가 등장할 수도 있다.
+	 * 따라서 사용자 입력에 한자가 있을 때는 혼합 문자 차단을 생략한다.
+	 */
+	private boolean containsCjk(String text) {
+		return text != null && text.codePoints().anyMatch(codePoint ->
+				(codePoint >= 0x3400 && codePoint <= 0x9FFF));
+	}
+
+	/**
+	 * '많이吹어지므로'처럼 한글 음절과 한자가 바로 붙은 출력만 비정상으로 본다.
+	 * 일반적인 여행지 명칭이나 띄어 쓴 한자 표기는 건드리지 않는다.
+	 */
+	private boolean containsMixedKoreanCjk(String text) {
+		for (int i = 0; i < text.length(); i++) {
+			char current = text.charAt(i);
+			if (current < '\u3400' || current > '\u9FFF') {
+				continue;
+			}
+			boolean hangulBefore = i > 0 && isHangulSyllable(text.charAt(i - 1));
+			boolean hangulAfter = i + 1 < text.length() && isHangulSyllable(text.charAt(i + 1));
+			if (hangulBefore || hangulAfter) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isHangulSyllable(char c) {
+		return c >= '\uAC00' && c <= '\uD7A3';
+	}
+
+	/**
+	 * 재시도 시에는 기존 대화 구조와 입력을 유지하고 시스템 안내만 보강한다.
+	 * 사용자 발화를 고치지 않으며, 무한 재귀를 막기 위해 호출 횟수는 최대 2회다.
+	 */
+	private List<Map<String, String>> withKoreanOnlyInstruction(
+			List<Map<String, String>> messages
+	) {
+		List<Map<String, String>> retryMessages = new ArrayList<>(messages.size());
+		for (Map<String, String> message : messages) {
+			if ("system".equals(message.get("role"))) {
+				retryMessages.add(Map.of(
+						"role", "system",
+						"content", message.get("content")
+								+ "\n[재생성 주의] 답변은 자연스러운 한국어만 사용하고, 한글 단어 속에 한자를 섞지 마세요."
+				));
+			} else {
+				retryMessages.add(message);
+			}
+		}
+		return retryMessages;
 	}
 
 	/**

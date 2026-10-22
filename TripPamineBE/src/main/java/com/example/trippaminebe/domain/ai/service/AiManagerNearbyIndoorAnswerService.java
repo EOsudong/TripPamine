@@ -2,6 +2,7 @@ package com.example.trippaminebe.domain.ai.service;
 
 import com.example.trippaminebe.domain.ai.dto.AiTravelOverviewResponse.TravelItem;
 import com.example.trippaminebe.domain.ai.dto.NearbyCategoryAlternativesResponse;
+import com.example.trippaminebe.domain.ai.dto.NearbyTourPartnerResponse;
 import com.example.trippaminebe.domain.ai.dto.TravelItinerarySnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,7 @@ public class AiManagerNearbyIndoorAnswerService {
     private final AiTravelOverviewService travelOverviewService;
     private final TravelItineraryContextService itineraryContextService;
     private final TravelNearbyCategoryPoiService nearbyCategoryService;
+    private final TourPartnerDiscoveryService tourPartnerDiscoveryService;
 
     public String findAnswer(Long userId, String message, List<String> previousUserMessages,
                              List<String> previousAssistantMessages) {
@@ -174,6 +176,10 @@ public class AiManagerNearbyIndoorAnswerService {
                 : Set.of();
         // 이번 질문에 특정 분류가 없을 때에만 직전 주변 검색 목적을 승계한다.
         TravelNearbyCategoryPoiService.Intent intent = TravelNearbyCategoryPoiService.intentFor(q);
+        boolean tourRequest = contains(q, "투어", "티켓", "입장권", "관광공사", "제휴");
+        if (intent == TravelNearbyCategoryPoiService.Intent.GENERAL && tourRequest) {
+            intent = TravelNearbyCategoryPoiService.Intent.TOURISM;
+        }
         if (intent == TravelNearbyCategoryPoiService.Intent.GENERAL && previousUserMessages != null) {
             for (int index = previousUserMessages.size() - 1; index >= 0; index--) {
                 String earlier = normalize(previousUserMessages.get(index));
@@ -193,7 +199,58 @@ public class AiManagerNearbyIndoorAnswerService {
             }
             throw exception;
         }
-        return format(result, !excluded.isEmpty());
+        String answer = format(result, !excluded.isEmpty());
+        // 관광 의도 또는 투어/티켓 요청일 때만 관광공사 캐시를 함께 보여준다.
+        // 제휴 검색은 상품 의도를 명시했을 때만 실행하고 제휴 링크를 자동 발급하지 않는다.
+        if (!result.status().startsWith("REFERENCE_")) {
+            if (intent == TravelNearbyCategoryPoiService.Intent.TOURISM || tourRequest) {
+                boolean includePartner = contains(q, "마이리얼트립", "제휴", "투어", "티켓", "입장권");
+                Set<String> suppress = new HashSet<>(excluded);
+                for (NearbyCategoryAlternativesResponse.Candidate candidate : result.candidates()) {
+                    suppress.add(candidate.name());
+                }
+                NearbyTourPartnerResponse extra = tourPartnerDiscoveryService.suggest(
+                        userId, planId, day, sequence, DEFAULT_RADIUS_METERS,
+                        includePartner, suppress);
+                answer += formatTourPartner(extra);
+            }
+        }
+        return answer;
+    }
+
+    /** 관광공사 출처와 마이리얼트립 가격을 구분해 표기한다. */
+    static String formatTourPartner(NearbyTourPartnerResponse extra) {
+        if (!"VERIFIED".equals(extra.referenceStatus())) return "";
+        StringBuilder text = new StringBuilder("\n\n[한국관광공사 관광정보]");
+        if (extra.tourPlaces().isEmpty()) {
+            text.append("\n현재 캐시에서 반경 내 추가 관광정보를 찾지 못했습니다.");
+        } else {
+            for (int i = 0; i < extra.tourPlaces().size(); i++) {
+                NearbyTourPartnerResponse.TourPlace p = extra.tourPlaces().get(i);
+                text.append("\nK").append(i + 1).append(". ").append(p.title())
+                        .append(" · 직선거리 약 ").append(p.straightLineMeters()).append("m")
+                        .append(" · ").append(p.address() == null ? "주소 미제공" : p.address())
+                        .append(" · 관광정보ID ").append(p.contentId());
+            }
+        }
+        text.append("\n관광공사는 관광정보 제공처이며, 상품 판매가나 입장 가능 여부를 보증하지 않습니다.");
+        if (!"NOT_REQUESTED".equals(extra.partnerStatus())) {
+            text.append("\n\n[마이리얼트립 연관 투어·티켓 상품]");
+            if (extra.partnerProducts().isEmpty()) {
+                text.append("\n현재 연결할 수 있는 연관 상품을 확인하지 못했습니다.");
+            } else {
+                for (int i = 0; i < extra.partnerProducts().size(); i++) {
+                    NearbyTourPartnerResponse.PartnerProduct p = extra.partnerProducts().get(i);
+                    text.append("\nM").append(i + 1).append(". ").append(p.itemName())
+                            .append(" · 조회 판매가 ").append(p.salePrice().toPlainString()).append("원")
+                            .append(" · 상품ID ").append(p.gid());
+                }
+            }
+            text.append("\n연관 상품은 동일 장소 입장권으로 확정되지 않았습니다. ")
+                    .append("가격·옵션·재고는 예약 단계에서 달라질 수 있으며, ")
+                    .append("제휴 링크는 실제 상품 선택 시 별도로 발급합니다.");
+        }
+        return text.toString();
     }
 
     private static String format(NearbyCategoryAlternativesResponse result, boolean excludesPrevious) {
@@ -389,7 +446,8 @@ public class AiManagerNearbyIndoorAnswerService {
         return contains(q, "근처", "주변", "가까운", "가까이")
                 && contains(q, "실내", "비", "우천", "대체", "장소", "곳", "박물관", "미술관",
                         "음식", "식당", "맛집", "밥", "카페", "커피", "관광", "명소", "전시",
-                        "쉴", "휴식", "더", "어디", "추천", "볼거리");
+                        "쉴", "휴식", "더", "어디", "추천", "볼거리",
+                        "투어", "티켓", "입장권", "관광공사", "제휴");
     }
 
     private static Integer parseNumber(Pattern pattern, String q) {

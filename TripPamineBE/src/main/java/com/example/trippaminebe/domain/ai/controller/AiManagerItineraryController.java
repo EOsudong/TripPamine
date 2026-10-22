@@ -3,6 +3,8 @@ package com.example.trippaminebe.domain.ai.controller;
 import com.example.trippaminebe.domain.ai.dto.TravelItinerarySnapshot;
 import com.example.trippaminebe.domain.ai.dto.NearbyIndoorAlternativesResponse;
 import com.example.trippaminebe.domain.ai.dto.NearbyCategoryAlternativesResponse;
+import com.example.trippaminebe.domain.ai.dto.NearbyTourPartnerResponse;
+import com.example.trippaminebe.domain.ai.service.TourPartnerDiscoveryService;
 import com.example.trippaminebe.domain.ai.service.TravelItineraryContextService;
 import com.example.trippaminebe.domain.ai.service.TravelNearbyIndoorPoiService;
 import com.example.trippaminebe.domain.ai.service.TravelNearbyCategoryPoiService;
@@ -30,6 +32,7 @@ public class AiManagerItineraryController {
     private final TravelItineraryContextService itineraryContextService;
     private final TravelNearbyIndoorPoiService nearbyIndoorPoiService;
     private final TravelNearbyCategoryPoiService nearbyCategoryPoiService;
+    private final TourPartnerDiscoveryService tourPartnerDiscoveryService;
 
     @GetMapping("/{planId}")
     public TravelItinerarySnapshot getItinerary(
@@ -87,4 +90,24 @@ public class AiManagerItineraryController {
                 planId, day, sequence, radiusMeters, intent, java.util.Set.of());
     }
 
+    /**
+     * STEP 8.6-A: 관광공사 캐시 관광정보 + 선택적 마이리얼트립 연관 상품 조회.
+     * includePartner 기본값은 false이며 MyLink 발급/일정 변경은 하지 않는다.
+     */
+    @GetMapping("/{planId}/days/{day}/places/{sequence}/tour-partner-offers")
+    public NearbyTourPartnerResponse findTourPartnerOffers(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId,
+            @PathVariable int day,
+            @PathVariable int sequence,
+            @RequestParam(defaultValue = "1500") int radiusMeters,
+            @RequestParam(defaultValue = "false") boolean includePartner
+    ) {
+        if (userDetails == null || userDetails.getUser() == null
+                || userDetails.getUser().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        return tourPartnerDiscoveryService.suggest(userDetails.getUser().getId(),
+                planId, day, sequence, radiusMeters, includePartner, java.util.Set.of());
+    }
 }
