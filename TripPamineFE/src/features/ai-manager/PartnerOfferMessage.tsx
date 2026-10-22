@@ -6,7 +6,7 @@ import { myRealTripMylinkApi } from "../../api/myrealtripMylink";
  * 제휴사 상품의 검증된 링크 문법만 클릭 가능한 UI로 변경한다.
  * 일반 AI 답변을 HTML로 해석하지 않아 스크립트 삽입을 방지한다.
  */
-const PRODUCT_LINK = /\[상품 보기\]\((https:\/\/[^\s()]+)\)/g;
+const ACTION_LINK = /\[(상품 보기|지도에서 보기)\]\((https?:\/\/[^\s()]+)\)/g;
 
 function verifiedProductUrl(raw: string): { id: string; url: string } | null {
   try {
@@ -24,6 +24,20 @@ function verifiedProductUrl(raw: string): { id: string; url: string } | null {
       }
     }
     return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Kakao 장소 상세 링크는 제휴 상품과 달리 별도 제휴 링크 API를 호출하지 않는다. */
+function verifiedKakaoMapUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if ((url.protocol !== "https:" && url.protocol !== "http:")
+        || url.hostname !== "place.map.kakao.com" || url.port
+        || url.username || url.password || url.search || url.hash
+        || !/^\/[1-9]\d{0,19}$/.test(url.pathname)) return null;
+    return url.href;
   } catch {
     return null;
   }
@@ -91,13 +105,23 @@ function OfferLink({ id, url }: { id: string; url: string }) {
 export default function PartnerOfferMessage({ text }: { text: string }) {
   const pieces: ReactNode[] = [];
   let last = 0;
-  for (const match of text.matchAll(PRODUCT_LINK)) {
+  for (const match of text.matchAll(ACTION_LINK)) {
     const index = match.index ?? last;
-    const candidate = verifiedProductUrl(match[1]);
+    const [raw, label, rawUrl] = match;
     pieces.push(text.slice(last, index));
-    if (candidate) pieces.push(<OfferLink key={index} id={candidate.id} url={candidate.url} />);
-    else pieces.push(match[0]);
-    last = index + match[0].length;
+    if (label === "상품 보기") {
+      const candidate = verifiedProductUrl(rawUrl);
+      pieces.push(candidate ? <OfferLink key={index} id={candidate.id} url={candidate.url} /> : raw);
+    } else {
+      const kakaoUrl = verifiedKakaoMapUrl(rawUrl);
+      pieces.push(kakaoUrl
+        ? <a key={index} href={kakaoUrl} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-200">
+            <ArrowUpRight size={13} aria-hidden="true" />지도에서 보기
+          </a>
+        : raw);
+    }
+    last = index + raw.length;
   }
   pieces.push(text.slice(last));
   return <>{pieces}</>;
