@@ -25,10 +25,6 @@ public class TourCategoryService {
   // key: "cat1|cat2" (없으면 빈 문자열), value: code -> name
   private final Map<String, Map<String, String>> cache = new ConcurrentHashMap<>();
 
-  public Optional<String> resolveCat1(String... nameKeywords) {
-    return findCode(loadCodes(null, null), nameKeywords);
-  }
-
   public Optional<String> resolveCat2(String cat1, String... nameKeywords) {
     return findCode(loadCodes(cat1, null), nameKeywords);
   }

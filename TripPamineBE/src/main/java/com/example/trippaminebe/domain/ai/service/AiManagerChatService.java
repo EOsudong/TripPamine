@@ -209,6 +209,10 @@ public class AiManagerChatService {
 							normalizedMessage
 					);
 
+			// 추측한 감정으로 단정하는 첫 문장만 완화한다.
+			// 검증된 직접 응답(DIRECT_ANSWER)은 원문을 유지한다.
+			answer = AiManagerEmpathicReplyPolicy.softenLeadingEmotionJudgment(answer);
+
 			return new AiManagerChatResponse(
 					routing.intent(),
 					SLM_GENERATION,

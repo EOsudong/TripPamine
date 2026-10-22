@@ -11,15 +11,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
+import com.example.trippaminebe.common.cache.DailyCacheRefreshPolicy;
+
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -29,11 +36,10 @@ import java.util.stream.StreamSupport;
  *
  * 공공 API는 보통 일일 호출 한도가 있어서, 사용자 요청이 들어올 때마다 매번 TourAPI를 직접
  * 부르면 트래픽이 늘었을 때 한도를 금방 소진할 수 있다. 그래서 여기서는:
- *   1) TourCacheRefreshScheduler가 매일 오전 9시(+ 필요할 때만 앱 기동 시 1번, isWarmupNeeded()
- *      참고)에 refreshAll()을 호출해서 실제 TourAPI를 딱 10번(festivals 1 + destinations 5 +
- *      industry 4)만 호출하고 DB(TOUR_CACHE_ENTRY 테이블)에 저장해둔다.
- *   2) 사용자 요청을 처리하는 TourService는 getCached()로 이 DB 캐시만 읽는다 — 트래픽이
- *      아무리 늘어도 TourAPI 호출 횟수는 하루 10번 그대로다.
+ *   1) TourCacheRefreshScheduler가 매일 한국시간 오전 9시에 10개 키를 갱신한다.
+ *      서버가 정기 갱신을 놓쳤을 때는 기동 시 보완하고, 일부 키만 없으면 그 키만 갱신한다.
+ *   2) 사용자 목록 조회는 Oracle 캐시만 읽으므로 요청 증가가 곧 외부 API 호출 증가는 아니다.
+ *   ※ 외부 API 장애, 서버 다중 실행 시 호출 횟수는 스케줄 횟수와 다를 수 있다.
  */
 @Slf4j
 @Service
@@ -43,9 +49,6 @@ public class TourCacheService {
   // TourService가 festivals 전체 목록을 읽을 때 쓰는 캐시 키 (getFestivals에서 소분류 필터링을 함께 함)
   public static final String FESTIVALS_ALL = "festivals:ALL";
 
-  // refreshAll()이 채우는 캐시 키 총 개수 (festivals 1 + destinations 5 + industry 4)
-  private static final int EXPECTED_CACHE_KEY_COUNT = 10;
-
   // findByContentId()가 상세 페이지 진입 시 뒤질 캐시 키 전체 목록 (refreshAll()이 채우는 키와 동일)
   private static final String[] ALL_CACHE_KEYS = {
       FESTIVALS_ALL,
@@ -53,9 +56,9 @@ public class TourCacheService {
       "industry:숙박", "industry:음식", "industry:레저 스포츠", "industry:쇼핑"
   };
 
-  // 캐시가 이 시간 안에 갱신된 적이 있으면, 재시작하더라도 웜업을 건너뛴다.
-  // (개발 중 재배포/재시작을 자주 할 때마다 TourAPI를 다시 호출하는 걸 막기 위함)
-  private static final Duration STARTUP_SKIP_WINDOW = Duration.ofMinutes(30);
+  // @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")와 같은 기준으로 판단한다.
+  private static final LocalTime DAILY_REFRESH_AT = LocalTime.of(9, 0);
+  private static final ZoneId REFRESH_ZONE = ZoneId.of("Asia/Seoul");
 
   private static final String CONTENT_TYPE_TOUR_SPOT = "12";
   private static final String CONTENT_TYPE_CULTURE_FACILITY = "14";
@@ -78,12 +81,53 @@ public class TourCacheService {
 
   /** 사용자 요청 처리 경로 — DB 캐시만 읽는다. 캐시가 아직 없으면(최초 기동 직후 등) 빈 목록. */
   public List<TourItemResponse> getCached(String cacheKey) {
-    return cacheEntryRepository.findByCacheKey(cacheKey)
-        .map(entry -> deserialize(entry.getPayloadJson()))
+    long begin = System.nanoTime();
+    Optional<TourCacheEntry> entry = cacheEntryRepository.findByCacheKey(cacheKey);
+    long afterDb = System.nanoTime();
+
+    List<TourItemResponse> result = entry
+        .map(cached -> deserialize(cached.getPayloadJson()))
         .orElseGet(() -> {
           log.warn("TourAPI 캐시가 아직 없습니다 (cacheKey={}). 다음 새로고침 전까지는 빈 목록을 반환합니다.", cacheKey);
           return List.of();
         });
+
+    long completed = System.nanoTime();
+    // DEBUG 설정 시 Oracle 조회와 JSON 변환의 실제 구간별 지연을 확인합니다.
+    log.debug("[TourCachePerf] key={} db_ms={} deserialize_ms={} total_ms={}",
+        cacheKey,
+        (afterDb - begin) / 1_000_000.0,
+        (completed - afterDb) / 1_000_000.0,
+        (completed - begin) / 1_000_000.0);
+    return result;
+  }
+
+  /**
+   * 여러 캐시 키를 한 번에 읽되, 반환 목록은 호출자가 전달한 키 순서로 합칩니다.
+   * 관광산업 전체 보기처럼 4개 캐시를 순차 조회하던 구간의 DB 왕복을 줄입니다.
+   */
+  public List<TourItemResponse> getCachedMany(List<String> cacheKeys) {
+    if (cacheKeys == null || cacheKeys.isEmpty()) {
+      return List.of();
+    }
+
+    Map<String, String> payloads = findCachedPayloads(cacheKeys);
+    List<TourItemResponse> merged = new ArrayList<>();
+    for (String cacheKey : cacheKeys) {
+      String payload = payloads.get(cacheKey);
+      if (payload == null) {
+        log.warn("TourAPI 캐시가 아직 없습니다 (cacheKey={}).", cacheKey);
+        continue;
+      }
+      merged.addAll(deserialize(payload));
+    }
+    return merged;
+  }
+
+  // DB 결과는 IN 절 정렬을 보장하지 않으므로 키별로 매핑하여 원래 순서를 복원합니다.
+  private Map<String, String> findCachedPayloads(List<String> cacheKeys) {
+    return cacheEntryRepository.findByCacheKeyIn(cacheKeys).stream()
+        .collect(Collectors.toMap(TourCacheEntry::getCacheKey, TourCacheEntry::getPayloadJson));
   }
 
   /**
@@ -96,8 +140,14 @@ public class TourCacheService {
     if (contentId == null || contentId.isBlank()) {
       return Optional.empty();
     }
+    // 최대 10회 조회하던 작업을 키 10개에 대한 단일 DB 조회로 변경합니다.
+    Map<String, String> payloads = findCachedPayloads(List.of(ALL_CACHE_KEYS));
     for (String cacheKey : ALL_CACHE_KEYS) {
-      Optional<TourItemResponse> match = getCached(cacheKey).stream()
+      String payload = payloads.get(cacheKey);
+      if (payload == null) {
+        continue;
+      }
+      Optional<TourItemResponse> match = deserialize(payload).stream()
           .filter(item -> contentId.equals(item.getContentId()))
           .findFirst();
       if (match.isPresent()) {
@@ -108,43 +158,51 @@ public class TourCacheService {
   }
 
   /**
-   * 앱 기동 시 웜업이 실제로 필요한지 판단한다.
-   * - 캐시 10개 중 하나라도 비어있으면(최초 기동, 일부 갱신 실패 등) true
-   * - 전부 있어도 가장 오래된 캐시가 STARTUP_SKIP_WINDOW(30분)보다 오래됐으면 true
-   * - 방금 전에 이미 갱신됐다면(짧은 간격의 재시작 반복 등) false -> 웜업 생략
+   * 기동 시 정기 갱신 누락 여부를 확인한다.
+   * - 모든 키가 없거나 마지막 정기 갱신을 놓쳤으면 전체 10개 갱신
+   * - 일부 키만 없고 나머지는 이번 정기 주기에 갱신됐다면 누락된 키만 갱신
+   * - 성공 기록이 하나라도 있으면 나머지 오래된 키는 다음 정기 갱신까지 유지한다.
+   *   (부분 실패 후 재기동할 때마다 외부 API 전체 재호출하는 현상 방지)
    */
-  public boolean isWarmupNeeded() {
-    List<TourCacheEntry> entries = cacheEntryRepository.findAll();
-    if (entries.size() < EXPECTED_CACHE_KEY_COUNT) {
-      return true;
+  public void refreshOnStartup() {
+    Map<String, LocalDateTime> fetchedAtByKey = new HashMap<>();
+    for (TourCacheEntry entry : cacheEntryRepository.findAll()) {
+      fetchedAtByKey.put(entry.getCacheKey(), entry.getFetchedAt());
     }
-    LocalDateTime oldestFetchedAt = entries.stream()
-        .map(TourCacheEntry::getFetchedAt)
-        .min(Comparator.naturalOrder())
-        .orElse(null);
-    return oldestFetchedAt == null || oldestFetchedAt.isBefore(LocalDateTime.now().minus(STARTUP_SKIP_WINDOW));
+    List<String> keys = DailyCacheRefreshPolicy.selectStartupKeys(
+        List.of(ALL_CACHE_KEYS), fetchedAtByKey, DAILY_REFRESH_AT, REFRESH_ZONE,
+        ZoneId.systemDefault(), Instant.now());
+    if (keys.isEmpty()) {
+      log.info("TourAPI 정기 갱신 기록이 있어 기동 시 재호출을 생략합니다.");
+      return;
+    }
+    log.info("TourAPI 기동 시 보완 갱신: {}개 키", keys.size());
+    refreshSelected(new HashSet<>(keys));
   }
 
-  /** 스케줄러 전용 — 실제로 TourAPI를 호출해서 캐시 테이블을 통째로 갱신한다. */
+  /** 매일 정기 갱신은 기존처럼 10개 캐시를 모두 업데이트한다. */
   public void refreshAll() {
-    log.info("TourAPI 캐시 새로고침 시작");
+    log.info("TourAPI 캐시 정기 갱신 시작");
+    refreshSelected(new HashSet<>(List.of(ALL_CACHE_KEYS)));
+    log.info("TourAPI 캐시 정기 갱신 완료");
+  }
 
-    safeRefresh(FESTIVALS_ALL, this::fetchFestivalsFromApi);
+  // 한 곳에서만 키 → API 호출을 정의해 전체/선택 갱신 로직의 중복을 방지한다.
+  private void refreshSelected(Set<String> selectedKeys) {
+    if (selectedKeys.contains(FESTIVALS_ALL)) safeRefresh(FESTIVALS_ALL, this::fetchFestivalsFromApi);
 
-    safeRefresh("destinations:전체", () -> fetchAreaBasedList(CONTENT_TYPE_TOUR_SPOT, null, null, "전체", 40));
-    safeRefresh("destinations:체험 관광", () -> fetchAreaBasedList(
+    if (selectedKeys.contains("destinations:전체")) safeRefresh("destinations:전체", () -> fetchAreaBasedList(CONTENT_TYPE_TOUR_SPOT, null, null, "전체", 40));
+    if (selectedKeys.contains("destinations:체험 관광")) safeRefresh("destinations:체험 관광", () -> fetchAreaBasedList(
         CONTENT_TYPE_TOUR_SPOT, "A02", tourCategoryService.resolveCat2("A02", "체험").orElse(null), "체험 관광", 40));
-    safeRefresh("destinations:역사 관광", () -> fetchAreaBasedList(
+    if (selectedKeys.contains("destinations:역사 관광")) safeRefresh("destinations:역사 관광", () -> fetchAreaBasedList(
         CONTENT_TYPE_TOUR_SPOT, "A02", tourCategoryService.resolveCat2("A02", "역사").orElse(null), "역사 관광", 40));
-    safeRefresh("destinations:자연 관광", () -> fetchAreaBasedList(CONTENT_TYPE_TOUR_SPOT, "A01", null, "자연 관광", 40));
-    safeRefresh("destinations:문화 관광", () -> fetchAreaBasedList(CONTENT_TYPE_CULTURE_FACILITY, null, null, "문화 관광", 40));
+    if (selectedKeys.contains("destinations:자연 관광")) safeRefresh("destinations:자연 관광", () -> fetchAreaBasedList(CONTENT_TYPE_TOUR_SPOT, "A01", null, "자연 관광", 40));
+    if (selectedKeys.contains("destinations:문화 관광")) safeRefresh("destinations:문화 관광", () -> fetchAreaBasedList(CONTENT_TYPE_CULTURE_FACILITY, null, null, "문화 관광", 40));
 
-    safeRefresh("industry:숙박", () -> fetchAreaBasedList(CONTENT_TYPE_ACCOMMODATION, null, null, "숙박", 40));
-    safeRefresh("industry:음식", () -> fetchAreaBasedList(CONTENT_TYPE_RESTAURANT, null, null, "음식", 40));
-    safeRefresh("industry:레저 스포츠", () -> fetchAreaBasedList(CONTENT_TYPE_LEPORTS, null, null, "레저 스포츠", 40));
-    safeRefresh("industry:쇼핑", () -> fetchAreaBasedList(CONTENT_TYPE_SHOPPING, null, null, "쇼핑", 40));
-
-    log.info("TourAPI 캐시 새로고침 완료");
+    if (selectedKeys.contains("industry:숙박")) safeRefresh("industry:숙박", () -> fetchAreaBasedList(CONTENT_TYPE_ACCOMMODATION, null, null, "숙박", 40));
+    if (selectedKeys.contains("industry:음식")) safeRefresh("industry:음식", () -> fetchAreaBasedList(CONTENT_TYPE_RESTAURANT, null, null, "음식", 40));
+    if (selectedKeys.contains("industry:레저 스포츠")) safeRefresh("industry:레저 스포츠", () -> fetchAreaBasedList(CONTENT_TYPE_LEPORTS, null, null, "레저 스포츠", 40));
+    if (selectedKeys.contains("industry:쇼핑")) safeRefresh("industry:쇼핑", () -> fetchAreaBasedList(CONTENT_TYPE_SHOPPING, null, null, "쇼핑", 40));
   }
 
   // 물리 조회 10개 중 하나가 실패해도(TourAPI 일시 장애/타임아웃 등) 나머지는 정상적으로 갱신되도록
@@ -186,7 +244,7 @@ public class TourCacheService {
   }
 
   // ------------------------------------------------------------------
-  // 아래부터는 실제 TourAPI(외부) 호출 로직. refreshAll()에서만 호출된다.
+  // 아래부터는 외부 TourAPI 호출 로직. 정기 갱신 또는 기동 보완 갱신에서만 호출한다.
   // ------------------------------------------------------------------
 
   private List<TourItemResponse> fetchFestivalsFromApi() {

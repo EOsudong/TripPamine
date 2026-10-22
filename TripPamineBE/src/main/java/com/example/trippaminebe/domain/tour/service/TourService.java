@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +58,8 @@ public class TourService {
     String normalizedFilter = normalize(filter);
     if ("전체".equals(normalizedFilter)) {
       // "전체"는 물리적으로 캐시된 항목이 아니라 숙박/음식/레저 스포츠/쇼핑 4개를 합친 결과
-      List<TourItemResponse> merged = new ArrayList<>();
-      merged.addAll(tourCacheService.getCached("industry:숙박"));
-      merged.addAll(tourCacheService.getCached("industry:음식"));
-      merged.addAll(tourCacheService.getCached("industry:레저 스포츠"));
-      merged.addAll(tourCacheService.getCached("industry:쇼핑"));
-      return merged;
+      return tourCacheService.getCachedMany(List.of(
+          "industry:숙박", "industry:음식", "industry:레저 스포츠", "industry:쇼핑"));
     }
     return tourCacheService.getCached("industry:" + normalizedFilter);
   }

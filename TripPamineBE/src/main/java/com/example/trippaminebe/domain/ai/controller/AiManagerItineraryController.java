@@ -2,8 +2,10 @@ package com.example.trippaminebe.domain.ai.controller;
 
 import com.example.trippaminebe.domain.ai.dto.TravelItinerarySnapshot;
 import com.example.trippaminebe.domain.ai.dto.NearbyIndoorAlternativesResponse;
+import com.example.trippaminebe.domain.ai.dto.NearbyCategoryAlternativesResponse;
 import com.example.trippaminebe.domain.ai.service.TravelItineraryContextService;
 import com.example.trippaminebe.domain.ai.service.TravelNearbyIndoorPoiService;
+import com.example.trippaminebe.domain.ai.service.TravelNearbyCategoryPoiService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,7 @@ public class AiManagerItineraryController {
 
     private final TravelItineraryContextService itineraryContextService;
     private final TravelNearbyIndoorPoiService nearbyIndoorPoiService;
+    private final TravelNearbyCategoryPoiService nearbyCategoryPoiService;
 
     @GetMapping("/{planId}")
     public TravelItinerarySnapshot getItinerary(
@@ -61,6 +64,27 @@ public class AiManagerItineraryController {
         }
         return nearbyIndoorPoiService.suggest(
                 userDetails.getUser().getId(), planId, day, sequence, radiusMeters);
+    }
+
+    /**
+     * STEP 8.4: 사용자 여행 일정 중심의 음식점·카페·문화시설·관광지 통합 검색.
+     * GET /.../{sequence}/nearby-alternatives?intent=RAIN&radiusMeters=1500
+     */
+    @GetMapping("/{planId}/days/{day}/places/{sequence}/nearby-alternatives")
+    public NearbyCategoryAlternativesResponse findNearbyAlternatives(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId,
+            @PathVariable int day,
+            @PathVariable int sequence,
+            @RequestParam(defaultValue = "1500") int radiusMeters,
+            @RequestParam(defaultValue = "RAIN") TravelNearbyCategoryPoiService.Intent intent
+    ) {
+        if (userDetails == null || userDetails.getUser() == null
+                || userDetails.getUser().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        return nearbyCategoryPoiService.suggest(userDetails.getUser().getId(),
+                planId, day, sequence, radiusMeters, intent, java.util.Set.of());
     }
 
 }

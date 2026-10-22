@@ -12,13 +12,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
+import com.example.trippaminebe.common.cache.DailyCacheRefreshPolicy;
+
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -38,17 +45,13 @@ public class FinlifeCacheService {
   private static final String DEPOSIT_OPERATION = "depositProductsSearch.json";
   private static final String SAVING_OPERATION = "savingProductsSearch.json";
 
-  // refreshAll()이 채우는 캐시 키 총 개수 (예금 2업권 + 적금 2업권)
-  private static final int EXPECTED_CACHE_KEY_COUNT = 4;
-
-  private static final String[] ALL_CACHE_KEYS = {
+  // @Scheduled(cron = "0 10 9 * * *", zone = "Asia/Seoul")와 일치하는 기동 보완 기준.
+  private static final LocalTime DAILY_REFRESH_AT = LocalTime.of(9, 10);
+  private static final ZoneId REFRESH_ZONE = ZoneId.of("Asia/Seoul");
+  // 기동 보완 갱신과 정기 갱신의 대상 키가 서로 달라지지 않도록 한곳에서 정의한다.
+  private static final List<String> ALL_CACHE_KEYS = List.of(
       cacheKey("deposit", TOP_FIN_GRP_BANK), cacheKey("deposit", TOP_FIN_GRP_SAVINGS_BANK),
-      cacheKey("saving", TOP_FIN_GRP_BANK), cacheKey("saving", TOP_FIN_GRP_SAVINGS_BANK),
-  };
-
-  // 캐시가 이 시간 안에 갱신된 적이 있으면, 재시작하더라도 웜업을 건너뛴다.
-  // (개발 중 재배포/재시작을 자주 할 때마다 FINLIFE API를 다시 호출하는 걸 막기 위함)
-  private static final Duration STARTUP_SKIP_WINDOW = Duration.ofMinutes(30);
+      cacheKey("saving", TOP_FIN_GRP_BANK), cacheKey("saving", TOP_FIN_GRP_SAVINGS_BANK));
 
   private final FinlifeApiClient finlifeApiClient;
   private final FinlifeCacheEntryRepository cacheEntryRepository;
@@ -69,33 +72,38 @@ public class FinlifeCacheService {
   }
 
   /**
-   * 앱 기동 시 웜업이 실제로 필요한지 판단한다.
-   * - 캐시 4개 중 하나라도 비어있으면(최초 기동, 일부 갱신 실패 등) true
-   * - 전부 있어도 가장 오래된 캐시가 STARTUP_SKIP_WINDOW(30분)보다 오래됐으면 true
-   * - 방금 전에 이미 갱신됐다면(짧은 간격의 재시작 반복 등) false -> 웜업 생략
+   * 서버 기동 시 캐시 상태를 점검하고 필요한 키만 보완한다.
+   * 최근 정기 갱신 기록이 하나라도 있으면 오래된 나머지 키는 재시작만으로 재호출하지 않는다.
    */
-  public boolean isWarmupNeeded() {
-    List<FinlifeCacheEntry> entries = cacheEntryRepository.findAll();
-    if (entries.size() < EXPECTED_CACHE_KEY_COUNT) {
-      return true;
+  public void refreshOnStartup() {
+    Map<String, LocalDateTime> fetchedAtByKey = new HashMap<>();
+    for (FinlifeCacheEntry entry : cacheEntryRepository.findAll()) {
+      fetchedAtByKey.put(entry.getCacheKey(), entry.getFetchedAt());
     }
-    LocalDateTime oldestFetchedAt = entries.stream()
-        .map(FinlifeCacheEntry::getFetchedAt)
-        .min(Comparator.naturalOrder())
-        .orElse(null);
-    return oldestFetchedAt == null || oldestFetchedAt.isBefore(LocalDateTime.now().minus(STARTUP_SKIP_WINDOW));
+    List<String> keys = DailyCacheRefreshPolicy.selectStartupKeys(
+        ALL_CACHE_KEYS, fetchedAtByKey, DAILY_REFRESH_AT, REFRESH_ZONE,
+        ZoneId.systemDefault(), Instant.now());
+    if (keys.isEmpty()) {
+      log.info("FINLIFE 정기 갱신 기록이 있어 기동 시 재호출을 생략합니다.");
+      return;
+    }
+    log.info("FINLIFE 기동 시 보완 갱신: {}개 키", keys.size());
+    refreshSelected(new HashSet<>(keys));
   }
 
-  /** 스케줄러 전용 — 실제로 FINLIFE API를 호출해서 캐시 테이블을 통째로 갱신한다. */
+  /** 기존 정기 스케줄은 매일 4개 키 모두 갱신한다. */
   public void refreshAll() {
-    log.info("FINLIFE(금융상품 한눈에) 캐시 새로고침 시작");
+    log.info("FINLIFE 캐시 정기 갱신 시작");
+    refreshSelected(new HashSet<>(ALL_CACHE_KEYS));
+    log.info("FINLIFE 캐시 정기 갱신 완료");
+  }
 
-    safeRefresh(cacheKey("deposit", TOP_FIN_GRP_BANK), () -> fetchProducts(DEPOSIT_OPERATION, TOP_FIN_GRP_BANK, "deposit"));
-    safeRefresh(cacheKey("deposit", TOP_FIN_GRP_SAVINGS_BANK), () -> fetchProducts(DEPOSIT_OPERATION, TOP_FIN_GRP_SAVINGS_BANK, "deposit"));
-    safeRefresh(cacheKey("saving", TOP_FIN_GRP_BANK), () -> fetchProducts(SAVING_OPERATION, TOP_FIN_GRP_BANK, "saving"));
-    safeRefresh(cacheKey("saving", TOP_FIN_GRP_SAVINGS_BANK), () -> fetchProducts(SAVING_OPERATION, TOP_FIN_GRP_SAVINGS_BANK, "saving"));
-
-    log.info("FINLIFE(금융상품 한눈에) 캐시 새로고침 완료");
+  // 전체/선택 갱신 모두 하나의 키 → API 연결 규칙을 사용한다.
+  private void refreshSelected(Set<String> selectedKeys) {
+    if (selectedKeys.contains(cacheKey("deposit", TOP_FIN_GRP_BANK))) safeRefresh(cacheKey("deposit", TOP_FIN_GRP_BANK), () -> fetchProducts(DEPOSIT_OPERATION, TOP_FIN_GRP_BANK, "deposit"));
+    if (selectedKeys.contains(cacheKey("deposit", TOP_FIN_GRP_SAVINGS_BANK))) safeRefresh(cacheKey("deposit", TOP_FIN_GRP_SAVINGS_BANK), () -> fetchProducts(DEPOSIT_OPERATION, TOP_FIN_GRP_SAVINGS_BANK, "deposit"));
+    if (selectedKeys.contains(cacheKey("saving", TOP_FIN_GRP_BANK))) safeRefresh(cacheKey("saving", TOP_FIN_GRP_BANK), () -> fetchProducts(SAVING_OPERATION, TOP_FIN_GRP_BANK, "saving"));
+    if (selectedKeys.contains(cacheKey("saving", TOP_FIN_GRP_SAVINGS_BANK))) safeRefresh(cacheKey("saving", TOP_FIN_GRP_SAVINGS_BANK), () -> fetchProducts(SAVING_OPERATION, TOP_FIN_GRP_SAVINGS_BANK, "saving"));
   }
 
   // 물리 조회 4개 중 하나가 실패해도(FINLIFE API 일시 장애/타임아웃/인증키 오류 등) 나머지는 정상적으로

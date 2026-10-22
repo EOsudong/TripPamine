@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -25,6 +26,10 @@ public class AiManagerTravelWeatherAnswerService {
 
 	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 	private static final int MAX_DAYS = 7;
+
+	// 한글 단어 사이의 일부인 '비가'는 강수 표현이 아니다.
+	// 예: '여행 준비가 궁금해'에 들어 있는 '비가'를 비 소식으로 오해하지 않는다.
+	private static final Pattern RAIN_SUBJECT = Pattern.compile("(?<![가-힣])비가");
 
 	private static final Set<String> GENERIC_WORDS = Set.of(
 			"여행", "일정", "계획", "가족", "휴가",
@@ -53,9 +58,11 @@ public class AiManagerTravelWeatherAnswerService {
 	) {
 		String question = normalize(message);
 
-		boolean directWeatherQuestion = isTravelWeatherQuestion(question);
+		// 날씨 의도 판정에는 공백이 남아 있는 사용자 원문을 사용한다.
+		// 공백을 먼저 제거하면 '준비가'와 '비가'를 구분할 수 없다.
+		boolean directWeatherQuestion = isTravelWeatherQuestion(message);
 		String previousWeatherQuestion = directWeatherQuestion
-				? null : recentTravelWeatherQuestion(question, previousUserMessages);
+				? null : recentTravelWeatherQuestion(message, previousUserMessages);
 		boolean rainFollowup = previousWeatherQuestion != null;
 		// 같은 우천 질문이라도 '어떻게 대비?'와 '어디로 갈까?'는 다른 의도다.
 		boolean alternativePlaceRequested = isAlternativePlaceRequest(question);
@@ -317,12 +324,30 @@ public class AiManagerTravelWeatherAnswerService {
 		return answer.toString();
 	}
 
-	/** 여행 날씨를 명시적으로 묻는 질문인지 확인한다. */
-	private static boolean isTravelWeatherQuestion(String question) {
-		return question.contains("여행") && contains(question,
-				"날씨", "예보", "강수", "기온",
-				"비가", "비올", "비오", "바람", "풍랑",
-				"우천", "폭우");
+	/**
+	 * 여행과 날씨가 함께 언급되어도, 실제 예보를 '요청'한 경우에만 DB/API를 조회한다.
+	 * '비가 올까 봐 걱정돼'처럼 마음을 표현한 경우는 일반 대화로 넘긴다.
+	 * 단, 날씨를 명시적으로 알려 달라거나 질문 형태로 물으면 기존 예보 기능을 유지한다.
+	 */
+	static boolean isTravelWeatherQuestion(String message) {
+		String question = normalize(message);
+		boolean mentionsWeather = contains(question,
+				"날씨", "예보", "강수", "기온", "비올", "비오",
+				"바람", "풍랑", "우천", "폭우")
+				|| RAIN_SUBJECT.matcher(message == null ? "" : message).find();
+		if (!question.contains("여행") || !mentionsWeather) {
+			return false;
+		}
+
+		// '걱정돼'라는 말만으로 긴 날짜별 예보를 실행하면 공감 대화가 끊긴다.
+		// 질문/조회/조정 의도가 명확하거나 짧은 '여행 날씨' 질의일 때만 도구를 사용한다.
+		return contains(question,
+				"알려", "조회", "확인", "어때", "어떨", "어떻게",
+				"몇도", "강수확률", "추천", "대비", "대안",
+				"조정", "변경", "바꿔", "바꾸")
+				|| message.contains("?") || message.contains("？")
+				|| question.endsWith("날씨") || question.endsWith("예보")
+				|| question.endsWith("비올까") || question.endsWith("비가올까");
 	}
 
 	/**
@@ -338,15 +363,18 @@ public class AiManagerTravelWeatherAnswerService {
 	}
 
 	/** 우천에 대한 대비·대체 장소를 묻는 짧은 후속 질문만 허용한다. */
-	private static boolean isRainContingency(String question) {
+	static boolean isRainContingency(String message) {
+		String question = normalize(message);
 		if (question.isBlank() || question.length() > 120) {
 			return false;
 		}
 		if (isAlternativePlaceRequest(question)) {
 			return true;
 		}
-		return contains(question, "비가", "비오", "비올", "비내", "우천", "소나기", "강수", "실내")
-				&& contains(question,
+		// '준비가'가 들어 있다는 이유만으로 우천 후속 질문이라고 판단하지 않는다.
+		boolean rainMention = RAIN_SUBJECT.matcher(message == null ? "" : message).find()
+				|| contains(question, "비오", "비올", "비내", "우천", "소나기", "강수", "실내");
+		return rainMention && contains(question,
 				"혹시", "만약", "오면", "온다면", "내리면", "어떡",
 				"대비", "대안", "조정", "바꿔", "바꾸", "준비", "그럼");
 	}
@@ -445,18 +473,19 @@ public class AiManagerTravelWeatherAnswerService {
 	 * 최근 사용자 대화에서 마지막 여행 날씨 질문만 복원한다.
 	 * 중간에 무관한 발화가 있으면 이전 여행으로 돌아가지 않는다.
 	 */
-	private static String recentTravelWeatherQuestion(
-			String question, List<String> previousUserMessages
+	static String recentTravelWeatherQuestion(
+			String message, List<String> previousUserMessages
 	) {
-		if (!isRainContingency(question) || previousUserMessages == null) {
+		if (!isRainContingency(message) || previousUserMessages == null) {
 			return null;
 		}
 		int checked = 0;
 		for (int i = previousUserMessages.size() - 1;
 				i >= 0 && checked < 3; i--, checked++) {
-			String previous = normalize(previousUserMessages.get(i));
+			// 과거 발화도 원문 그대로 확인해야 '준비가' 같은 오탐을 방지한다.
+			String previous = previousUserMessages.get(i);
 			if (isTravelWeatherQuestion(previous)) {
-				return previous;
+				return normalize(previous);
 			}
 			if (!isRainContingency(previous)) {
 				return null;

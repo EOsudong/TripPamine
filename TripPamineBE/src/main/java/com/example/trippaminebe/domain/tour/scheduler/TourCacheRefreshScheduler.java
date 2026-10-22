@@ -10,11 +10,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * TourAPI 캐시(TOUR_CACHE_ENTRY)를 채우는 트리거 2가지.
- *   1) 앱이 완전히 뜬 직후 1번 (ApplicationReadyEvent) — 배포 직후에도 24시간을 기다리지 않고
- *      바로 캐시가 채워지도록 하는 웜업. 단, 개발 중 재시작을 자주 하는 경우까지 매번 TourAPI를
- *      다시 호출하지 않도록 TourCacheService.isWarmupNeeded()로 "정말 필요할 때만" 실행한다
- *      (기본값: 캐시가 30분 이내에 이미 갱신된 상태면 건너뜀 — TourCacheService 참고).
- *   2) 매일 오전 9시 (cron) — 이후로는 하루 1번만 TourAPI를 호출해서 갱신.
+ *   1) 서버 기동: 비어있는 캐시 또는 놓친 정기 갱신만 보완한다.
+ *   2) 한국시간 매일 09:00: 기존과 동일하게 전체 캐시 갱신.
  */
 @Slf4j
 @Component
@@ -25,12 +22,8 @@ public class TourCacheRefreshScheduler {
 
   @EventListener(ApplicationReadyEvent.class)
   public void warmUpOnStartup() {
-    if (!tourCacheService.isWarmupNeeded()) {
-      log.info("TourAPI 캐시가 이미 최신 상태라 기동 시 웜업을 건너뜁니다.");
-      return;
-    }
-    log.info("앱 기동 완료 - TourAPI 캐시 최초 적재를 시작합니다.");
-    tourCacheService.refreshAll();
+    // 30분 경과만으로 전체 API를 다시 호출하지 않고 정기 주기 누락 여부를 검사한다.
+    tourCacheService.refreshOnStartup();
   }
 
   // 서버 실행 환경의 기본 타임존과 무관하게 항상 한국 시간 오전 9시에 돌도록 zone을 명시

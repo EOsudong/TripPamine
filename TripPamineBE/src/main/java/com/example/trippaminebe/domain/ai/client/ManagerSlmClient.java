@@ -84,7 +84,9 @@ public class ManagerSlmClient {
 				new SimpleClientHttpRequestFactory();
 
 		factory.setConnectTimeout(3000);
-		factory.setReadTimeout(30000);
+		// 로컬 Qwen3는 CPU 추론이 길어질 수 있으므로 384토큰 응답의 읽기 시간을 확보한다.
+		// 연결 시간 제한(3초)은 그대로 유지하여 서버 미기동을 빠르게 확인한다.
+		factory.setReadTimeout(60000);
 
 		this.restTemplate = new RestTemplate(factory);
 	}
@@ -225,7 +227,9 @@ public class ManagerSlmClient {
 				Map.of("enable_thinking", false)
 		);
 
-		request.put("max_tokens", 180);
+		// 기존 180토큰은 짧은 한국어 설명도 length로 잘려 502가 발생했다.
+		// 불완전한 답변을 허용하는 대신 생성 예산을 늘리고 기존 종료 검증을 유지한다.
+		request.put("max_tokens", 384);
 		request.put("stream", false);
 
 		try {

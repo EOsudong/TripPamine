@@ -21,20 +21,46 @@ final class AiManagerEmotionAnalysisPolicy {
     ) {
         String question = normalize(message);
 
+        // 사용자가 '나는 불안한 게 아니라'라고 정정한 표현은 감정 증거에서 제외한다.
+        // 다른 감정을 실제로 밝힌 경우(예: '불안한 게 아니라 속상해')는 분석할 수 있다.
+        String emotionEvidence = question
+                .replace("불안한게아니라", "")
+                .replace("불안한건아니", "")
+                .replace("불안한것은아니", "")
+                .replace("불안하지않", "")
+                .replace("불안하진않", "")
+                .replace("걱정하는게아니라", "")
+                .replace("걱정하는건아니", "")
+                .replace("걱정되지않", "");
+
         if (contains(
-                question,
+                emotionEvidence,
                 "속상", "짜증", "화나", "화가나", "불안", "걱정",
                 "우울", "슬프", "외롭", "무섭", "두렵", "힘들",
                 "답답", "괴롭", "서운", "억울", "불쾌",
-                "행복", "기쁘", "신나", "즐거", "감동",
+                "행복", "기쁘", "신나", "즐거", "감동", "기대", "설레",
                 "지쳤", "스트레스", "울고싶"
         )) {
             return true;
         }
 
+        // 부정된 감정 외에 새로 밝힌 감정이 없다면, 감정명 대신 사용자의 정정을 존중한다.
+        if (!question.equals(emotionEvidence)) {
+            return false;
+        }
+
         if (AiManagerTravelInquiryPolicy.isPersonalTravelLookup(message)
                 || AiManagerTravelInquiryPolicy.isCorrectionFollowup(
                         message, previousUserMessages)) {
+            return false;
+        }
+
+        // 여행 준비물/순서를 묻는 중립적인 정보 질문은 감정 분석을 강제하지 않는다.
+        // 단, 앞부분에서 실제 감정을 명시한 질문은 이미 true로 처리했다.
+        if (question.length() <= 200
+                && contains(question, "여행", "숙소", "예약")
+                && contains(question, "준비", "준비물", "체크리스트", "뭐부터", "무엇부터",
+                        "어떻게", "알려", "추천")) {
             return false;
         }
 

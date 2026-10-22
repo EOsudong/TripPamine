@@ -3,7 +3,7 @@ package com.example.trippaminebe.domain.ai.dto;
 import java.util.List;
 
 /**
- * STEP 8: 인증된 여행 일정의 한 방문지를 중심으로 검색한 읽기 전용 실내 후보.
+ * 인증된 여행 일정의 한 방문지를 중심으로 검색한 읽기 전용 실내 후보.
  * 거리(m)는 직선거리이며 도보·차량 이동 거리 또는 소요 시간이 아니다.
  */
 public record NearbyIndoorAlternativesResponse(

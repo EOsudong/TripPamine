@@ -66,7 +66,6 @@ function EmotionChatSession({
   const [changing, setChanging] = useState(false);
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [emotionName, setEmotionName] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
@@ -126,7 +125,6 @@ function EmotionChatSession({
     if (loading || changing) return;
     setMessages([]);
     setConversationId(null);
-    setEmotionName(null);
     setError(null);
   };
   const toggleEmotion = async () => {
@@ -136,7 +134,6 @@ function EmotionChatSession({
     try {
       const settings = await changeEmotionConsentApi(!emotionEnabled);
       setEmotionEnabled(settings.emotionEnabled);
-      if (!settings.emotionEnabled) setEmotionName(null);
     } catch {
       setError("감정 분석 동의를 변경하지 못했어요.");
     } finally {
@@ -166,8 +163,7 @@ function EmotionChatSession({
         })),
       );
       setConversationId(id);
-      setEmotionName(null);
-    } catch {
+      } catch {
       setError("이전 대화를 불러오지 못했어요.");
     } finally {
       setChanging(false);
@@ -181,8 +177,6 @@ function EmotionChatSession({
     sendingRef.current = true;
     setLoading(true);
     setError(null);
-    // 새 발화에는 이전 감정 분류를 재사용하지 않는다.
-    setEmotionName(null);
     setInput("");
     const previous = [...messages];
     setMessages([...previous, { role: "user", content: message }]);
@@ -214,7 +208,6 @@ function EmotionChatSession({
         ...current,
         { role: "assistant", content: result.answer },
       ]);
-      setEmotionName(result.emotionName ?? null);
     } catch (cause) {
       setMessages(previous);
       setInput(message);
@@ -416,18 +409,7 @@ function EmotionChatSession({
           )}
         </div>
       )}
-      {emotionName && emotionEnabled && (
-        <p
-          className={
-            embedded
-              ? "am-chat-notice"
-              : "bg-sky-50 px-4 py-2 text-xs text-sky-800"
-          }
-        >
-          감정 추정 (참고용): <strong>{emotionName}</strong> · 감정을
-          단정하지 않습니다.
-        </p>
-      )}
+      {/* 감정분류 결과는 분석 기록으로만 남긴다. 추정 라벨을 대화 중 사용자에게 붙이지 않는다. */}
       {error && (
         <p
           role="alert"
