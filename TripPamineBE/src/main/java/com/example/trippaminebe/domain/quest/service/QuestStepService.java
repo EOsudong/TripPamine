@@ -8,6 +8,7 @@ import com.example.trippaminebe.domain.quest.exception.QuestNotFoundException;
 import com.example.trippaminebe.domain.quest.exception.QuestStepNotFoundException;
 import com.example.trippaminebe.domain.quest.repository.QuestRepository;
 import com.example.trippaminebe.domain.quest.repository.QuestStepRepository;
+import com.example.trippaminebe.domain.quest.repository.UserQuestLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class QuestStepService {
 
     private final QuestStepRepository questStepRepository;
     private final QuestRepository questRepository;
+    private final UserQuestLogRepository userQuestLogRepository;
 
     @Transactional(readOnly = true)
     public List<QuestStepResponse> findAllByQuest(Long questId) {
@@ -36,6 +38,7 @@ public class QuestStepService {
 
     public QuestStepResponse create(Long questId, QuestStepRequest request) {
         Quest quest = getQuestOrThrow(questId);
+        ensureNoUserProgress(questId);
 
         int nextOrder = request.getStepOrder() != null
             ? request.getStepOrder()
@@ -65,6 +68,7 @@ public class QuestStepService {
 
     public QuestStepResponse update(Long questId, Long stepId, QuestStepRequest request) {
         QuestStep step = getStepOrThrow(questId, stepId);
+        ensureNoUserProgress(questId);
 
         try {
             step.update(
@@ -87,6 +91,7 @@ public class QuestStepService {
 
     public void delete(Long questId, Long stepId) {
         QuestStep step = getStepOrThrow(questId, stepId);
+        ensureNoUserProgress(questId);
 
         try {
             questStepRepository.delete(step);
@@ -95,6 +100,16 @@ public class QuestStepService {
             // 이미 유저가 이 단계를 클리어한 기록(USER_QUEST_STEP_LOGS)이 남아있으면 삭제할 수 없다.
             throw new IllegalArgumentException(
                 "이미 사용자가 클리어한 단계는 삭제할 수 없습니다."
+            );
+        }
+    }
+
+    private void ensureNoUserProgress(Long questId) {
+        // 버전 관리 도입 전까지 진행 이력이 있는 연쇄 퀘스트의 목표/순서 변경을 금지한다.
+        // 그래야 기존 사용자의 단계 클리어 기록과 보상 근거가 손상되지 않는다.
+        if (userQuestLogRepository.existsByQuest_QuestId(questId)) {
+            throw new IllegalArgumentException(
+                "시작 또는 완료 이력이 있는 퀘스트의 단계는 수정할 수 없습니다. 새 퀘스트를 복제해 등록해주세요."
             );
         }
     }

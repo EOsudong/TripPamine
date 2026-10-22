@@ -837,6 +837,15 @@ export default function QuestDetailPage() {
                               "
                                             />
                                         )
+                                    ) : quest.questType !== "LOCATION" ? (
+                                        // 인증기가 준비되지 않은 유형은 GPS만으로 완료하도록 안내하지 않는다.
+                                        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-6 text-sm leading-7 text-amber-100">
+                                            현장 복합 인증 기능을 준비 중입니다.
+                                            현재 이 퀘스트는 GPS만으로 완료할 수 없습니다.
+                                            <Link to="/quests" className="mt-4 block font-semibold text-cyan-300 underline">
+                                                다른 퀘스트 확인하기
+                                            </Link>
+                                        </div>
                                     ) : (
                                         <>
                                             <MissionProgressCard
@@ -914,6 +923,32 @@ function MissionAcceptCard({
     onStart:
         () => void;
 }) {
+    // 공개 중단된 퀘스트는 상세 URL로 직접 들어와도 수락을 막는다.
+    if (!quest.isActive) {
+        return (
+            <section className="mx-auto max-w-2xl rounded-2xl bg-slate-900 p-8 text-center">
+                <h2 className="text-xl font-black">현재 참여할 수 없는 퀘스트입니다</h2>
+                <Link to="/quests" className="mt-5 inline-block text-cyan-300 underline">퀘스트 목록으로 이동</Link>
+            </section>
+        );
+    }
+
+    // 아직 현장 인증이 구현되지 않은 유형은 수락 버튼을 노출하지 않는다.
+    if (quest.questType !== "LOCATION" && quest.questType !== "CHAIN") {
+        return (
+            <section className="mx-auto max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+                <h2 className="text-xl font-black text-white">현장 인증 준비 중</h2>
+                <p className="mt-4 text-sm leading-7 text-slate-400">
+                    이 유형은 사진·QR 등 추가 인증 방식이 필요합니다.
+                    인증 기능이 준비될 때까지 수락과 보상이 제한됩니다.
+                </p>
+                <Link to="/quests" className="mt-6 inline-block rounded-xl bg-slate-800 px-6 py-3 text-sm font-bold text-slate-200">
+                    다른 퀘스트 보러 가기
+                </Link>
+            </section>
+        );
+    }
+
     if (quest.locked) {
         return (
             <section

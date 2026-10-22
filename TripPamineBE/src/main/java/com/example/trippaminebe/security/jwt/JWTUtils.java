@@ -85,6 +85,12 @@ public class JWTUtils {
     }
   }
 
+  // 관리자 토큰과 일반 사용자 토큰을 서명뿐 아니라 토큰 종류로도 구분한다.
+  // 기존 관리자 토큰에는 이 값이 없으므로 배포 후 관리자 재로그인이 필요하다.
+  public boolean isAdminAccessToken(String token) {
+    return "ADMIN".equals(getClaims(token).get("principal_type", String.class));
+  }
+
   // Access Token 생성 (관리자용 오버로드).
   public String createAccessToken(Admin admin, String status) {
     Date now = new Date();
@@ -92,6 +98,7 @@ public class JWTUtils {
 
     return Jwts.builder()
         .setSubject(admin.getAdminLoginId()) // 토큰의 주인이 누구인지 - 여기선 관리자 로그인 아이디
+        .claim("principal_type", "ADMIN") // 일반 사용자 토큰을 관리자용으로 재사용하지 못하게 구분
         .claim("status", status)      // 토큰 발급 시점의 계정 상태 (참고용 클레임)
         .setIssuedAt(now)                    // 발급 시각
         .setExpiration(expiryDate)           // 만료 시각

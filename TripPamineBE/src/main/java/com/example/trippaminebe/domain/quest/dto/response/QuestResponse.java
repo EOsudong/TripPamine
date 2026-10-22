@@ -42,7 +42,12 @@ public class QuestResponse {
 
     // viewerLevel이 null이면(관리자 조회 등) locked는 항상 false로 내려간다.
     public static QuestResponse from(Quest quest, Integer viewerLevel) {
-        boolean locked = viewerLevel != null && viewerLevel < quest.getRequiredLevel();
+        // 사용자 화면의 잠금 표시가 서버 시작 조건(퀘스트+챕터 레벨)과 일치하도록 계산한다.
+        int requiredLevel = quest.getRequiredLevel() != null ? quest.getRequiredLevel() : 1;
+        if (quest.getChapter() != null && quest.getChapter().getRequiredLevel() != null) {
+            requiredLevel = Math.max(requiredLevel, quest.getChapter().getRequiredLevel());
+        }
+        boolean locked = viewerLevel != null && viewerLevel < requiredLevel;
 
         return QuestResponse.builder()
             .questId(quest.getQuestId())
@@ -59,7 +64,7 @@ public class QuestResponse {
             .thumbnailUrl(quest.getThumbnailUrl())
             .chapterId(quest.getChapter() != null ? quest.getChapter().getChapterId() : null)
             .chapterName(quest.getChapter() != null ? quest.getChapter().getChapterName() : null)
-            .requiredLevel(quest.getRequiredLevel())
+            .requiredLevel(viewerLevel != null ? requiredLevel : quest.getRequiredLevel())
             .isActive(quest.getIsActive())
             .locked(locked)
             .build();

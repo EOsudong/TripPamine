@@ -1,6 +1,7 @@
 package com.example.trippaminebe.domain.quest.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 public class QuestStepRequest {
 
     // 미입력 시: 등록은 서버가 "현재 등록된 단계 수 + 1"로 자동 배정, 수정은 기존 값 유지
+    @Min(value = 1, message = "단계 순서는 1 이상이어야 합니다.")
     @Schema(description = "단계 순서(1부터). 미입력 시 등록은 자동 배정, 수정은 기존 값 유지", example = "1")
     private Integer stepOrder;
 
@@ -33,6 +35,7 @@ public class QuestStepRequest {
     @Schema(description = "목표 경도", example = "126.9768150")
     private BigDecimal targetLng;
 
+    @Min(value = 1, message = "클리어 반경은 1m 이상이어야 합니다.")
     @Schema(description = "클리어 인정 반경(m). 미입력 시 100m", example = "100")
     private Integer clearRadius;
 }

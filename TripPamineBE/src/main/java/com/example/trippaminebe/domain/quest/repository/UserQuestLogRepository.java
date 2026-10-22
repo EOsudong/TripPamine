@@ -18,6 +18,9 @@ public interface UserQuestLogRepository extends JpaRepository<UserQuestLog, Long
     // 이미 진행 중이거나 완료한 퀘스트인지 확인 (중복 시작 방지)
     Optional<UserQuestLog> findByUser_IdAndQuest_QuestId(Long userId, Long questId);
 
+    // 관리자 단계 변경 전 진행/완료 이력 존재 여부 확인
+    boolean existsByQuest_QuestId(Long questId);
+
     // AI 다이어리 생성 시 특정 유저의 퀘스트 성공률 산정용
     long countByUser_IdAndStatus(Long userId, QuestStatus status);
 }

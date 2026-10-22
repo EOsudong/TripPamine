@@ -210,85 +210,55 @@ public class QuestService {
 			Long userId,
 			Long questId
 	) {
+		// 같은 사용자의 두 시작 요청이 동시에 들어와도 로그/도전 횟수는 한 번만 생성한다.
+		User user = lockUserForQuestOperation(userId);
+		Quest quest = getQuestOrThrow(questId);
 
-		Quest quest =
-				getQuestOrThrow(
-						questId
-				);
-
-
-		boolean alreadyHasLog =
-				userQuestLogRepository
-						.findByUser_IdAndQuest_QuestId(
-								userId,
-								questId
-						)
-						.isPresent();
-
-		if (!alreadyHasLog) {
-
-			Integer userLevel =
-					rpgStatsService.findMyLevel(userId);
-
-			if (userLevel < quest.getRequiredLevel()) {
-
-				throw new IllegalArgumentException(
-						"레벨이 부족하여 시작할 수 없는 퀘스트입니다. 필요 레벨: "
-								+ quest.getRequiredLevel()
-								+ ", 현재 레벨: "
-								+ userLevel
-				);
-			}
+		// 기존 진행 기록은 운영자가 퀘스트를 비활성화했더라도 조회할 수 있다.
+		var existingLog = userQuestLogRepository.findByUser_IdAndQuest_QuestId(userId, questId);
+		if (existingLog.isPresent()) {
+			return UserQuestLogResponse.from(existingLog.get());
 		}
 
+		if (!Boolean.TRUE.equals(quest.getIsActive())) {
+			throw new IllegalArgumentException("비공개 또는 비활성화된 퀘스트는 새로 시작할 수 없습니다.");
+		}
 
-		UserQuestLog log =
-				userQuestLogRepository
-						.findByUser_IdAndQuest_QuestId(
-								userId,
-								questId
-						)
-						.orElseGet(() -> {
+		// 현재 실제 인증 구현이 있는 LOCATION/CHAIN만 수락할 수 있다.
+		// 다른 유형은 관리자 작성은 가능하지만 인증기 구현 전에는 수락/보상을 막는다.
+		if (quest.getQuestType() != QuestType.LOCATION && quest.getQuestType() != QuestType.CHAIN) {
+			throw new IllegalArgumentException("해당 퀘스트 유형은 인증 기능을 준비 중이므로 아직 시작할 수 없습니다.");
+		}
 
-							User user =
-									userRepository
-											.findById(
-													userId
-											)
-											.orElseThrow(
-													() ->
-															new IllegalArgumentException(
-																	"존재하지 않는 회원입니다. id="
-																			+ userId
-															)
-											);
+		Integer userLevel = rpgStatsService.findMyLevel(userId);
+		int questRequiredLevel = quest.getRequiredLevel() != null ? quest.getRequiredLevel() : 1;
+		int chapterRequiredLevel = quest.getChapter() != null && quest.getChapter().getRequiredLevel() != null
+				? quest.getChapter().getRequiredLevel() : 1;
+		int requiredLevel = Math.max(questRequiredLevel, chapterRequiredLevel);
 
+		// 챕터의 잠금은 단순 UI 표시가 아니라 서버에서도 반드시 검증한다.
+		if (userLevel < requiredLevel) {
+			throw new IllegalArgumentException(
+					"레벨이 부족하여 시작할 수 없는 퀘스트입니다. 필요 레벨: "
+							+ requiredLevel + ", 현재 레벨: " + userLevel
+			);
+		}
 
-							UserQuestLog newLog =
-									UserQuestLog
-											.builder()
-											.user(user)
-											.quest(quest)
-											.status(
-													QuestStatus.PROGRESS
-											)
-											.build();
+		// 단계가 정의되지 않은 연쇄 퀘스트를 수락하면 사용자가 영원히 진행할 수 없게 된다.
+		if (quest.getQuestType() == QuestType.CHAIN
+				&& questStepRepository.countByQuest_QuestId(questId) == 0) {
+			throw new IllegalArgumentException("등록된 단계가 없는 연쇄 퀘스트는 시작할 수 없습니다.");
+		}
 
-
-							UserQuestLog saved =
-									userQuestLogRepository.save(
-											newLog
-									);
-
-							rpgStatsService.onQuestStarted(user);
-
-							return saved;
-						});
-
-
-		return UserQuestLogResponse.from(
-				log
+		UserQuestLog log = userQuestLogRepository.save(
+				UserQuestLog.builder()
+						.user(user)
+						.quest(quest)
+						.status(QuestStatus.PROGRESS)
+						.build()
 		);
+		rpgStatsService.onQuestStarted(user);
+		return UserQuestLogResponse.from(log);
 	}
 
 
@@ -314,6 +284,8 @@ public class QuestService {
 			QuestClearRequest request
 	) {
 
+		// 사용자 포인트와 퀘스트 로그를 같은 트랜잭션 안에서 직렬화한다.
+		lockUserForQuestOperation(userId);
 		Quest quest =
 				getQuestOrThrow(
 						questId
@@ -324,13 +296,15 @@ public class QuestService {
 		 * 연쇄(CHAIN) 퀘스트는 좌표 하나만 검증하는 이 엔드포인트로 클리어할 수 없다.
 		 * 단계별로 /quests/{questId}/steps/{stepId}/clear 를 순서대로 호출해야 한다.
 		 */
-		if (
-				quest.getQuestType()
-						== QuestType.CHAIN
-		) {
-
+		if (quest.getQuestType() == QuestType.CHAIN) {
 			throw new IllegalArgumentException(
 					"연쇄 퀘스트는 단계별 클리어 API(/quests/" + questId + "/steps/{stepId}/clear)를 사용해주세요."
+			);
+		}
+		// PHOTO/DISCOVERY/ACTION은 아직 별도 인증기가 없으므로 GPS만으로 보상받을 수 없다.
+		if (quest.getQuestType() != QuestType.LOCATION) {
+			throw new IllegalArgumentException(
+					"해당 퀘스트 유형은 현장 복합 인증 기능을 준비 중입니다. GPS만으로 완료할 수 없습니다."
 			);
 		}
 
@@ -370,20 +344,7 @@ public class QuestService {
 		 * GPS 신호 자체가 너무 부정확한 경우에는
 		 * 거리 계산을 수행하지 않는다.
 		 */
-		if (
-				request.getAccuracyMeters() != null
-						&&
-						request.getAccuracyMeters()
-								> MAX_ACCEPTABLE_ACCURACY_METERS
-		) {
-
-			throw new IllegalArgumentException(
-					"GPS 신호가 약합니다. 실외의 개방된 장소에서 다시 시도해주세요. "
-							+ "(오차 반경: "
-							+ request.getAccuracyMeters()
-							+ "m)"
-			);
-		}
+		validateGpsRequest(request);
 
 
 		int clearRadius =
@@ -583,6 +544,8 @@ public class QuestService {
 			QuestClearRequest request
 	) {
 
+		// 단계 성공 로그와 최종 보상이 경쟁 요청에 의해 두 번 기록되지 않도록 잠근다.
+		lockUserForQuestOperation(userId);
 		Quest quest =
 				getQuestOrThrow(
 						questId
@@ -673,20 +636,7 @@ public class QuestService {
 		}
 
 
-		if (
-				request.getAccuracyMeters() != null
-						&&
-						request.getAccuracyMeters()
-								> MAX_ACCEPTABLE_ACCURACY_METERS
-		) {
-
-			throw new IllegalArgumentException(
-					"GPS 신호가 약합니다. 실외의 개방된 장소에서 다시 시도해주세요. "
-							+ "(오차 반경: "
-							+ request.getAccuracyMeters()
-							+ "m)"
-			);
-		}
+		validateGpsRequest(request);
 
 
 		int clearRadius =
@@ -943,6 +893,24 @@ public class QuestService {
 						request.getChapterId()
 				);
 
+		// 사용자 기록이 존재하면 완료 조건/보상/레벨을 변경할 수 없다.
+		// 발행 버전 시스템이 도입되기 전까지는 새 퀘스트 복제로 수정해야 한다.
+		if (userQuestLogRepository.existsByQuest_QuestId(questId) && (
+				!sameCoordinate(quest.getTargetLat(), request.getTargetLat())
+				|| !sameCoordinate(quest.getTargetLng(), request.getTargetLng())
+				|| (request.getRewardPoint() != null && !java.util.Objects.equals(quest.getRewardPoint(), request.getRewardPoint()))
+				|| (request.getRewardExp() != null && !java.util.Objects.equals(quest.getRewardExp(), request.getRewardExp()))
+				|| (request.getClearRadius() != null && !java.util.Objects.equals(quest.getClearRadius(), request.getClearRadius()))
+				|| (request.getQuestType() != null && quest.getQuestType() != request.getQuestType())
+				|| (request.getRequiredLevel() != null && !java.util.Objects.equals(quest.getRequiredLevel(), request.getRequiredLevel()))
+				|| (request.getChapterId() != null && !java.util.Objects.equals(
+						quest.getChapter() != null ? quest.getChapter().getChapterId() : null,
+						request.getChapterId()))
+		)) {
+			throw new IllegalArgumentException(
+					"시작 또는 완료 이력이 있는 퀘스트의 인증 조건과 보상은 수정할 수 없습니다. 새 퀘스트를 등록해주세요."
+			);
+		}
 
 		quest.update(
 
@@ -1039,6 +1007,41 @@ public class QuestService {
 	/* =====================================================
 	 * Internal
 	 * ===================================================== */
+
+	// Oracle NUMBER 자릿수 표현(scale)이 달라도 동일한 위경도는 변경으로 취급하지 않는다.
+	private boolean sameCoordinate(java.math.BigDecimal first, java.math.BigDecimal second) {
+		if (first == null || second == null) {
+			return first == second;
+		}
+		return first.compareTo(second) == 0;
+	}
+
+	private User lockUserForQuestOperation(Long userId) {
+		// 이미 마스코트 보상에서도 사용하는 사용자 행 잠금을 재사용한다.
+		// 퀘스트 시작/일반 인증/CHAIN 인증은 반드시 이 잠금을 가장 먼저 획득해야 한다.
+		return userRepository.findByIdForUpdate(userId)
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+	}
+
+	private void validateGpsRequest(QuestClearRequest request) {
+		if (request == null || request.getCurrentLat() == null || request.getCurrentLng() == null
+				|| request.getCurrentLat().compareTo(java.math.BigDecimal.valueOf(-90)) < 0
+				|| request.getCurrentLat().compareTo(java.math.BigDecimal.valueOf(90)) > 0
+				|| request.getCurrentLng().compareTo(java.math.BigDecimal.valueOf(-180)) < 0
+				|| request.getCurrentLng().compareTo(java.math.BigDecimal.valueOf(180)) > 0) {
+			throw new IllegalArgumentException("올바른 GPS 위도/경도를 전달해주세요.");
+		}
+		Double accuracy = request.getAccuracyMeters();
+		if (accuracy != null && (!Double.isFinite(accuracy) || accuracy < 0)) {
+			throw new IllegalArgumentException("GPS 오차 반경은 0 이상의 유한한 숫자여야 합니다.");
+		}
+		if (accuracy != null && accuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+			throw new IllegalArgumentException(
+					"GPS 신호가 약합니다. 실외의 개방된 장소에서 다시 시도해주세요. (오차 반경: "
+							+ accuracy + "m)"
+			);
+		}
+	}
 
 	private Quest getQuestOrThrow(
 			Long questId
