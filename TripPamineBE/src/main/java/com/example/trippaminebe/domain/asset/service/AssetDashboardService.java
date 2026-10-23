@@ -5,6 +5,7 @@ import com.example.trippaminebe.domain.account.entity.LinkStatus;
 import com.example.trippaminebe.domain.account.repository.AccountRepository;
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
+import com.example.trippaminebe.domain.accountbook.service.MonthlyLedgerCalculator;
 import com.example.trippaminebe.domain.asset.dto.AssetDashboardResponseDto;
 import com.example.trippaminebe.domain.asset.dto.AssetForecastResponseDto;
 import com.example.trippaminebe.domain.asset.dto.AssetHistoryResponseDto;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -69,6 +71,7 @@ public class AssetDashboardService {
     private final MonthlyBudgetRepository monthlyBudgetRepository;
     private final AssetGoalRepository assetGoalRepository;
     private final AccountBookRepository accountBookRepository;
+    private final MonthlyLedgerCalculator monthlyLedgerCalculator;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final AssetSnapshotWriter assetSnapshotWriter;
@@ -105,8 +108,9 @@ public class AssetDashboardService {
         LocalDateTime nextMonthStart =
                 targetYearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
+        // AI 매니저의 '이번 달'과 동일한 한국 시간 기준으로 현재 월을 판정한다.
         LocalDate today =
-                LocalDate.now();
+                LocalDate.now(ZoneId.of("Asia/Seoul"));
 
         boolean isCurrentMonth =
                 targetYearMonth.equals(YearMonth.from(today));
@@ -121,14 +125,14 @@ public class AssetDashboardService {
                                 nextMonthStart
                         );
 
-        long totalIncome =
-                sumByType(monthTransactions, "income");
-
-        long totalExpense =
-                sumByType(monthTransactions, "expense");
-
-        Map<String, Long> categoryExpenseMap =
-                buildCategoryExpenseMap(monthTransactions);
+        // 메인 AI 카드·월별 금융 요약과 동일한 단일 계산 기준을 사용한다.
+        MonthlyLedgerCalculator.MonthlyTotals monthlyTotals =
+                monthlyLedgerCalculator.summarize(monthTransactions);
+        long totalIncome = monthlyTotals.totalIncome().longValueExact();
+        long totalExpense = monthlyTotals.totalExpense().longValueExact();
+        Map<String, Long> categoryExpenseMap = new LinkedHashMap<>();
+        monthlyTotals.expensesByCategory().forEach((category, amount) ->
+                categoryExpenseMap.put(category, amount.longValueExact()));
 
 
         // 3. 잔액 역산 준비

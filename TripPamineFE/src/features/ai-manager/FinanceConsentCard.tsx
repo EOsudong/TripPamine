@@ -32,6 +32,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   HOUSING: "주거비",
   MEDICAL: "의료비",
   SALARY: "급여",
+  TRAVEL: "여행비",
+  NEGO: "네고 결제",
   ETC: "기타",
 };
 
@@ -40,7 +42,9 @@ function categoryLabel(category: string | null): string {
     return "기록 없음";
   }
 
-  return CATEGORY_LABELS[category] ?? category;
+  // DB에 소문자 또는 공백 포함 코드가 저장된 경우에도 동일한 라벨을 표시한다.
+  const normalized = category.trim().toUpperCase();
+  return CATEGORY_LABELS[normalized] ?? category;
 }
 
 /**

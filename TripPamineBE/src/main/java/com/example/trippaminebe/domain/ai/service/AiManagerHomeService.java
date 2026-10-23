@@ -60,7 +60,7 @@ public class AiManagerHomeService {
 	private final QuestService questService;
 	private final AiManagerActivityService aiManagerActivityService;
 
-	// 저장된 월별 금융 요약을 조회한다.
+	// 원본 가계부로 최신 월별 금융 합계를 조회한다 (DB Snapshot은 수정하지 않음).
 	private final AiFinanceMonthlySummaryService
 			aiFinanceMonthlySummaryService;
 
@@ -328,10 +328,10 @@ public class AiManagerHomeService {
 		 * =================================================
 		 *
 		 * 금융 정보를 사용하도록 설정한 사용자에게만
-		 * 저장된 이번 달 수입과 지출을 제공한다.
+		 * 원본 가계부의 이번 달 수입과 지출을 제공한다.
 		 *
-		 * 이곳에서는 금융 기록을 다시 계산하거나
-		 * 새로운 기록을 저장하지 않는다.
+		 * 월별 가계부 거래를 조회해 최신 금액을 계산하지만,
+		 * 홈 조회 트랜잭션에서는 요약 Snapshot을 저장하지 않는다.
 		 */
 		AiFinanceMonthlySummaryResponse financeContext = null;
 
@@ -348,14 +348,13 @@ public class AiManagerHomeService {
 					YearMonth.from(now);
 
 			/*
-			 * 이미 저장된 금융 요약만 가져온다.
-			 *
-			 * 아직 생성된 요약이 없다면
-			 * null을 유지해 실제 금액을 추측하지 않는다.
+			 * 매번 해당 월 원본 거래로 계산하므로 요약 Snapshot이 오래돼도
+			 * 메인 화면은 항상 현재 조회 시점의 금액을 제공한다.
+			 * 거래가 없으면 null을 유지한다.
 			 */
 			financeContext =
 					aiFinanceMonthlySummaryService
-							.findMonthly(
+							.previewMonthly(
 									userId,
 									currentMonth
 							)

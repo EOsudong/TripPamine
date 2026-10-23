@@ -26,35 +26,33 @@ public class AiManagerFinanceSummaryLookupService {
 
     public Optional<AiFinanceMonthlySummaryResponse> findOrRefreshMissing(
             Long userId, YearMonth period) {
-
-        // 월별 요약 조회/갱신 모두 금융 활용 동의가 선행돼야 한다.
+        // 동의하지 않은 사용자의 금융 원본은 조회하지 않는다.
         if (!settingsService.getSettings(userId).financeInsightEnabled()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "금융 정보 활용 동의가 필요합니다."
-            );
+                    "금융 정보 활용 동의가 필요합니다.");
         }
 
+        // 원본 합계와 저장된 요약을 비교해 데이터가 변경된 월만 재계산한다.
+        Optional<AiFinanceMonthlySummaryResponse> live =
+                monthlySummaryService.previewMonthly(userId, period);
         Optional<AiFinanceMonthlySummaryResponse> saved =
                 monthlySummaryService.findMonthly(userId, period);
-        if (saved.isPresent()) {
-            return saved;
-        }
 
-        LocalDateTime start = period.atDay(1).atStartOfDay();
-        LocalDateTime end = period.plusMonths(1).atDay(1).atStartOfDay();
-
-        // '거래 없음'과 '아직 요약 없음'을 혼동해 0원 요약을 저장하지 않는다.
-        // 등록된 사용자 ID로 거래 유무를 확인한다.
-        boolean hasTransactions = accountBookRepository
-                .existsByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
-                        userId, start, end);
-        if (!hasTransactions) {
+        if (live.isEmpty()) {
+            // 마지막 거래를 지웠더라도 이전에 저장된 요약의 건수와 금액은 0으로 정정한다.
+            if (saved.isPresent() && saved.get().sourceRecordCount() != 0) {
+                monthlySummaryService.refreshMonthly(userId, period);
+            }
             return Optional.empty();
         }
 
-        // 별도 Bean의 @Transactional 메서드 호출: 사용자 잠금 후 요약만 저장한다.
-        // 경쟁 요청은 기존 refreshMonthly()의 사용자 행 잠금을 활용한다.
+        if (saved.isPresent()
+                && AiFinanceSummarySnapshotComparator.matches(saved.get(), live.get())) {
+            return saved;
+        }
+
+        // 합계·건수·카테고리 중 하나라도 다르면 쓰기 트랜잭션에서 갱신한다.
         return Optional.of(monthlySummaryService.refreshMonthly(userId, period));
     }
 }
