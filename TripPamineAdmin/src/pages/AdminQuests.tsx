@@ -12,6 +12,7 @@ import {
   updateQuest,
 } from "../api/quest";
 import QuestLocationPicker from "../components/QuestLocationPicker";
+import QuestPrerequisiteModal from "../components/QuestPrerequisiteModal";
 
 type QuestFormTarget =
     | { mode: "create"; template?: AdminQuest }
@@ -40,6 +41,7 @@ export default function AdminQuests() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formTarget, setFormTarget] = useState<QuestFormTarget>(null);
+  const [linkTarget, setLinkTarget] = useState<AdminQuest | null>(null);
   const [listQuery, setListQuery] = useState("");
 
   async function loadQuests() {
@@ -238,6 +240,12 @@ export default function AdminQuests() {
                             </Link>
                         )}
                         <button
+                            onClick={() => setLinkTarget(quest)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        >
+                          선행 연결
+                        </button>
+                        <button
                             onClick={() =>
                                 setFormTarget({ mode: "create", template: quest })
                             }
@@ -265,6 +273,14 @@ export default function AdminQuests() {
             </tbody>
           </table>
         </div>
+
+        {linkTarget && (
+            <QuestPrerequisiteModal
+                quest={linkTarget}
+                quests={quests}
+                onClose={() => setLinkTarget(null)}
+            />
+        )}
 
         {formTarget && (
             <QuestFormModal

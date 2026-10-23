@@ -84,6 +84,15 @@ export interface AdminQuest {
   isActive: boolean
   // 관리자 조회에서는 항상 false (로그인한 "일반 사용자" 기준 잠금 여부만 의미가 있음)
   locked: boolean
+  prerequisiteQuestIds?: number[]
+  missingPrerequisiteQuestIds?: number[]
+}
+
+// 관리자 선행 퀘스트 관계 조회 응답
+export interface AdminQuestPrerequisite {
+  prerequisiteQuestId: number
+  prerequisiteQuestName: string
+  isActive: boolean
 }
 
 // QuestRequest (도메인 quest/dto/request/QuestRequest.java) - 등록/수정 공용
