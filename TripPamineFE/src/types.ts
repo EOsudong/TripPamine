@@ -160,7 +160,9 @@ export interface FinancialRecommendation {
   matchedTerm: string | null; // 추천 근거로 사용한 기간(개월)
   matchedIntrRate: number | null; // 위 기간의 기본금리
   matchedIntrRate2: number | null; // 위 기간의 최고우대금리
-  estimatedInterest: number | null; // 입력한 예치금액 기준 세전 예상이자(단리, 참고용). 금액을 안 넣으면 null
+  estimatedInterest: number | null; // 기본금리로 계산한 세전 예상이자, 금액 미입력 시 null
+  estimatedMaxInterest: number | null; // 우대조건을 모두 충족한다고 가정한 세전 예상이자
+  estimateBasis: string; // 적금 납입/예금 예치 방식 및 단리·복리 계산 가정
   reason: string; // 추천 이유 한 줄 설명
   product: FinancialProduct; // 상품 상세(옵션 전체 포함) — 카드 렌더링에 그대로 재사용
 }

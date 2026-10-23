@@ -36,7 +36,12 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
     const location = useLocation()
 
     const bookmarkId = getFinanceBookmarkId(product)
-    const baseRate = product.options[0]?.intrRate ?? null
+    // 목록의 '전체기간 최고우대금리'에 대응하는 기본금리만 함께 보여준다.
+    // 첫 번째 옵션의 기본금리를 섞어 표시하면 서로 다른 가입기간을 비교하는 오류가 생긴다.
+    const bestOption = product.maxRate != null
+        ? product.options.find((option) => option.intrRate2 === product.maxRate)
+        : undefined
+    const baseRate = bestOption?.intrRate ?? null
 
     // 로그인한 상태에서만 "이미 북마크했는지" 확인해서 버튼 초기 상태를 맞춤 (TourDetailPage.tsx와 동일한 패턴)
     useEffect(() => {
@@ -117,7 +122,7 @@ export default function FinancialProductCard({ product }: FinancialProductCardPr
 
                     <div className="shrink-0 flex items-center gap-3">
                         <div className="text-right">
-                            <p className="text-[10px] font-bold tracking-wider text-slate-400">최고우대</p>
+                            <p className="text-[10px] font-bold tracking-wider text-slate-400">전체기간 최고우대</p>
                             <p className="font-display text-2xl font-bold leading-tight tracking-tight tp-gradient-text">
                                 {formatRate(product.maxRate)}
                             </p>

@@ -1,7 +1,7 @@
 // 사이드바 "정보" → "금융상품" 페이지 상단의 "맞춤 추천받기" 패널.
-// 예치금액/기간을 입력하면 백엔드가 규칙 기반(외부 AI 미사용)으로 상위 5개 상품을 골라
+// 예금 일시 예치금액/적금 매월 납입액과 기간을 입력하면 규칙 기반으로 상품을 골라
 // 순위 + 추천 이유 + (금액을 입력했다면) 세전 예상이자와 함께 보여줍니다.
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import FinancialProductCard from "./FinancialProductCard"
 import { getFinancialRecommendationsApi } from "../api/finance"
 import type { FinancialBankType, FinancialRecommendation } from "../types"
@@ -19,16 +19,43 @@ interface FinancialRecommendationPanelProps {
 
 export default function FinancialRecommendationPanel({ productType, bankType }: FinancialRecommendationPanelProps) {
     const [amount, setAmount] = useState<string>("")
-    const [months, setMonths] = useState<number>()
+    const [months, setMonths] = useState<number>(12)
     const [results, setResults] = useState<FinancialRecommendation[] | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const requestVersion = useRef(0)
+
+    // 탭 변경 중 이전 요청의 응답이 도착해도 다른 금융상품 결과가 섞이지 않도록 한다.
+    useEffect(() => {
+        requestVersion.current += 1
+        setResults(null)
+        setError(null)
+        setLoading(false)
+    }, [productType, bankType])
+
+    // 예금(일시금)과 적금(월 납입액)은 입력 금액의 의미가 다르므로 탭 변경 시 초기화한다.
+    useEffect(() => {
+        setAmount("")
+    }, [productType])
 
     const handleRecommend = async () => {
+        const normalizedAmount = amount.replace(/,/g, "").trim()
+        if (normalizedAmount && !/^[1-9]\d*$/.test(normalizedAmount)) {
+            setError(productType === "saving" ? "월 납입액은 1원 이상의 숫자로 입력해주세요." : "예치금액은 1원 이상의 숫자로 입력해주세요.")
+            setResults(null)
+            return
+        }
+        const parsedAmount = normalizedAmount ? Number(normalizedAmount) : undefined
+        if (parsedAmount !== undefined && !Number.isSafeInteger(parsedAmount)) {
+            setError("금액이 너무 큽니다. 원 단위 숫자를 다시 확인해주세요.")
+            setResults(null)
+            return
+        }
+
+        const currentRequest = ++requestVersion.current
         setLoading(true)
         setError(null)
         try {
-            const parsedAmount = amount.trim() === "" ? undefined : Number(amount.replace(/[^0-9]/g, ""))
             const data = await getFinancialRecommendationsApi({
                 productType,
                 bankType,
@@ -36,12 +63,14 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
                 amount: parsedAmount,
                 limit: 5,
             })
-            setResults(data)
+            if (requestVersion.current === currentRequest) setResults(data)
         } catch (e) {
-            console.error("금융상품 추천 조회 실패:", e)
-            setError("추천 결과를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+            if (requestVersion.current === currentRequest) {
+                console.error("금융상품 추천 조회 실패:", e)
+                setError("추천 결과를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+            }
         } finally {
-            setLoading(false)
+            if (requestVersion.current === currentRequest) setLoading(false)
         }
     }
 
@@ -56,19 +85,20 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
                 </div>
             </div>
             <p className="relative mb-5 max-w-2xl text-xs leading-relaxed text-slate-500">
-                예치금액과 기간을 넣으면, 그 조건에서 최고우대금리가 가장 높은 상품 5개를 골라드려요.
-                (외부 AI 없이 공시 데이터만으로 계산하는 단순 비교이며, 예상이자는 세금·우대조건 충족 여부를 반영하지 않은 참고용 수치예요.)
+                요청한 가입기간과 정확히 일치하는 상품을 기본금리 순서로 비교해요.
+                {productType === "saving" ? " 적금 금액은 매월 1회 납입하는 금액이에요." : " 예금 금액은 가입할 때 한 번 예치하는 금액이에요."}
+                {" "}예상 이자는 세전 참고치이며 실제 우대조건 충족 여부나 은행별 이자 지급 규칙은 확인되지 않았어요.
             </p>
 
             <div className="relative mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50/80 p-3">
                 <div>
-                    <label className="tp-label">예치금액(원)</label>
+                    <label className="tp-label">{productType === "saving" ? "월 납입액(원)" : "일시 예치금액(원)"}</label>
                     <input
                         type="text"
                         inputMode="numeric"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        placeholder="예: 10,000,000원"
+                        placeholder={productType === "saving" ? "예: 300,000" : "예: 10,000,000"}
                         className="tp-input w-44"
                     />
                 </div>
@@ -110,13 +140,20 @@ export default function FinancialRecommendationPanel({ productType, bankType }: 
                                     </span>
                                     <p className="text-[11px] text-slate-500">{rec.reason}</p>
                                 </div>
+                                <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-slate-700">
+                                    <span>해당 {rec.matchedTerm}개월 기본금리: <strong>{rec.matchedIntrRate != null ? `${rec.matchedIntrRate.toFixed(2)}%` : "미공시"}</strong></span>
+                                    <span>최고우대금리: <strong>{rec.matchedIntrRate2 != null ? `${rec.matchedIntrRate2.toFixed(2)}%` : "미공시"}</strong></span>
+                                </div>
                                 <FinancialProductCard product={rec.product} />
-                                {rec.estimatedInterest !== null && (
-                                    <p className="text-[11px] text-slate-400 mt-1 px-1">
-                                        {rec.matchedTerm}개월 · {formatCurrency(Number(amount) || 0)} 예치 기준 세전 예상이자 약{" "}
-                                        <span className="font-semibold text-slate-600">{formatCurrency(rec.estimatedInterest)}</span>
-                                    </p>
-                                )}
+                                <div className="mt-2 space-y-1 px-1 text-[11px] text-slate-500">
+                                    {rec.estimatedInterest != null && (
+                                        <p>기본금리 기준 세전 예상이자: <strong className="text-slate-700">{formatCurrency(rec.estimatedInterest)}</strong></p>
+                                    )}
+                                    {rec.estimatedMaxInterest != null && (
+                                        <p>최고우대금리 충족 가정 세전 예상이자: <strong className="text-slate-700">{formatCurrency(rec.estimatedMaxInterest)}</strong></p>
+                                    )}
+                                    <p>{rec.estimateBasis}</p>
+                                </div>
                             </div>
                         ))}
                     </div>

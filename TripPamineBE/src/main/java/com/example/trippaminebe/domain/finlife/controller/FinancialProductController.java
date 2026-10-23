@@ -44,7 +44,7 @@ public class FinancialProductController {
   }
 
   @GetMapping("/recommendations")
-  @Operation(summary = "예치금액/기간 조건에 맞는 금융상품 추천 (규칙 기반, 외부 AI 미사용)")
+  @Operation(summary = "입력 금액/정확한 가입기간 기준 금융상품 비교 (규칙 기반, 외부 AI 미사용)")
   public ResponseEntity<List<FinancialRecommendationResponse>> getRecommendations(
       @RequestParam(defaultValue = "deposit")
       @Parameter(description = "deposit(정기예금, 기본값) | saving(적금)") String productType,
@@ -53,7 +53,7 @@ public class FinancialProductController {
       @RequestParam(required = false)
       @Parameter(description = "예치/적립 기간(개월). 생략 시 12개월 기준") Integer months,
       @RequestParam(required = false)
-      @Parameter(description = "예치금액(원). 있으면 세전 예상이자를 함께 계산해줌") Long amount,
+      @Parameter(description = "예금은 일시 예치금액, 적금은 매월 납입액(원). 세전 기본/최고우대 이자를 가정 계산") Long amount,
       @RequestParam(required = false, defaultValue = "5")
       @Parameter(description = "추천 개수 (기본 5, 최대 20)") Integer limit
   ) {

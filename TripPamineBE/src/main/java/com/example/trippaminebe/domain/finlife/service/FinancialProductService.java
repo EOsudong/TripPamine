@@ -48,12 +48,15 @@ public class FinancialProductService {
         ? getSavings(bankType)
         : getDeposits(bankType);
 
+    // 요청한 가입기간과 정확히 일치하는 상품만 비교한다. 다른 만기를 임의로 대체하지 않는다.
     return candidates.stream()
         .map(product -> toRecommendation(product, normalizedMonths, amount))
         .filter(rec -> rec != null)
         .sorted(Comparator.comparing(
-            FinancialRecommendationResponse::getMatchedIntrRate2,
-            Comparator.nullsLast(Comparator.reverseOrder())))
+                FinancialRecommendationResponse::getMatchedIntrRate,
+                Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(FinancialRecommendationResponse::getMatchedIntrRate2,
+                Comparator.nullsLast(Comparator.reverseOrder())))
         .limit(normalizedLimit)
         .collect(Collectors.toList());
   }
@@ -65,47 +68,60 @@ public class FinancialProductService {
       return null;
     }
 
-    FinancialProductOptionResponse matched = pickClosestOption(product.getOptions(), months);
+    FinancialProductOptionResponse matched = pickExactOption(product.getOptions(), months);
     if (matched == null) {
       return null;
     }
 
-    Double rateForEstimate = matched.getIntrRate2() != null ? matched.getIntrRate2() : matched.getIntrRate();
-    Double estimatedInterest = (amount != null && rateForEstimate != null)
-        ? amount * (rateForEstimate / 100.0) * (months / 12.0)
-        : null;
+    String productType = product.getProductType();
+    String interestType = matched.getIntrRateTypeNm();
+    Double estimatedBaseInterest = FinancialInterestEstimateCalculator.estimate(
+        productType, interestType, months, amount, matched.getIntrRate());
+    Double estimatedMaxInterest = FinancialInterestEstimateCalculator.estimate(
+        productType, interestType, months, amount, matched.getIntrRate2());
 
-    boolean exactTerm = String.valueOf(months).equals(matched.getSaveTrm());
-    String reason = exactTerm
-        ? months + "개월 예치 기준으로 최고우대금리가 높은 상품이에요."
-        : "요청하신 " + months + "개월과 가장 가까운 " + matched.getSaveTrm() + "개월 조건으로 비교했어요.";
-
+    String reason = months + "개월 가입 조건 · 기본금리 우선 비교 (우대조건 충족 여부는 미확인)";
     return FinancialRecommendationResponse.builder()
         .matchedTerm(matched.getSaveTrm())
         .matchedIntrRate(matched.getIntrRate())
         .matchedIntrRate2(matched.getIntrRate2())
-        .estimatedInterest(estimatedInterest)
+        .estimatedInterest(estimatedBaseInterest)
+        .estimatedMaxInterest(estimatedMaxInterest)
+        .estimateBasis(FinancialInterestEstimateCalculator.assumption(productType, interestType))
         .reason(reason)
         .product(product)
         .build();
   }
 
-  // saveTrm(문자열, 개월수) 중 요청한 months와 절댓값 차이가 가장 작은 옵션을 고른다.
-  // 숫자로 파싱이 안 되는 saveTrm은 매우 먼 값으로 취급해서 사실상 후순위로 밀어낸다.
-  private FinancialProductOptionResponse pickClosestOption(
+  // 공시 옵션에 요청한 개월 수가 없으면 추천 대상에서 제외한다.
+  // 같은 기간에 여러 옵션(적립유형/이자방식)이 있으면 기본금리가 높은 옵션을 선택한다.
+  private FinancialProductOptionResponse pickExactOption(
       List<FinancialProductOptionResponse> options, int months
   ) {
     return options.stream()
-        .filter(option -> option.getSaveTrm() != null)
-        .min(Comparator.comparingInt(option -> Math.abs(parseMonthsSafe(option.getSaveTrm()) - months)))
+        .filter(option -> option != null && option.getSaveTrm() != null)
+        .filter(option -> parseMonthsSafe(option.getSaveTrm()) == months)
+        .filter(option -> isValidRate(option.getIntrRate()) || isValidRate(option.getIntrRate2()))
+        .max(Comparator.comparing((FinancialProductOptionResponse option) -> validRateOrNull(option.getIntrRate()),
+                Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(option -> validRateOrNull(option.getIntrRate2()),
+                Comparator.nullsFirst(Comparator.naturalOrder())))
         .orElse(null);
+  }
+
+  private boolean isValidRate(Double rate) {
+    return rate != null && Double.isFinite(rate) && rate >= 0;
+  }
+
+  private Double validRateOrNull(Double rate) {
+    return isValidRate(rate) ? rate : null;
   }
 
   private int parseMonthsSafe(String saveTrm) {
     try {
       return Integer.parseInt(saveTrm.trim());
-    } catch (Exception e) {
-      return Integer.MAX_VALUE / 2;
+    } catch (NumberFormatException e) {
+      return -1;
     }
   }
 
