@@ -155,6 +155,12 @@ const navItems: NavGroup[] = [
                 to: "/ai-photo-editor",
             },
 
+          {
+              icon: "board",
+              label: "AI 다이어리",
+              to: "/diaries",
+          },
+
             {
                 icon: "quest",
                 label: "여행 퀘스트",

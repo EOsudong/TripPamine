@@ -25,6 +25,7 @@ import FinancialProductsPage from "../pages/FinancialProductsPage";
 
 import MysteryTourPlay from "../pages/MysteryTourPlay";
 
+import MysteryTourPlay from "../pages/MysteryTourPlay";
 import TravelPage from "../pages/TravelPage";
 
 import BoardListPage from "../pages/BoardListPage";
@@ -39,6 +40,7 @@ import MascotHuntPage from "../pages/MascotHuntPage";
 import MascotDexPage from "../pages/MascotDexPage";
 
 import AiPhotoEditorPage from "../pages/AiPhotoEditorPage";
+import DiaryPage from "../pages/DiaryPage";
 
 
 // ========================================
@@ -167,6 +169,17 @@ export default function Router() {
         {/* 사용자 감정 분석 */}
         {/* ============================= */}
 
+        <Route path="/ai-recommend" element={<AiRecommendPage />} />
+        {/* AI 다이어리 */}
+        <Route
+          path="/diaries"
+          element={
+              <ProtectedRoute>
+                  <DiaryPage />
+              </ProtectedRoute>
+          }
+        />
+        {/* 사용자 감정 분석: JWT 인증 필수 */}
         <Route
           path="/ai/emotion"
           element={

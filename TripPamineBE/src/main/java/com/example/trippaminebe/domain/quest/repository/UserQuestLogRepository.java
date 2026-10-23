@@ -4,6 +4,7 @@ import com.example.trippaminebe.domain.quest.entity.QuestStatus;
 import com.example.trippaminebe.domain.quest.entity.UserQuestLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,4 +21,9 @@ public interface UserQuestLogRepository extends JpaRepository<UserQuestLog, Long
 
     // AI 다이어리 생성 시 특정 유저의 퀘스트 성공률 산정용
     long countByUser_IdAndStatus(Long userId, QuestStatus status);
+
+    // 퀘스트 집계를 여행 기간으로 제한하기 위한 메소드
+    long countByUser_IdAndStatusAndStartedAtBetween(
+        Long userId, QuestStatus status, LocalDateTime from, LocalDateTime to
+    );
 }

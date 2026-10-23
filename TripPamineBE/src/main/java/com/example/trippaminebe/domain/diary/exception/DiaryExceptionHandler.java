@@ -19,4 +19,15 @@ public class DiaryExceptionHandler {
                 "message", e.getMessage()
             ));
     }
+
+    @ExceptionHandler(DiaryAlreadyExistsException.class)
+    public ResponseEntity<Map<String, Object>> handleDiaryAlreadyExists(DiaryAlreadyExistsException e) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(Map.of(
+                "status", 409,
+                "message", e.getMessage(),
+                "diaryId", e.getDiaryId()
+            ));
+    }
 }
