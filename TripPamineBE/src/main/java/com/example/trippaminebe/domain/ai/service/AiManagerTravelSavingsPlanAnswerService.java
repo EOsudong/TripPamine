@@ -173,16 +173,31 @@ public class AiManagerTravelSavingsPlanAnswerService {
         Cashflow cashflow = analyzeLastCompletedMonths(userId, today);
         if (cashflow.recordedMonths() == 0) {
             answer.append("완료된 최근 3개월의 가계부 기록이 없어 월별 저축 여력을 비교할 수 없습니다.\n");
+        } else if (cashflow.recordedMonths() < HISTORY_MONTHS) {
+            // 일부 월만 기록되었다면 누락된 월을 0원으로 간주해 월평균을 왜곡하지 않는다.
+            answer.append("완료된 최근 3개월 중 거래 기록이 있는 달: ")
+                    .append(cashflow.recordedMonths()).append("/3개월\n")
+                    .append("기록된 거래 합계: 수입 ").append(won(cashflow.totalIncome()))
+                    .append(" / 지출 ").append(won(cashflow.totalExpense()))
+                    .append(" / 차액 ").append(won(cashflow.totalNet())).append("\n")
+                    .append("기록이 없는 달이 있어 3개월 월평균과 여행 목표 달성 가능성은 계산하지 않았습니다. ")
+                    .append("표시 금액은 등록된 가계부 거래에 한정됩니다.\n");
         } else {
-            answer.append("완료된 최근 3개월 가계부 평균: 수입 ")
-                    .append(won(cashflow.averageIncome())).append(" / 지출 ")
-                    .append(won(cashflow.averageExpense()))
-                    .append(" / 차액 ").append(won(cashflow.averageNet()))
-                    .append(" (기록 있는 달 ").append(cashflow.recordedMonths()).append("/3)\n");
-            if (cashflow.recordedMonths() < HISTORY_MONTHS) {
-                answer.append("가계부 기록이 없는 달이 있어 달성 가능 여부는 판단하지 않았습니다.\n");
-            } else if (allMonthlyRequired.signum() > 0) {
-                BigDecimal gap = allMonthlyRequired.subtract(cashflow.averageNet());
+            // 세 달 모두 거래가 있는 경우에만 기록 기준 월평균을 계산한다.
+            BigDecimal divisor = BigDecimal.valueOf(HISTORY_MONTHS);
+            BigDecimal averageIncome = cashflow.totalIncome()
+                    .divide(divisor, 0, RoundingMode.HALF_UP);
+            BigDecimal averageExpense = cashflow.totalExpense()
+                    .divide(divisor, 0, RoundingMode.HALF_UP);
+            BigDecimal averageNet = cashflow.totalNet()
+                    .divide(divisor, 0, RoundingMode.HALF_UP);
+            answer.append("완료된 최근 3개월 가계부 기록 기준 월평균: 수입 ")
+                    .append(won(averageIncome)).append(" / 지출 ")
+                    .append(won(averageExpense))
+                    .append(" / 차액 ").append(won(averageNet))
+                    .append(" (거래 기록 있는 달 3/3)\n");
+            if (allMonthlyRequired.signum() > 0) {
+                BigDecimal gap = allMonthlyRequired.subtract(averageNet);
                 if (gap.signum() > 0) {
                     answer.append("단순 기록 차액 대비 월 추가 확보 필요액: ")
                             .append(won(gap)).append("\n");
@@ -221,12 +236,8 @@ public class AiManagerTravelSavingsPlanAnswerService {
             income = income.add(totals.totalIncome());
             expense = expense.add(totals.totalExpense());
         }
-        BigDecimal divisor = BigDecimal.valueOf(HISTORY_MONTHS);
-        return new Cashflow(
-                income.divide(divisor, 0, RoundingMode.HALF_UP),
-                expense.divide(divisor, 0, RoundingMode.HALF_UP),
-                income.subtract(expense).divide(divisor, 0, RoundingMode.HALF_UP),
-                covered);
+        // 저장소에서 확인된 거래 합계를 보존하고, 월평균은 충분한 기록이 있을 때만 계산한다.
+        return new Cashflow(income, expense, income.subtract(expense), covered);
     }
 
     private static GoalPlan planForGoal(AssetGoal goal, LocalDate today) {
@@ -291,6 +302,6 @@ public class AiManagerTravelSavingsPlanAnswerService {
     private record GoalPlan(AssetGoal goal, boolean valid, BigDecimal remaining,
                             long months, BigDecimal monthlyRequired) {}
 
-    private record Cashflow(BigDecimal averageIncome, BigDecimal averageExpense,
-                            BigDecimal averageNet, int recordedMonths) {}
+    private record Cashflow(BigDecimal totalIncome, BigDecimal totalExpense,
+                            BigDecimal totalNet, int recordedMonths) {}
 }
