@@ -27,8 +27,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class AiManagerNearbyIndoorAnswerService {
 
-    private static final Pattern DAY = Pattern.compile("([1-9]\\d?)일차");
-    private static final Pattern SEQUENCE = Pattern.compile("([1-9]\\d?)번째");
     private static final int DEFAULT_RADIUS_METERS = 1500;
     // 요청당 광범위한 DB 순회(N+1 조회)를 방지한다. 초과 시 사용자에게 여행 선택 요청.
     private static final int MAX_PLAN_LOOKUPS = 20;
@@ -39,6 +37,7 @@ public class AiManagerNearbyIndoorAnswerService {
     private final TravelItineraryContextService itineraryContextService;
     private final TravelNearbyCategoryPoiService nearbyCategoryService;
     private final TourPartnerDiscoveryService tourPartnerDiscoveryService;
+    private final AccommodationPartnerDiscoveryService accommodationPartnerDiscoveryService;
 
     public String findAnswer(Long userId, String message, List<String> previousUserMessages,
                              List<String> previousAssistantMessages) {
@@ -48,7 +47,14 @@ public class AiManagerNearbyIndoorAnswerService {
                 && previousUserMessages != null
                 && previousUserMessages.stream().anyMatch(previousMessage ->
                         isNearbyRequest(normalize(previousMessage)));
-        if (!isNearbyRequest(q) && !followup) {
+        // 숙소 조건을 되묻고 사용자가 날짜·성인 수만 답한 경우 직전 숙소 검색을 승계한다.
+        // 과거의 무관한 숙소 질문까지 잡지 않도록 마지막 사용자 메시지만 확인한다.
+        String lastUserQuestion = previousUserMessages == null || previousUserMessages.isEmpty()
+                ? "" : normalize(previousUserMessages.get(previousUserMessages.size() - 1));
+        boolean lodgingConditionFollowup = q.matches(".*\\d{4}-\\d{2}-\\d{2}.*")
+                && isNearbyRequest(lastUserQuestion)
+                && contains(lastUserQuestion, "숙소", "숙박", "호텔", "리조트");
+        if (!isNearbyRequest(q) && !followup && !lodgingConditionFollowup) {
             return null;
         }
         List<TravelItem> plans = travelOverviewService.getOverview(userId).plans();
@@ -58,7 +64,7 @@ public class AiManagerNearbyIndoorAnswerService {
         // STEP 8.5-A: 여행 제목을 말하지 않아도 실제 저장된 방문지로 여행을 찾는다.
         // 먼저 로그인 사용자의 여행 목록만 사용하고, 일정 자체도 소유권 검증 후 읽는다.
         String explicitPlaceName = extractExplicitPlaceName(q);
-        Integer explicitDay = parseNumber(DAY, q);
+        Integer explicitDay = KoreanVisitOrderParser.day(q);
         Map<Long, TravelItinerarySnapshot> loaded = new HashMap<>();
         List<TravelItem> matches = matchPlans(plans, q);
         AiManagerItineraryContextState previous =
@@ -118,7 +124,7 @@ public class AiManagerNearbyIndoorAnswerService {
             throw exception;
         }
         Integer day = explicitDay;
-        Integer sequence = parseNumber(SEQUENCE, q);
+        Integer sequence = KoreanVisitOrderParser.sequence(q);
         Integer previousDay = previous == null ? null : previous.day();
         Integer previousSequence = previous == null ? null : previous.sequence();
         if (day == null) {
@@ -176,7 +182,24 @@ public class AiManagerNearbyIndoorAnswerService {
                 : Set.of();
         // 이번 질문에 특정 분류가 없을 때에만 직전 주변 검색 목적을 승계한다.
         TravelNearbyCategoryPoiService.Intent intent = TravelNearbyCategoryPoiService.intentFor(q);
+        boolean lodgingRequest = lodgingConditionFollowup
+                || contains(q, "숙소", "숙박", "호텔", "리조트");
+        // 숙소는 체크인·체크아웃과 성인 인원이 필요하므로 일반 카테고리 검색과 분리한다.
+        // 상품 자체의 좌표가 제공되지 않아 '경복궁 도보권 숙소'로 오인시키지 않는다.
+        if (lodgingRequest) {
+            return accommodationPartnerDiscoveryService.findAnswer(
+                    userId, planId, day, sequence, message);
+        }
         boolean tourRequest = contains(q, "투어", "티켓", "입장권", "관광공사", "제휴");
+        // 상품을 직접 물어보는 경우에는 지도 후보와 관광정보를 길게 나열하지 않는다.
+        // 방문지 검증/여행 소유권 검사는 기존 탐색 및 상품 서비스에서 유지한다.
+        boolean productOnly = contains(q, "투어", "티켓", "입장권", "제휴")
+                && !contains(q, "관광지", "명소", "볼거리", "문화시설", "관광공사");
+        if (productOnly) {
+            NearbyTourPartnerResponse offers = tourPartnerDiscoveryService.suggest(
+                    userId, planId, day, sequence, DEFAULT_RADIUS_METERS, true, Set.of());
+            return formatProductOffers(offers);
+        }
         if (intent == TravelNearbyCategoryPoiService.Intent.GENERAL && tourRequest) {
             intent = TravelNearbyCategoryPoiService.Intent.TOURISM;
         }
@@ -218,38 +241,65 @@ public class AiManagerNearbyIndoorAnswerService {
         return answer;
     }
 
-    /** 관광공사 출처와 마이리얼트립 가격을 구분해 표기한다. */
+    /**
+     * 관광정보와 판매 상품은 분리한다. 사용자가 필요하지 않은 외부 식별자는 숨긴다.
+     * 상품 링크는 제휴사에서 받은 공식 URL만 사용하고 클릭 시 FE가 MyLink를 요청한다.
+     */
     static String formatTourPartner(NearbyTourPartnerResponse extra) {
         if (!"VERIFIED".equals(extra.referenceStatus())) return "";
-        StringBuilder text = new StringBuilder("\n\n[한국관광공사 관광정보]");
+        StringBuilder text = new StringBuilder("\n\n[한국관광공사 추천 관광지]");
         if (extra.tourPlaces().isEmpty()) {
-            text.append("\n현재 캐시에서 반경 내 추가 관광정보를 찾지 못했습니다.");
+            text.append("\n현재 확보된 관광정보에서 가까운 장소를 찾지 못했어요.");
         } else {
             for (int i = 0; i < extra.tourPlaces().size(); i++) {
                 NearbyTourPartnerResponse.TourPlace p = extra.tourPlaces().get(i);
-                text.append("\nK").append(i + 1).append(". ").append(p.title())
+                text.append("\n").append(i + 1).append(". ").append(p.title())
                         .append(" · 직선거리 약 ").append(p.straightLineMeters()).append("m")
-                        .append(" · ").append(p.address() == null ? "주소 미제공" : p.address())
-                        .append(" · 관광정보ID ").append(p.contentId());
+                        .append(" · ").append(p.address() == null ? "주소 미제공" : p.address());
             }
         }
-        text.append("\n관광공사는 관광정보 제공처이며, 상품 판매가나 입장 가능 여부를 보증하지 않습니다.");
+        text.append("\n관광정보는 위치 참고용이며 운영시간과 입장 가능 여부는 확인되지 않았습니다.");
         if (!"NOT_REQUESTED".equals(extra.partnerStatus())) {
-            text.append("\n\n[마이리얼트립 연관 투어·티켓 상품]");
+            text.append("\n\n[관련 투어·티켓 상품]");
             if (extra.partnerProducts().isEmpty()) {
-                text.append("\n현재 연결할 수 있는 연관 상품을 확인하지 못했습니다.");
+                text.append("\n현재 연결 가능한 관련 상품이 없어요.");
             } else {
                 for (int i = 0; i < extra.partnerProducts().size(); i++) {
                     NearbyTourPartnerResponse.PartnerProduct p = extra.partnerProducts().get(i);
-                    text.append("\nM").append(i + 1).append(". ").append(p.itemName())
-                            .append(" · 조회 판매가 ").append(p.salePrice().toPlainString()).append("원")
-                            .append(" · 상품ID ").append(p.gid());
+                    text.append("\n").append(i + 1).append(". ").append(p.itemName())
+                            .append(" · 조회 판매가 ")
+                            .append(java.text.NumberFormat.getNumberInstance(Locale.KOREA).format(p.salePrice()))
+                            .append("원 · [상품 보기](").append(p.productUrl()).append(")");
                 }
             }
-            text.append("\n연관 상품은 동일 장소 입장권으로 확정되지 않았습니다. ")
-                    .append("가격·옵션·재고는 예약 단계에서 달라질 수 있으며, ")
-                    .append("제휴 링크는 실제 상품 선택 시 별도로 발급합니다.");
+            text.append("\n관련 투어 상품은 해당 장소 입장권이 아닐 수도 있습니다. ")
+                    .append("표시가는 조회 시점 기준이며 옵션·재고·결제 금액은 예약 단계에서 달라질 수 있습니다. ")
+                    .append("제휴 링크를 통해 확인하고 예약이 가능합니다.");
         }
+        return text.toString();
+    }
+
+    /** 투어·티켓 가격 질문에는 상품명, 조회 가격, 클릭 가능한 상품 링크만 보여준다. */
+    static String formatProductOffers(NearbyTourPartnerResponse offers) {
+        if (!"VERIFIED".equals(offers.referenceStatus())) {
+            return "방문지의 정확한 위치를 확인하지 못해 관련 상품을 검색할 수 없어요.";
+        }
+        StringBuilder text = new StringBuilder("[").append(offers.referenceName())
+                .append(" 관련 투어·티켓]");
+        if (offers.partnerProducts().isEmpty()) {
+            text.append("\n현재 연결 가능한 투어·티켓 상품을 찾지 못했어요.");
+        } else {
+            for (int i = 0; i < offers.partnerProducts().size(); i++) {
+                NearbyTourPartnerResponse.PartnerProduct product = offers.partnerProducts().get(i);
+                text.append("\n").append(i + 1).append(". ").append(product.itemName())
+                        .append(" · 조회 가격 ")
+                        .append(java.text.NumberFormat.getNumberInstance(Locale.KOREA)
+                                .format(product.salePrice()))
+                        .append("원 · [상품 보기](").append(product.productUrl()).append(")");
+            }
+        }
+        text.append("\n관련 체험·가이드 상품은 해당 시설의 입장권이 아닐 수 있으며, ")
+                .append("최종 금액과 이용 가능 여부는 상품 상세에서 확인해 주세요.");
         return text.toString();
     }
 
@@ -307,8 +357,8 @@ public class AiManagerNearbyIndoorAnswerService {
         String prefix = q.substring(0, end);
         // 여행 제목·일차·순서의 구간을 제거하여 방문지 명칭만 남긴다.
         if (prefix.contains("여행")) prefix = prefix.substring(prefix.lastIndexOf("여행") + 2);
-        prefix = prefix.replaceFirst("^.*?[1-9]\\d?일차", "");
-        prefix = prefix.replaceFirst("^(?:[1-9]\\d?번째|첫번째|두번째|세번째)", "");
+        // "일일차 첫번째", "1일차 1번째"와 같은 표기를 공통 규칙으로 제거한다.
+        prefix = KoreanVisitOrderParser.removeLeadingDayAndOrder(prefix);
         String region = TravelPoiResolverService.knownRegion(prefix);
         if (region != null && prefix.startsWith(region)) prefix = prefix.substring(region.length());
         prefix = prefix.replaceFirst("^(?:그장소|그곳|해당장소|이장소)", "");
@@ -408,7 +458,7 @@ public class AiManagerNearbyIndoorAnswerService {
             if (named == null) continue;
             if (plans.size() > MAX_PLAN_LOOKUPS) return null;
             List<TravelItem> byPlace = plansContainingPlace(
-                    userId, plans, named, parseNumber(DAY, oldQuestion), loaded);
+                    userId, plans, named, KoreanVisitOrderParser.day(oldQuestion), loaded);
             return byPlace.size() == 1 ? byPlace.get(0) : null;
         }
         return null;
@@ -423,7 +473,7 @@ public class AiManagerNearbyIndoorAnswerService {
         for (int i = history.size() - 1; i >= start; i--) {
             String value = extractExplicitPlaceName(normalize(history.get(i)));
             if (value == null) continue;
-            return containsPlace(snapshot, value, parseNumber(DAY, normalize(history.get(i))))
+            return containsPlace(snapshot, value, KoreanVisitOrderParser.day(normalize(history.get(i))))
                     ? value : null;
         }
         return null;
@@ -447,12 +497,7 @@ public class AiManagerNearbyIndoorAnswerService {
                 && contains(q, "실내", "비", "우천", "대체", "장소", "곳", "박물관", "미술관",
                         "음식", "식당", "맛집", "밥", "카페", "커피", "관광", "명소", "전시",
                         "쉴", "휴식", "더", "어디", "추천", "볼거리",
-                        "투어", "티켓", "입장권", "관광공사", "제휴");
-    }
-
-    private static Integer parseNumber(Pattern pattern, String q) {
-        Matcher matcher = pattern.matcher(q);
-        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
+                        "투어", "티켓", "입장권", "관광공사", "제휴", "숙소", "숙박", "호텔", "리조트");
     }
 
     private static boolean contains(String q, String... words) {

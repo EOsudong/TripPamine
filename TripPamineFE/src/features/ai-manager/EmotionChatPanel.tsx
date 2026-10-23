@@ -24,6 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 import type { ManagerPhase } from "./AiManagerCore";
 import { requestCurrentGpsPosition } from "../../custom/usePreciseGeolocation";
 import "./ai-manager.css";
+import PartnerOfferMessage from "./PartnerOfferMessage";
 
 /** 위치가 필요한 현재 날씨 질문에만 GPS 권한을 요청한다. 지역명·여행 예보는 제외한다. */
 function needsGpsForWeather(message: string): boolean {
@@ -391,7 +392,7 @@ function EmotionChatSession({
                 <span className="sr-only">
                   {item.role === "user" ? "나: " : "AI 매니저: "}
                 </span>
-                {item.content}
+                {item.role === "assistant" ? <PartnerOfferMessage text={item.content} /> : item.content}
               </p>
             </div>
           ))}

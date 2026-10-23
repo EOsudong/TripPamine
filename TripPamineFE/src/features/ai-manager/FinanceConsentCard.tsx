@@ -32,6 +32,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   HOUSING: "주거비",
   MEDICAL: "의료비",
   SALARY: "급여",
+  TRAVEL: "여행비",
+  NEGO: "네고 결제",
   ETC: "기타",
 };
 
@@ -40,7 +42,9 @@ function categoryLabel(category: string | null): string {
     return "기록 없음";
   }
 
-  return CATEGORY_LABELS[category] ?? category;
+  // DB에 소문자 또는 공백 포함 코드가 저장된 경우에도 동일한 라벨을 표시한다.
+  const normalized = category.trim().toUpperCase();
+  return CATEGORY_LABELS[normalized] ?? category;
 }
 
 /**
@@ -188,7 +192,7 @@ export default function FinanceConsentCard({
                             am-text
                         "
           >
-            이번 달 수입·지출 한눈에 보기
+            이번 달 수입·지출과 여행 자금 확인
           </h2>
 
           <p
@@ -199,12 +203,14 @@ export default function FinanceConsentCard({
                             am-muted
                         "
           >
-            허용하면 가계부에 기록한 수입과 지출을 AI 매니저 화면에서 확인할 수
-            있어요. 언제든 사용을 중지할 수 있습니다.
+            허용하면 가계부 수입·지출 외에도 AI 매니저와 대화할 때 본인의
+            연동 계좌 장부 잔액과 여행 목표 정보를 조회할 수 있어요.
+            언제든 사용을 중지할 수 있습니다.
           </p>
 
           <p className="mt-1 text-xs am-muted">
-            이 설정으로 결제나 계좌이체가 실행되지는 않아요.
+            실제 은행의 실시간 잔액을 조회하지 않으며, 결제나 계좌이체를 실행하지 않아요.
+            저장한 채팅에 표시된 금액은 사용 중지 시 자동 삭제되지 않습니다.
           </p>
         </div>
 

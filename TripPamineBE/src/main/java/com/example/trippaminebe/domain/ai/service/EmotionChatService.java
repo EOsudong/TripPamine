@@ -3,6 +3,7 @@ package com.example.trippaminebe.domain.ai.service;
 import com.example.trippaminebe.domain.ai.client.ManagerSlmClient;
 import com.example.trippaminebe.domain.ai.dto.EmotionChatRequest;
 import com.example.trippaminebe.domain.ai.dto.EmotionChatResponse;
+import com.example.trippaminebe.domain.ai.dto.EmotionPredictResponse;
 import com.example.trippaminebe.domain.ai.dto.EmotionPredictRequest;
 import com.example.trippaminebe.domain.ai.entity.AiManagerMessageRole;
 import com.example.trippaminebe.domain.ai.repository.AiUserSettingsRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.trippaminebe.domain.ai.support.AiTimeProvider;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -59,19 +61,9 @@ public class EmotionChatService {
     private final AiUserSettingsRepository settingsRepository;
     // 본인 여행계획 조회 및 Qwen3 문맥 구성
     private final AiManagerTravelContextService travelContextService;
-    private final AiManagerVerifiedAnswerService verifiedAnswerService;
-    private final AiManagerGameAnswerService gameAnswerService;
-    private final AiManagerReadIntentRouter readIntentRouter;
-    private final AiManagerCompositeAnswerService compositeAnswerService;
-    private final AiManagerFinanceAnswerService financeAnswerService;
-    private final AiManagerTravelWeatherAnswerService travelWeatherAnswerService;
-    // 사용자가 허용한 GPS 좌표로 현재 날씨를 실제 API에서 조회한다.
-    private final AiManagerCurrentWeatherAnswerService currentWeatherAnswerService;
-    // 실제 추천 JSON에 저장된 날짜·순서·시간을 사용자 질문과 연결한다.
-    private final AiManagerItineraryAnswerService itineraryAnswerService;
-
-    // 일정 기준 주변 실내 장소를 검증된 좌표에서 검색한다.
-    private final AiManagerNearbyIndoorAnswerService nearbyIndoorAnswerService;
+    // 기능별 검증 및 조회 우선순위는 단일 라우터에서 관리한다.
+    // 인증, 금융 동의, 여행 소유권 검증은 각 도메인 서비스에서 계속 수행한다.
+    private final AiManagerUnifiedIntentRouter unifiedIntentRouter;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -156,84 +148,12 @@ public class EmotionChatService {
 
 
 
-        // 금융정보 조회 및 동의 확인
-        String verifiedAnswer = financeAnswerService.findAnswer(
-            userId,
-            message,
-            previousUserMessages
-        );
-
-        // "그 장소 근처" 요청은 일반 날씨 안내보다 먼저 실제 일정의 좌표로 검색한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = nearbyIndoorAnswerService.findAnswer(
-                    userId, message, previousUserMessages, previousAssistantMessages);
-        }
-
-        // 저장된 여행계획과 실제 날씨 예보 연결
-        if (verifiedAnswer == null) {
-            verifiedAnswer = travelWeatherAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 현재 위치 날씨 질문은 Qwen3 추측을 차단하고 기존 날씨 API로 직접 조회한다.
-        // 요청 좌표는 대화 기록에 저장하지 않는다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = currentWeatherAnswerService.findAnswer(
-                    message, request.latitude(), request.longitude());
-        }
-
-        // 날씨·GPS 질의가 아니라 실제 방문 순서/시간을 묻는 경우 검증된 JSON으로 답한다.
-        // 새로운 LLM 추천을 생성하거나 기존 여행 데이터를 저장하지 않는다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = itineraryAnswerService.findAnswer(
-                    userId, message, previousUserMessages);
-        }
-
-        // 기존 복합 질문과 불명확한 후속 질문 처리
-        if (verifiedAnswer == null) {
-            verifiedAnswer = compositeAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 기존 마스코트 도감 위치 안내는 유지한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer =
-                AiManagerFeatureCatalog.getVerifiedMascotDexGuide(message);
-        }
-
-        // 실제 DB 조회 기반 직접 응답
-        if (verifiedAnswer == null) {
-            verifiedAnswer = verifiedAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 개인 게임정보의 의미 구분 및 의도 라우팅.
-        // 출처별 포인트 잔액, 누적 획득량 등의 미확인 수치를
-        // 일반 Qwen3 대화로 넘기지 않고 검증된 답변으로 처리한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = readIntentRouter.findAnswer(
-                userId,
-                message
-            );
-        }
-
-        // 포인트,퀘스트,RPG,마스코트 검증된 DB 조회
-        if (verifiedAnswer == null) {
-            verifiedAnswer = gameAnswerService.findAnswer(
-                userId,
-                message
-            );
-        }
-
+        // 외부 상품·금융·여행·날씨 등 검증된 기능은 한곳에서 우선순위를 결정한다.
+        // 해결된 질문은 Qwen3를 호출하지 않고 결과를 그대로 사용한다.
+        AiManagerUnifiedIntentRouter.RoutingResult routing = unifiedIntentRouter.route(
+                userId, message, previousUserMessages, previousAssistantMessages,
+                request.latitude(), request.longitude());
+        String verifiedAnswer = routing.answer();
 
         // 직접 답할 수 없는 질문에 대해서만
         // 기존 여행정보 문맥을 Qwen3에 전달한다.
@@ -250,6 +170,44 @@ public class EmotionChatService {
 
         if (!travelContext.isBlank()) {
             systemPrompt += "\n\n" + travelContext;
+        }
+
+        // STEP AI-10: 감정 분석은 Qwen3 답변 생성보다 먼저 실행한다.
+        // 분석 주기(2, 4, 6회...), 사용자 동의, 발화 선별 조건은 종전과 같다.
+        // 저장형 대화에서는 아직 현재 메시지를 DB에 넣지 않았으므로 +1을 더한다.
+        int userTurnCount = request.saveHistory()
+                ? (conversationId == null ? 1 : Math.toIntExact(persistence.userTurnCount(userId, conversationId) + 1))
+                : request.humanTurnCount();
+        EmotionAnalysisService.PreparedChatEmotion preparedEmotion = null;
+        boolean consented = settingsRepository.findById(userId)
+                .map(setting -> "Y".equalsIgnoreCase(setting.getEmotionEnabledYn()))
+                .orElse(false);
+
+        if (request.analyzeEmotion() && consented) {
+            List<String> humanTurns = turns.stream()
+                    .filter(turn -> "user".equals(turn.role()))
+                    .map(ManagerSlmClient.ChatTurn::content)
+                    .toList();
+            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0
+                    && AiManagerEmotionAnalysisPolicy.shouldAnalyze(message, previousUserMessages)) {
+                try {
+                    // Q17 FIRST2는 최근 사용자 발화 두 개만 받는다.
+                    // 먼저 추론하되 DB 성공 기록은 Qwen3 답변 생성 후로 미룬다.
+                    List<String> recentHumanTurns = humanTurns.subList(humanTurns.size() - 2, humanTurns.size());
+                    preparedEmotion = emotionAnalysisService.prepareChatEmotion(
+                            userId, new EmotionPredictRequest(null, recentHumanTurns)
+                    );
+                } catch (RuntimeException ignored) {
+                    // 감정 모델 장애가 있어도 사용자와의 채팅은 계속되어야 한다.
+                    // 감정 추정을 답변에 강제로 반영하거나 감정명을 지어내지 않는다.
+                }
+            }
+        }
+
+        // 검증된 DB/API 답변은 감정 모델 결과로 재작성하지 않는다.
+        // 자유 대화에서만 Q17의 불확실성을 반영한 '응답 방식' 지침을 추가한다.
+        if (verifiedAnswer == null && preparedEmotion != null) {
+            systemPrompt += buildEmotionReplyGuidance(preparedEmotion.prediction());
         }
 
         // 검증된 답변 우선, 그 외에는 기존 Qwen3 호출
@@ -284,34 +242,62 @@ public class EmotionChatService {
             );
         }
 
-        int userTurnCount = request.saveHistory()
-                ? Math.toIntExact(persistence.userTurnCount(userId, conversationId))
-                : request.humanTurnCount();
         String emotionName = null;
-        boolean consented = settingsRepository.findById(userId)
-                .map(setting -> "Y".equalsIgnoreCase(setting.getEmotionEnabledYn()))
-                .orElse(false);
-        // 2개 이상의 인간 발화가 있고 사용자가 동의했을 때만 분석한다.
-        if (request.analyzeEmotion() && consented) {
-            List<String> humanTurns = turns.stream()
-                    .filter(turn -> "user".equals(turn.role()))
-                    .map(ManagerSlmClient.ChatTurn::content)
-                    .toList();
-            // 단순 여행 조회·정정을 감정 표현으로 오인하지 않도록 추론 전에 선별한다.
-            if (humanTurns.size() >= 2 && userTurnCount >= 2 && userTurnCount % 2 == 0
-                    && AiManagerEmotionAnalysisPolicy.shouldAnalyze(message, previousUserMessages)) {
-                try {
-                    // FIRST2 정책이 최근 감정을 해석하도록 마지막 사용자 발화 2개만 사용한다.
-                    List<String> recentHumanTurns = humanTurns.subList(humanTurns.size() - 2, humanTurns.size());
-                    emotionName = emotionAnalysisService.analyze(
-                            userId, new EmotionPredictRequest(null, recentHumanTurns)
-                    ).fineLabelName();
-                } catch (RuntimeException ignored) {
-                    // 감정 모델 장애는 정상 채팅 답변의 반환을 막지 않는다.
-                }
+        if (preparedEmotion != null) {
+            try {
+                // 이미 분석한 결과를 재사용한다. Q17을 두 번 호출하지 않는다.
+                // 채팅 답변 생성/저장 이후 성공 기록을 남겨 기존 DB 보존 순서를 유지한다.
+                emotionName = emotionAnalysisService.persistPreparedChatEmotion(
+                        userId, null, preparedEmotion
+                ).fineLabelName();
+            } catch (RuntimeException ignored) {
+                // 감정 DB 저장에 문제가 생겨도 이미 생성된 채팅 답변은 정상 반환한다.
             }
         }
         return new EmotionChatResponse(conversationId, answer, emotionName, AiTimeProvider.nowInServiceZone());
+    }
+
+    /**
+     * Q17의 숫자나 감정명을 사용자에게 직접 들려주지 않고 대화 태도만 보정한다.
+     *
+     * 주의: 0.16은 Q17 FIRST2 분류 경계 정책의 참고값이고,
+     * 0.50은 오진을 줄이기 위한 임시 보수적 대화 활용 기준이다.
+     * 두 값 모두 사용자 감정의 '진실 확률'을 보장하지 않는다.
+     * 운영 전에 실제 검증 데이터로 임계값을 다시 평가해야 한다.
+     */
+    private static String buildEmotionReplyGuidance(EmotionPredictResponse prediction) {
+        if (prediction == null) {
+            return "";
+        }
+
+        boolean clearEnough = prediction.confidence() != null
+                && prediction.first2Margin() != null
+                && prediction.confidence().compareTo(new BigDecimal("0.50")) >= 0
+                && prediction.first2Margin().compareTo(new BigDecimal("0.16")) >= 0;
+
+        if (!clearEnough) {
+            // 확신이 낮으면 '초조한' 같은 모델 예측을 대화에 전달하지 않는다.
+            return """
+
+                    [대화 어조 참고: 내부 감정 분석 결과는 불확실함]
+                    모델이 감정을 충분히 구분하지 못했습니다.
+                    특정 감정명이나 심리 상태를 추측하지 말고 사용자가 직접 말한 사실과 요청에 답하세요.
+                    여행 걱정이 나타나면 확인 가능한 준비 방법을 짧고 자연스럽게 제안하세요.
+                    """;
+        }
+
+        // 감정 이름/수치는 LLM에 직접 제공하지 않는다. 모델의 상위 범주를 대화 태도로만 매핑한다.
+        String approach = switch (prediction.coarseLabel() == null ? "" : prediction.coarseLabel()) {
+            case "불안", "당황" -> "사용자가 직접 말한 우려를 짧게 인정하고, 확인할 사항이나 선택지를 안내하세요.";
+            case "슬픔", "상처" -> "상황을 가볍게 넘기지 말고 차분하게 듣고, 부담 없는 도움을 제안하세요.";
+            case "분노" -> "감정을 평가하지 말고 사용자가 겪은 불편을 인정하며 해결 방법에 집중하세요.";
+            case "기쁨" -> "사용자가 말한 기대나 즐거움에 자연스럽게 호응하되 과장하지 마세요.";
+            default -> "사용자가 직접 표현한 감정과 상황을 우선하며 질문에 실질적으로 답하세요.";
+        };
+
+        return "\n\n[대화 어조 참고: 내부 감정 모델 추정, 사실 확정 금지]\n"
+                + approach
+                + "\n감정명을 말하거나 진단하지 말고, 사용자가 정정한 감정 설명을 항상 우선하세요.";
     }
 
     /**

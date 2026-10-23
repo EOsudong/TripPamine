@@ -2,6 +2,7 @@
 package com.example.trippaminebe.domain.ai.service;
 
 import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
+import com.example.trippaminebe.domain.accountbook.service.MonthlyLedgerCalculator;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
 import com.example.trippaminebe.domain.ai.dto.AiFinanceMonthlySummaryResponse;
 import com.example.trippaminebe.domain.ai.entity.AiFinancePeriodType;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -21,12 +23,10 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.util.Comparator;
+import java.time.ZoneId;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 
 /**
  * AI Manager 월별 금융 요약 기능.
@@ -47,7 +47,7 @@ import java.util.TreeMap;
  *
  * 중요:
  * 가계부 거래 기록을 수정하지 않는다.
- * 금융 요약을 다시 계산할 때만 별도로 저장한다.
+ * 화면 조회는 항상 원본을 계산하며 저장 요약은 거래 변경 후 별도로 갱신한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -56,6 +56,8 @@ public class AiFinanceMonthlySummaryService {
 	private final UserRepository userRepository;
 
 	private final AccountBookRepository accountBookRepository;
+
+	private final MonthlyLedgerCalculator monthlyLedgerCalculator;
 
 	private final AiFinanceSummaryRepository financeSummaryRepository;
 
@@ -80,6 +82,30 @@ public class AiFinanceMonthlySummaryService {
 	}
 
 	/**
+	 * 화면용 최신 월별 합계. 저장된 Snapshot의 생성/갱신 여부와 관계없이
+	 * TRANSACTIONS 원본을 조회하며, 데이터가 없으면 빈 값으로 반환한다.
+	 * 금융 활용 동의 여부는 호출하는 서비스/컨트롤러에서 확인한다.
+	 */
+	@Transactional(readOnly = true)
+	public Optional<AiFinanceMonthlySummaryResponse> previewMonthly(Long userId, YearMonth period) {
+		validateInput(userId, period);
+		LocalDateTime start = period.atDay(1).atStartOfDay();
+		LocalDateTime end = period.plusMonths(1).atDay(1).atStartOfDay();
+		List<TransactionEntity> transactions = accountBookRepository
+				.findByUserIdAndTransactionDateGreaterThanEqualAndTransactionDateLessThan(
+						userId, start, end);
+		if (transactions.isEmpty()) {
+			return Optional.empty();
+		}
+		MonthlyLedgerCalculator.MonthlyTotals totals = monthlyLedgerCalculator.summarize(transactions);
+		return Optional.of(new AiFinanceMonthlySummaryResponse(
+				null, start, end,
+				totals.totalIncome(), totals.totalExpense(), totals.netAmount(),
+				totals.topCategory(), totals.expensesByCategory(), totals.sourceRecordCount()
+		));
+	}
+
+	/**
 	 * STEP 2: 해당 월의 금융 요약 다시 계산.
 	 *
 	 * @Transactional:
@@ -88,7 +114,7 @@ public class AiFinanceMonthlySummaryService {
 	 * 동일한 사용자가 동시에 여러 번 요청하더라도
 	 * 기존 사용자 잠금 기능을 사용해 순서대로 처리한다.
 	 */
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public AiFinanceMonthlySummaryResponse refreshMonthly(
 			Long userId,
 			YearMonth period
@@ -131,96 +157,9 @@ public class AiFinanceMonthlySummaryService {
 									periodEnd
 						);
 
-		// 4. 계산할 금액 초기화
-		BigDecimal totalIncome = BigDecimal.ZERO;
-		BigDecimal totalExpense = BigDecimal.ZERO;
-
-		/*
-		 * TreeMap:
-		 * 지출 항목별 금액을 보관한다.
-		 *
-		 * 예:
-		 * FOOD      → 80000
-		 * TRANSPORT → 30000
-		 */
-		Map<String, BigDecimal> expenseByCategory =
-				new TreeMap<>();
-
-		// 5. 가계부 기록을 하나씩 확인
-		for (TransactionEntity transaction : transactions) {
-
-			Long recordedAmount = transaction.getAmount();
-
-			// 잘못된 금액을 임의로 계산하지 않는다.
-			if (recordedAmount == null || recordedAmount < 0) {
-				throw new IllegalStateException(
-						"금액이 올바르지 않은 기록이 있습니다. 가계부를 확인해 주세요."
-				);
-			}
-
-			BigDecimal amount =
-					BigDecimal.valueOf(recordedAmount);
-
-			String type =
-					transaction.getType() == null
-							? ""
-							: transaction.getType()
-							.trim()
-							.toLowerCase(Locale.ROOT);
-
-			switch (type) {
-
-				// 수입이면 총수입에 더한다.
-				case "income" -> {
-					totalIncome = totalIncome.add(amount);
-				}
-
-				// 지출이면 총지출과 항목별 합계에 더한다.
-				case "expense" -> {
-					totalExpense = totalExpense.add(amount);
-
-					String category =
-							transaction.getCategory() == null
-									? "ETC"
-									: transaction.getCategory().trim();
-
-					if (category.isEmpty()) {
-						category = "ETC";
-					}
-
-					expenseByCategory.merge(
-							category,
-							amount,
-							BigDecimal::add
-					);
-				}
-
-				default -> throw new IllegalStateException(
-						"확인할 수 없는 수입·지출 기록이 있습니다. 가계부를 확인해 주세요."
-				);
-			}
-		}
-
-		/*
-		 * 6. 가장 지출이 많은 항목 찾기.
-		 *
-		 * 금액이 큰 항목부터 정렬한다.
-		 * 금액이 같으면 항목 이름 순서로 정한다.
-		 */
-		String topCategory =
-				expenseByCategory.entrySet()
-						.stream()
-						.sorted(
-								Comparator
-										.<Map.Entry<String, BigDecimal>, BigDecimal>comparing(
-												Map.Entry::getValue
-										)
-										.reversed()
-										.thenComparing(Map.Entry::getKey)
-						)
-						.map(Map.Entry::getKey)
-						.findFirst()
-						.orElse(null);
+		// 4~6. 자산관리와 동일한 집계기를 사용해 수입·지출·카테고리를 계산한다.
+		MonthlyLedgerCalculator.MonthlyTotals totals =
+				monthlyLedgerCalculator.summarize(transactions);
 
 		/*
 		 * 7. 기존 월별 요약 찾기.
@@ -243,23 +182,14 @@ public class AiFinanceMonthlySummaryService {
 										.build()
 						);
 
-		// 8. 계산 결과 설정
-		summary.setTotalIncome(totalIncome);
-		summary.setTotalExpense(totalExpense);
-
-		summary.setNetAmount(
-				totalIncome.subtract(totalExpense)
-		);
-
-		summary.setTopCategory(topCategory);
-
-		summary.setCategorySummaryJson(
-				toJson(expenseByCategory)
-		);
-
-		summary.setSourceRecordCount(
-				transactions.size()
-		);
+		// 8. 기존 요약을 재사용하되 모든 금액/건수와 갱신 기준 시각을 함께 교체한다.
+		summary.setTotalIncome(totals.totalIncome());
+		summary.setTotalExpense(totals.totalExpense());
+		summary.setNetAmount(totals.netAmount());
+		summary.setTopCategory(totals.topCategory());
+		summary.setCategorySummaryJson(toJson(totals.expensesByCategory()));
+		summary.setSourceRecordCount(totals.sourceRecordCount());
+		summary.setAsOfAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
 
 		/*
 		 * 9. 금융 요약만 저장한다.

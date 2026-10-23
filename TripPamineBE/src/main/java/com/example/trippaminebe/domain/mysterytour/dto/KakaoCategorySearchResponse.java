@@ -15,6 +15,13 @@ public record KakaoCategorySearchResponse(List<Document> documents) {
             @JsonProperty("category_name") String categoryName,
             @JsonProperty("category_group_code") String categoryGroupCode,
             String x,
-            String y
-    ) { }
+            String y,
+            @JsonProperty("place_url") String placeUrl
+    ) {
+        // 기존 7개 필드로 DTO를 만드는 호출부가 있다면 그대로 사용할 수 있다.
+        public Document(String id, String placeName, String addressName,
+                        String categoryName, String categoryGroupCode, String x, String y) {
+            this(id, placeName, addressName, categoryName, categoryGroupCode, x, y, null);
+        }
+    }
 }

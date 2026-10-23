@@ -31,9 +31,11 @@ public class QuestRequest {
     @Schema(description = "타겟 경도", example = "126.9780000")
     private BigDecimal targetLng;
 
+    @Min(value = 0, message = "보상은 음수일 수 없습니다.")
     @Schema(description = "성공 보상 포인트", example = "500")
     private Long rewardPoint;
 
+    @Min(value = 0, message = "보상은 음수일 수 없습니다.")
     @Schema(description = "성공 보상 EXP. 미입력 시 0", example = "300")
     private Long rewardExp;
 

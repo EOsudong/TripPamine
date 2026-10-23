@@ -251,7 +251,8 @@ export interface AiManagerActivityEvent {
  * 사용자의 이번 달 금융 현황.
  */
 export interface AiFinanceMonthlySummary {
-  summaryId: number;
+  // 메인 홈은 저장 Snapshot 없이 원본 거래로 실시간 계산하므로 null일 수 있다.
+  summaryId: number | null;
   periodStart: string;
   periodEnd: string;
   totalIncome: number;

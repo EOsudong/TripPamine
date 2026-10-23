@@ -3,6 +3,7 @@ package com.example.trippaminebe.domain.ai.controller;
 
 import com.example.trippaminebe.domain.ai.dto.AiFinanceMonthlySummaryResponse;
 import com.example.trippaminebe.domain.ai.service.AiFinanceMonthlySummaryService;
+import com.example.trippaminebe.domain.ai.service.AiManagerFinanceSummaryLookupService;
 import com.example.trippaminebe.domain.ai.service.AiManagerSettingsService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
 
@@ -26,7 +27,7 @@ import java.time.ZoneId;
  * AI Manager 월별 금융 요약 요청 처리.
  *
  * GET:
- * 기존에 계산한 결과만 조회한다.
+ * 실제 가계부와 기존 요약을 비교해 오래된 경우 갱신한다.
  *
  * POST:
  * 실제 가계부를 다시 읽어서 요약을 갱신한다.
@@ -45,9 +46,10 @@ public class AiFinanceMonthlySummaryController {
 
 	private final AiFinanceMonthlySummaryService monthlySummaryService;
 	private final AiManagerSettingsService settingsService;
+	private final AiManagerFinanceSummaryLookupService summaryLookupService;
 
 	/**
-	 * 저장된 금융 요약 조회.
+	 * 금융 요약 조회 (최신 원본과의 정합성 보장).
 	 *
 	 * 연도와 월을 입력하지 않으면 이번 달을 조회한다.
 	 * 저장된 정보가 없으면 204를 반환한다.
@@ -61,8 +63,8 @@ public class AiFinanceMonthlySummaryController {
 		Long userId = financeAllowedUserId(userDetails);
 		YearMonth period = resolveMonth(year, month);
 
-		return monthlySummaryService
-				.findMonthly(userId, period)
+		return summaryLookupService
+				.findOrRefreshMissing(userId, period)
 				.map(ResponseEntity::ok)
 				.orElseGet(() ->
 						ResponseEntity.noContent().build()

@@ -36,6 +36,9 @@ export interface QuestResponse {
   isActive: boolean;
   // 내 현재 레벨 기준으로 서버가 계산해주는 잠금 여부. 로그인 사용자 조회에서만 의미가 있다.
   locked: boolean;
+  // 독립 퀘스트 선행 관계 정보(기존 CHAIN 내부 단계와 구별)
+  prerequisiteQuestIds?: number[];
+  missingPrerequisiteQuestIds?: number[];
 }
 
 // POST /quests/{id}/start, POST /quests/{id}/clear, GET /quests/my-logs 응답

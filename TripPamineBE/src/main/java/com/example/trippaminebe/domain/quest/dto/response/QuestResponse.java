@@ -8,9 +8,10 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @Schema(description = "퀘스트 마스터 응답 DTO")
 public class QuestResponse {
@@ -36,13 +37,30 @@ public class QuestResponse {
     // 관리자용 조회(from(Quest))에서는 항상 false.
     private boolean locked;
 
+    // 연결된 독립 선행퀘스트 ID / 아직 완료하지 않은 선행퀘스트 ID
+    private List<Long> prerequisiteQuestIds;
+    private List<Long> missingPrerequisiteQuestIds;
+
+    public QuestResponse withPrerequisites(List<Long> required, List<Long> missing) {
+        return toBuilder()
+            .prerequisiteQuestIds(required)
+            .missingPrerequisiteQuestIds(missing)
+            .locked(locked || !missing.isEmpty())
+            .build();
+    }
+
     public static QuestResponse from(Quest quest) {
         return from(quest, null);
     }
 
     // viewerLevel이 null이면(관리자 조회 등) locked는 항상 false로 내려간다.
     public static QuestResponse from(Quest quest, Integer viewerLevel) {
-        boolean locked = viewerLevel != null && viewerLevel < quest.getRequiredLevel();
+        // 사용자 화면의 잠금 표시가 서버 시작 조건(퀘스트+챕터 레벨)과 일치하도록 계산한다.
+        int requiredLevel = quest.getRequiredLevel() != null ? quest.getRequiredLevel() : 1;
+        if (quest.getChapter() != null && quest.getChapter().getRequiredLevel() != null) {
+            requiredLevel = Math.max(requiredLevel, quest.getChapter().getRequiredLevel());
+        }
+        boolean locked = viewerLevel != null && viewerLevel < requiredLevel;
 
         return QuestResponse.builder()
             .questId(quest.getQuestId())
@@ -59,7 +77,7 @@ public class QuestResponse {
             .thumbnailUrl(quest.getThumbnailUrl())
             .chapterId(quest.getChapter() != null ? quest.getChapter().getChapterId() : null)
             .chapterName(quest.getChapter() != null ? quest.getChapter().getChapterName() : null)
-            .requiredLevel(quest.getRequiredLevel())
+            .requiredLevel(viewerLevel != null ? requiredLevel : quest.getRequiredLevel())
             .isActive(quest.getIsActive())
             .locked(locked)
             .build();

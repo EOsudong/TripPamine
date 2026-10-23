@@ -73,6 +73,28 @@ export function deleteQuest(questId: number): Promise<void> {
     return apiRequest<void>(`/admin/quests/${questId}`, { method: "DELETE" })
 }
 
+// ===================== 독립 퀘스트 선행 관계 관리 =====================
+export interface QuestPrerequisiteInfo {
+    prerequisiteQuestId: number
+    prerequisiteQuestName: string
+    isActive: boolean
+}
+
+export function getQuestPrerequisites(questId: number): Promise<QuestPrerequisiteInfo[]> {
+    return apiRequest<QuestPrerequisiteInfo[]>(`/admin/quests/${questId}/prerequisites`)
+}
+
+export function addQuestPrerequisite(questId: number, prerequisiteQuestId: number): Promise<QuestPrerequisiteInfo[]> {
+    return apiRequest<QuestPrerequisiteInfo[]>(`/admin/quests/${questId}/prerequisites`, {
+        method: "POST",
+        body: { prerequisiteQuestId },
+    })
+}
+
+export function deleteQuestPrerequisite(questId: number, prerequisiteQuestId: number): Promise<void> {
+    return apiRequest<void>(`/admin/quests/${questId}/prerequisites/${prerequisiteQuestId}`, { method: "DELETE" })
+}
+
 // ===================== 퀘스트 챕터 관리 =====================
 
 export interface AdminQuestChapter {

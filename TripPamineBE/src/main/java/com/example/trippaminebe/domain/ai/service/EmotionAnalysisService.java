@@ -64,6 +64,16 @@ public class EmotionAnalysisService {
 			Long userId,
 			EmotionPredictRequest request
 	) {
+		// 기존 단독 분석 API는 예측 후 즉시 DB 저장합니다.
+		// 채팅만 예측과 저장을 나눠, 답변 생성 전에 모델 결과를 참고합니다.
+		PreparedChatEmotion prepared = prepareChatEmotion(userId, request);
+		return persistPreparedChatEmotion(userId, request.planId(), prepared);
+	}
+
+	/**
+	 * 채팅에서는 AI 답변 전에 감정을 예측하고, 성공 저장은 뒤로 미룹니다.
+	 */
+	public PreparedChatEmotion prepareChatEmotion(Long userId, EmotionPredictRequest request) {
 
 		/*
 		 * 존재하지 않거나 다른 사용자의 PLAN_ID를
@@ -115,25 +125,8 @@ public class EmotionAnalysisService {
 							request.humanTurns()
 					);
 
-			/*
-			 * AI 호출 성공 후에만
-			 * 짧은 Oracle Transaction을 실행한다.
-			 */
-			EmotionPersistenceResult persistence =
-					emotionPersistenceService
-							.persistSuccess(
-									userId,
-									request.planId(),
-									requestId,
-									startedAt,
-									prediction
-							);
-
-			return EmotionAnalysisResponse.from(
-					requestId,
-					prediction,
-					persistence
-			);
+			// 감정 예측을 잠시 보관하고, 채팅 답변 생성 후 성공 기록을 남깁니다.
+			return new PreparedChatEmotion(requestId, startedAt, prediction);
 
 		} catch (
 				EmotionApiException exception
@@ -193,6 +186,33 @@ public class EmotionAnalysisService {
 			throw exception;
 		}
 	}
+
+	/**
+	 * Qwen3 답변이 정상 생성되고 채팅 저장 단계가 끝난 뒤에만 감정 성공 기록을 보존한다.
+	 * 감정 분석 동의나 사용자 식별은 호출측 서비스에서 이미 검증한다.
+	 */
+	public EmotionAnalysisResponse persistPreparedChatEmotion(
+			Long userId,
+			Long planId,
+			PreparedChatEmotion prepared
+	) {
+		EmotionPersistenceResult persistence = emotionPersistenceService.persistSuccess(
+				userId, planId, prepared.requestId(), prepared.startedAt(), prepared.prediction()
+		);
+		return EmotionAnalysisResponse.from(prepared.requestId(), prepared.prediction(), persistence);
+	}
+
+	/**
+	 * 추론 성공과 DB 성공 저장 사이에 잠시 전달하는 값이다.
+	 * 원문 사용자 발화는 담지 않고 모델 결과·추적 ID·시작 시각만 담는다.
+	 */
+	public record PreparedChatEmotion(
+			String requestId,
+			LocalDateTime startedAt,
+			EmotionPredictResponse prediction
+	) {
+	}
+
 
 	private void validatePlanOwnership(
 			Long userId,

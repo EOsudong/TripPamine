@@ -6,6 +6,7 @@ import com.example.trippaminebe.domain.accountbook.entity.TransactionEntity;
 import com.example.trippaminebe.domain.accountbook.repository.AccountBookRepository;
 import com.example.trippaminebe.domain.user.entity.User;
 import com.example.trippaminebe.domain.user.repository.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.Set;
 import java.util.List;
 
 /**
@@ -31,8 +34,9 @@ public class AccountBookService {
    private final AccountBookRepository accountBookRepository;
    private final UserRepository userRepository;
    private final AccountBalanceService accountBalanceService;
+   private final ApplicationEventPublisher eventPublisher;
 
-   // NEGO는 내부 AiNegoService가 생성한 모의 결제 기록의 전용 카테고리다.
+   // NEGO는 내부 AiNegoService가 생성한 결제 기록의 전용 카테고리다.
    // 일반 가계부 API 요청이 같은 카테고리를 임의로 만들어 결제 기록을 위장하지 못하게 한다.
    private static final String NEGO_CATEGORY = "NEGO";
 
@@ -79,6 +83,8 @@ public class AccountBookService {
          );
       }
 
+      // 같은 트랜잭션에서 이벤트를 발행하되 리스너는 커밋 성공 후에만 실행한다.
+      publishFinanceChange(userId, saved.getTransactionDate());
       return saved;
    }
 
@@ -105,6 +111,8 @@ public class AccountBookService {
          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "네고 결제 카테고리로 변경할 수 없습니다.");
       }
 
+      // 거래일 변경 시 이전 달 요약도 정정해야 하므로 변경 전 날짜를 보존한다.
+      LocalDateTime previousDate = transaction.getTransactionDate();
       transaction.setDescription(updatedData.getDescription());
       transaction.setAmount(updatedData.getAmount());
       transaction.setType(updatedData.getType());
@@ -127,6 +135,7 @@ public class AccountBookService {
           saved.getTransactionDate()
       );
 
+      publishFinanceChange(userId, previousDate, saved.getTransactionDate());
       return saved;
    }
 
@@ -143,6 +152,20 @@ public class AccountBookService {
       }
       accountBalanceService.reverseLedgerTransaction(userId, transaction.getId());
       accountBookRepository.delete(transaction);
+      publishFinanceChange(userId, transaction.getTransactionDate());
+   }
+
+   // 저장·수정·삭제의 대상 월만 전달한다. 실패/롤백된 거래는 리스너가 처리하지 않는다.
+   private void publishFinanceChange(Long userId, LocalDateTime... dates) {
+      Set<YearMonth> months = new java.util.HashSet<>();
+      for (LocalDateTime date : dates) {
+         if (date != null) {
+            months.add(YearMonth.from(date));
+         }
+      }
+      if (!months.isEmpty()) {
+         eventPublisher.publishEvent(new LedgerChangedEvent(userId, months));
+      }
    }
 
    private static boolean isNegoTransaction(TransactionEntity transaction) {

@@ -150,6 +150,9 @@ public class SecurityConfig {
                                 // [마스코트 이미지 수정]
                                 "/mascots/*.png"
                         ).permitAll()
+                        // 일반 사용자 토큰은 관리자 화면에 접근할 수 없다.
+                        // 관리자 인증 필터가 DB 역할(ROLE_SUPER/ROLE_STAFF)로 설정한 경우에만 허용한다.
+                        .requestMatchers("/admin/**").hasAnyRole("SUPER", "STAFF")
                         .requestMatchers("/users/**")
                         .authenticated()
                         // 위에서 지정한 경로 외의 나머지 모든 요청은 인증이 반드시 필요하도록 설정

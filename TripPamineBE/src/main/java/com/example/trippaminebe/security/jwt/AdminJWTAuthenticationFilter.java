@@ -89,6 +89,8 @@ public class AdminJWTAuthenticationFilter
 
                       && jwtUtils
                       .validateToken(token)
+                      // 같은 subject를 사용하는 일반 사용자 JWT라도 관리자 인증에 사용하지 않는다.
+                      && jwtUtils.isAdminAccessToken(token)
 
       ) {
 

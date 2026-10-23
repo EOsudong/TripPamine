@@ -124,11 +124,8 @@ public class AiFinanceSummary {
 	@Builder.Default
 	private Integer sourceRecordCount = 0;
 
-	@Column(
-			name = "AS_OF_AT",
-			insertable = false,
-			updatable = false
-	)
+	// 요약을 다시 계산할 때 실제 집계 기준 시각도 업데이트한다.
+	@Column(name = "AS_OF_AT")
 	private LocalDateTime asOfAt;
 
 	@Column(
