@@ -19,6 +19,7 @@ public class AiManagerUnifiedIntentRouter {
 
     /** 실행된 실제 검증 서비스의 종류. 미처리 질문은 GENERAL_CONVERSATION이다. */
     public enum Intent {
+        ASSET_SAVINGS_PLAN,
         ASSET_OVERVIEW,
         FINANCE_SUMMARY,
         BOOKING_SUPPORT,
@@ -43,6 +44,7 @@ public class AiManagerUnifiedIntentRouter {
         }
     }
 
+    private final AiManagerTravelSavingsPlanAnswerService travelSavingsPlanAnswerService;
     private final AiManagerAssetOverviewAnswerService assetOverviewAnswerService;
     private final AiManagerFinanceAnswerService financeAnswerService;
     private final AiManagerTicketOfferAnswerService ticketOfferAnswerService;
@@ -70,7 +72,12 @@ public class AiManagerUnifiedIntentRouter {
     ) {
         // 명시적인 자산·여행 목표 질문은 일반 월별 가계부 조회보다 먼저 처리한다.
         // 두 서비스 모두 별도의 금융 활용 동의 확인을 수행한다.
-        String answer = assetOverviewAnswerService.findAnswer(userId, message);
+        // 목표 달성 시뮬레이션은 단순 자산 조회보다 먼저 판정해 질문을 가로채지 않도록 한다.
+        // 금융 활용 동의와 본인 데이터 확인은 시뮬레이션 서비스가 직접 수행한다.
+        String answer = travelSavingsPlanAnswerService.findAnswer(userId, message);
+        if (answer != null) return result(Intent.ASSET_SAVINGS_PLAN, answer);
+
+        answer = assetOverviewAnswerService.findAnswer(userId, message);
         if (answer != null) return result(Intent.ASSET_OVERVIEW, answer);
 
         answer = financeAnswerService.findAnswer(userId, message, previousUserMessages);
