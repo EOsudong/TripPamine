@@ -68,6 +68,11 @@ public class AiManagerMemoryService {
 			jsonMapper;
 
 
+	// 장기 기억 활용 동의를 확인한다. 사용자가 허용하지 않으면 Fact 저장소를 읽지 않는다.
+	private final AiManagerSettingsService
+			aiManagerSettingsService;
+
+
 	/**
 	 * 사용자의 현재 ACTIVE Memory를 조회한다.
 	 *
@@ -96,7 +101,25 @@ public class AiManagerMemoryService {
 
 		/*
 		 * =================================================
-		 * 1. 현재 ACTIVE Fact 전체 조회
+		 * 1. 장기 기억 활용 동의 검사
+		 * =================================================
+		 * 사용자가 꺼 둔 장기 기억은 읽지 않는다.
+		 * 설정이 없거나 비활성화된 경우도 빈 응답을 반환한다.
+		 * 모든 호출 경로(직접 조회, 통합 Context, 우선순위)에서
+		 * 동일한 정책이 적용되도록 도메인 경계에서 차단한다.
+		 */
+		if (!aiManagerSettingsService.getSettings(userId).memoryEnabled()) {
+			return new AiManagerMemoryResponse(
+					userId,
+					AiTimeProvider.nowInServiceZone(),
+					List.of(),
+					List.of()
+			);
+		}
+
+		/*
+		 * =================================================
+		 * 2. 현재 ACTIVE Fact 전체 조회
 		 * =================================================
 		 */
 
