@@ -36,3 +36,13 @@ export const toggleDiaryShareApi = async (diaryId: number): Promise<TravelDiary>
 export const deleteDiaryApi = async (diaryId: number) => {
     await api.delete(`/diaries/${diaryId}`)
 }
+
+export interface DiaryUpdateRequest {
+    aiTitle: string
+    aiContent: string
+}
+
+export const updateDiaryApi = async (diaryId: number, data: DiaryUpdateRequest): Promise<TravelDiary> => {
+    const response = await api.put<TravelDiary>(`/diaries/${diaryId}`, data)
+    return response.data
+}

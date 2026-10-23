@@ -69,4 +69,10 @@ public class TravelDiary {
     public void toggleShare() {
         this.shareYn = "Y".equals(this.shareYn) ? "N" : "Y";
     }
+
+    // 사용자가 AI가 쓴 제목/본문을 직접 수정하는 도메인 메서드
+    public void update(String aiTitle, String aiContent) {
+        this.aiTitle = aiTitle;
+        this.aiContent = aiContent;
+    }
 }
