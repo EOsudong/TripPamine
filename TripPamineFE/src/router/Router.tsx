@@ -24,8 +24,6 @@ import QuestDetailPage from "../pages/QuestDetailPage";
 import FinancialProductsPage from "../pages/FinancialProductsPage";
 
 import MysteryTourPlay from "../pages/MysteryTourPlay";
-
-import MysteryTourPlay from "../pages/MysteryTourPlay";
 import TravelPage from "../pages/TravelPage";
 
 import BoardListPage from "../pages/BoardListPage";
