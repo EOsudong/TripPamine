@@ -1,10 +1,33 @@
 import {useEffect, useState} from "react"
 import AppLayout from "../layout/AppLayout"
 import {getTravelPlansApi} from "../api/travel"
-import {getDiariesApi, generateDiaryApi, toggleDiaryShareApi, deleteDiaryApi} from "../api/diary"
+import {getDiariesApi, generateDiaryApi, toggleDiaryShareApi, deleteDiaryApi, updateDiaryApi} from "../api/diary"
 import type {TravelDiary} from "../api/diary"
 import type {TravelPlan} from "../types"
 import axios from "axios"
+
+// 서버 검증(@Size)과 같은 길이 제한
+const TITLE_MAX = 150
+const CONTENT_MAX = 5000
+
+// 요청이 실패했을 때 사용자에게 보여 줄 문구를 만든다.
+// 서버가 이유를 보냈다면 그대로 쓰고, 아니면 상황(상태 코드)에 맞는 문구를 쓴다.
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError(error)) return fallback
+
+  // 서버가 직접 보낸 안내 문구 (400 검증 실패, 404 등)
+  const serverMessage = error.response?.data?.message
+  if (serverMessage) return serverMessage
+
+  // 응답 자체가 없음 = 서버가 꺼져 있거나 네트워크 문제
+  if (!error.response) return "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."
+
+  const status = error.response.status
+  if (status === 404) return "이미 삭제되었거나 찾을 수 없는 다이어리예요. 목록을 새로고침해 주세요."
+  if (status === 403) return "이 다이어리에 대한 권한이 없어요."
+  if (status >= 500) return "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요."
+  return fallback
+}
 
 export default function DiaryPage() {
   const [plans, setPlans] = useState<TravelPlan[]>([])
@@ -12,6 +35,13 @@ export default function DiaryPage() {
   const [selectedPlanId, setSelectedPlanId] = useState("")
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // 수정하기: 지금 편집 중인 다이어리 번호(없으면 null)와 입력 중인 초안
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [draftTitle, setDraftTitle] = useState("")
+  const [draftContent, setDraftContent] = useState("")
+  const [editError, setEditError] = useState("")
+  const [saving, setSaving] = useState(false)
 
   const handleGenerate = async () => {
     if (!selectedPlanId) {
@@ -52,8 +82,51 @@ export default function DiaryPage() {
       setDiaries((prev) =>
         prev.filter((d) =>
           d.diaryId !== diaryId))
-    } catch {
-      setMessage("삭제하지 못했습니다.")
+    } catch (error) {
+      setMessage(getErrorMessage(error, "삭제하지 못했어요. 잠시 후 다시 시도해 주세요."))
+    }
+  }
+
+  // 수정 시작: 현재 제목/본문을 초안에 복사해서 입력창에 채운다
+  const startEdit = (diary: TravelDiary) => {
+    setEditingId(diary.diaryId)
+    setDraftTitle(diary.aiTitle)
+    setDraftContent(diary.aiContent)
+    setEditError("")
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditError("")
+  }
+
+  const handleSave = async (diaryId: number) => {
+    const title = draftTitle.trim()
+    const content = draftContent.trim()
+    if (!title) {
+      setEditError("제목을 입력해 주세요.")
+      return
+    }
+    if (!content) {
+      setEditError("본문을 입력해 주세요.")
+      return
+    }
+    if (title.length > TITLE_MAX || content.length > CONTENT_MAX) {
+      setEditError(`제목은 ${TITLE_MAX}자, 본문은 ${CONTENT_MAX}자까지 입력할 수 있어요.`)
+      return
+    }
+    setSaving(true)
+    setEditError("")
+    try {
+      const updated = await updateDiaryApi(diaryId, {aiTitle: title, aiContent: content})
+      setDiaries((prev) =>
+        prev.map((d) =>
+          (d.diaryId === diaryId ? updated : d)))
+      setEditingId(null)
+    } catch (error) {
+      setEditError(getErrorMessage(error, "저장하지 못했어요. 잠시 후 다시 시도해 주세요."))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -129,6 +202,8 @@ export default function DiaryPage() {
           {diaries.map((diary) => {
             // 다이어리가 속한 여행의 이름을 찾아서 보여 줍니다
             const planName = plans.find((p) => p.planId === diary.planId)?.planName ?? "여행"
+            // 이 카드가 지금 편집 중인지
+            const isEditing = editingId === diary.diaryId
 
             return (
               <article
@@ -136,12 +211,21 @@ export default function DiaryPage() {
                 className="rounded-2xl border border-white/10 bg-white/5 p-5"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-cyan-300">
                       {planName}
                       {diary.createDate ? ` · ${diary.createDate.slice(0, 10)}` : ""}
                     </p>
-                    <h3 className="mt-1 text-xl font-black">{diary.aiTitle}</h3>
+                    {isEditing ? (
+                      <input
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        maxLength={TITLE_MAX}
+                        className="mt-1 w-full rounded-xl border border-white/30 bg-slate-900 px-3 py-2 text-xl font-black outline-none focus:border-cyan-300/70"
+                      />
+                    ) : (
+                      <h3 className="mt-1 text-xl font-black">{diary.aiTitle}</h3>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400">도파민 점수</p>
@@ -149,9 +233,24 @@ export default function DiaryPage() {
                   </div>
                 </div>
 
-                <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-200">
-                  {diary.aiContent}
-                </p>
+                {isEditing ? (
+                  <div className="mt-4">
+                    <textarea
+                      value={draftContent}
+                      onChange={(e) => setDraftContent(e.target.value)}
+                      maxLength={CONTENT_MAX}
+                      rows={12}
+                      className="w-full rounded-xl border border-white/30 bg-slate-900 px-3 py-3 text-sm leading-7 text-slate-200 outline-none focus:border-cyan-300/70"
+                    />
+                    <p className="mt-1 text-right text-xs text-slate-400">
+                      {draftContent.length} / {CONTENT_MAX}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-200">
+                    {diary.aiContent}
+                  </p>
+                )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {diary.keywords.map((k) => (
@@ -164,29 +263,66 @@ export default function DiaryPage() {
                   ))}
                 </div>
 
-                <div className="mt-5 flex items-center gap-2">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                    {diary.shareYn === "Y" ? "🌐 공개 중" : "🔒 나만 보기"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleShare(diary.diaryId)}
-                    className="rounded-xl border border-white/50 px-4 py-2 text-sm font-bold
-                    cursor-pointer transition duration-200
-                    hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-white/10 hover:shadow-lg"
-                  >
-                    {diary.shareYn === "Y" ? "비공개로 전환" : "공개로 전환"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(diary.diaryId)}
-                    className="rounded-xl border border-rose-400/50 px-4 py-2 text-sm font-bold text-rose-300
-                    cursor-pointer transition duration-200
-                    hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-500/15 hover:text-rose-200"
-                  >
-                    삭제
-                  </button>
-                </div>
+                {isEditing ? (
+                  <div className="mt-5">
+                    {editError && <p className="mb-3 text-sm text-rose-300">{editError}</p>}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSave(diary.diaryId)}
+                        disabled={saving}
+                        className="rounded-xl bg-cyan-400 px-5 py-2 text-sm font-bold text-slate-950
+                        cursor-pointer transition duration-200
+                        hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-50"
+                      >
+                        {saving ? "저장 중..." : "저장"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        disabled={saving}
+                        className="rounded-xl border border-white/50 px-4 py-2 text-sm font-bold
+                        cursor-pointer transition duration-200
+                        hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-white/10 hover:shadow-lg"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 flex items-center gap-2">
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
+                      {diary.shareYn === "Y" ? "🌐 공개 중" : "🔒 나만 보기"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleShare(diary.diaryId)}
+                      className="rounded-xl border border-white/50 px-4 py-2 text-sm font-bold
+                      cursor-pointer transition duration-200
+                      hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-white/10 hover:shadow-lg"
+                    >
+                      {diary.shareYn === "Y" ? "비공개로 전환" : "공개로 전환"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(diary)}
+                      className="rounded-xl border border-sky-400/60 bg-sky-500/20 px-4 py-2 text-sm font-bold text-sky-100
+                      cursor-pointer transition duration-200
+                      hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-500/35 hover:shadow-lg"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(diary.diaryId)}
+                      className="rounded-xl border border-rose-400/50 px-4 py-2 text-sm font-bold text-rose-300
+                      cursor-pointer transition duration-200
+                      hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-500/15 hover:text-rose-200"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </article>
             )
           })}

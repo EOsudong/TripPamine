@@ -14,6 +14,7 @@ import com.example.trippaminebe.domain.quest.repository.UserQuestLogRepository;
 import com.example.trippaminebe.domain.recommendation.repository.AiTravelRecommendationRepository;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.travel.repository.TravelPlanRepository;
+import com.example.trippaminebe.domain.diary.dto.request.TravelDiaryUpdateRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +63,14 @@ public class TravelDiaryService {
 		TravelDiary diary = travelDiaryRepository.findByDiaryIdAndUser_Id(diaryId, userId)
 				.orElseThrow(() -> new TravelDiaryNotFoundException("다이어리를 찾을 수 없거나 접근 권한이 없습니다."));
 		diary.toggleShare();
+		return TravelDiaryResponse.from(diary);
+	}
+
+	public TravelDiaryResponse update(Long diaryId, Long userId, TravelDiaryUpdateRequest request) {
+		// 본인 소유 다이어리만 조회됨 (다른 사람 것이면 404)
+		TravelDiary diary = travelDiaryRepository.findByDiaryIdAndUser_Id(diaryId, userId)
+				.orElseThrow(() -> new TravelDiaryNotFoundException("다이어리를 찾을 수 없거나 접근 권한이 없습니다."));
+		diary.update(request.getAiTitle().trim(), request.getAiContent().trim());
 		return TravelDiaryResponse.from(diary);
 	}
 

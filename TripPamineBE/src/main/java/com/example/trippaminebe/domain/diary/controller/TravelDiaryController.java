@@ -3,6 +3,8 @@ package com.example.trippaminebe.domain.diary.controller;
 import com.example.trippaminebe.domain.diary.dto.response.TravelDiaryResponse;
 import com.example.trippaminebe.domain.diary.service.TravelDiaryService;
 import com.example.trippaminebe.domain.user.service.custom.CustomUserDetails;
+import com.example.trippaminebe.domain.diary.dto.request.TravelDiaryUpdateRequest;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -58,6 +60,16 @@ public class TravelDiaryController {
         @PathVariable Long diaryId
     ) {
         return ResponseEntity.ok(travelDiaryService.toggleShare(diaryId, getUserId(userDetails)));
+    }
+
+    @PutMapping("/{diaryId}")
+    @Operation(summary = "AI 다이어리 제목/본문 수정")
+    public ResponseEntity<TravelDiaryResponse> update(
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        @PathVariable Long diaryId,
+        @Valid @RequestBody TravelDiaryUpdateRequest request
+    ) {
+        return ResponseEntity.ok(travelDiaryService.update(diaryId, getUserId(userDetails), request));
     }
 
     @DeleteMapping("/{diaryId}")
