@@ -6,10 +6,12 @@ import com.example.trippaminebe.domain.diary.dto.response.TravelDiaryResponse;
 import com.example.trippaminebe.domain.diary.entity.DiaryKeyword;
 import com.example.trippaminebe.domain.diary.entity.KeywordType;
 import com.example.trippaminebe.domain.diary.entity.TravelDiary;
+import com.example.trippaminebe.domain.diary.exception.DiaryAlreadyExistsException;
 import com.example.trippaminebe.domain.diary.exception.TravelDiaryNotFoundException;
 import com.example.trippaminebe.domain.diary.repository.TravelDiaryRepository;
 import com.example.trippaminebe.domain.quest.entity.QuestStatus;
 import com.example.trippaminebe.domain.quest.repository.UserQuestLogRepository;
+import com.example.trippaminebe.domain.recommendation.repository.AiTravelRecommendationRepository;
 import com.example.trippaminebe.domain.travel.entity.TravelPlan;
 import com.example.trippaminebe.domain.travel.repository.TravelPlanRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,6 +40,7 @@ public class TravelDiaryService {
 	private final TravelLedgerRepository travelLedgerRepository;
 	private final UserQuestLogRepository userQuestLogRepository;
 	private final OpenAiDiaryGenerationService openAiDiaryGenerationService;
+	private final AiTravelRecommendationRepository aiTravelRecommendationRepository;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -82,7 +85,10 @@ public class TravelDiaryService {
 		}
 
 		travelDiaryRepository.findByTravelPlan_PlanId(planId).ifPresent(existing -> {
-			throw new IllegalArgumentException("이미 해당 여행에 대한 다이어리가 생성되어 있습니다. diaryId=" + existing.getDiaryId());
+			throw new DiaryAlreadyExistsException(
+					"이미 해당 여행에 대한 다이어리가 생성되어 있습니다.",
+					existing.getDiaryId()
+			);
 		});
 
 		// 2. 가계부 지출 패턴 분석
@@ -102,8 +108,21 @@ public class TravelDiaryService {
 				.orElse("기타");
 
 		// 3. 퀘스트 성공률 분석
-		long successCount = userQuestLogRepository.countByUser_IdAndStatus(userId, QuestStatus.SUCCESS);
-		long failedCount = userQuestLogRepository.countByUser_IdAndStatus(userId, QuestStatus.FAILED);
+		// 여행 시작일이 없을 때, 임의의 값인 2026년 1월 1일을 넣는다.
+		// 여행 종료일이 없을 때, 현재의 값으로 대체한다.
+
+		LocalDateTime from = plan.getStartDate() != null
+				? plan.getStartDate()
+				: LocalDateTime.of(2026,1,1,0,0);
+		LocalDateTime to = plan.getEndDate() != null
+				? plan.getEndDate()
+				: LocalDateTime.now();
+
+		long successCount = userQuestLogRepository
+				.countByUser_IdAndStatusAndStartedAtBetween(userId, QuestStatus.SUCCESS, from, to);
+		long failedCount  = userQuestLogRepository
+				.countByUser_IdAndStatusAndStartedAtBetween(userId, QuestStatus.FAILED, from, to);
+
 		long totalCount = successCount + failedCount;
 
 		// 4. AI 생성 및 Fallback 처리
@@ -113,8 +132,9 @@ public class TravelDiaryService {
 		Map<KeywordType, List<String>> keywordsByType;
 
 		try {
+			String placesText = buildPlacesText(planId);
 			String json = openAiDiaryGenerationService.generateDiaryJson(
-					plan, totalSpent, topCategory, successCount, totalCount
+					plan, totalSpent, topCategory, successCount, totalCount, placesText
 			);
 			JsonNode root = objectMapper.readTree(extractJson(json));
 
@@ -160,6 +180,33 @@ public class TravelDiaryService {
 	}
 
 	// --- Helper Methods ---
+
+	// try/catch는 JSON DATA가 깨져있을 때를 대비함, 장소가 없어도 다이어리는 만들어지도록 설정
+	private String buildPlacesText(Long planId) {
+		return aiTravelRecommendationRepository.findByTravelPlan_PlanId(planId)
+				.map(recommendation -> {
+					try {
+						JsonNode days = objectMapper
+								.readTree(recommendation.getRecommendJson())
+								.path("days");
+						StringBuilder sb = new StringBuilder();
+						for (JsonNode day : days) {
+							List<String> names = new ArrayList<>();
+							for (JsonNode place : day.path("places")) {
+								names.add(place.path("name").asText());
+							}
+							sb.append(day.path("day").asInt()).append("일차: ")
+									.append(String.join(", ", names)).append("\n");
+						}
+						String text = sb.toString().trim();
+						return text.isEmpty() ? "장소 정보 없음" : text;
+					} catch (Exception e) {
+						log.warn("방문 장소 파싱 실패, planId={}, error={}", planId, e.getMessage());
+						return "장소 정보 없음";
+					}
+				})
+				.orElse("장소 정보 없음");
+	}
 
 	/**
 	 * CATEGORY_NM(표시명)이 비어있는 과거 데이터를 대비해 CATEGORY_ID(코드)로 폴백합니다.
