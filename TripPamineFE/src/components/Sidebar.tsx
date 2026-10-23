@@ -48,7 +48,8 @@ type NavIconName =
     | "board"
     | "wallet"
     | "photoEditor"
-    | "mascot";
+    | "mascot"
+    | "diary";
 
 
 interface NavItem {
@@ -155,7 +156,7 @@ const navItems: NavGroup[] = [
             },
 
           {
-              icon: "board",
+              icon: "diary",
               label: "AI 다이어리",
               to: "/diaries",
           },
@@ -517,6 +518,8 @@ export default function Sidebar({
                     className={`
             flex-1
             overflow-y-auto
+            [scrollbar-width:none]
+            [&::-webkit-scrollbar]:hidden
             overflow-x-hidden
 
             py-4
@@ -1053,6 +1056,17 @@ function NavIcon({
                     <circle cx="12" cy="13" r="4" />
                 </svg>
             );
+
+      /* AI 다이어리 */
+      case "diary":
+        return (
+          <svg {...commonProps}>
+            <rect x="5" y="3" width="14" height="18" rx="2" />
+            <path d="M9 3v18" />
+            <path d="M12.5 8h3" />
+            <path d="M12.5 12h3" />
+          </svg>
+        );
 
 
         /* 마스코트 */

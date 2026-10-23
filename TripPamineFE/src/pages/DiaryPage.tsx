@@ -171,14 +171,18 @@ export default function DiaryPage() {
                   <button
                     type="button"
                     onClick={() => handleToggleShare(diary.diaryId)}
-                    className="rounded-xl border border-white/15 px-4 py-2 text-sm font-bold"
+                    className="rounded-xl border border-white/15 px-4 py-2 text-sm font-bold
+                    cursor-pointer transition duration-200
+                    hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-white/10 hover:shadow-lg"
                   >
                     {diary.shareYn === "Y" ? "비공개로 전환" : "공개로 전환"}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(diary.diaryId)}
-                    className="rounded-xl px-4 py-2 text-sm font-bold text-rose-300"
+                    className="rounded-xl px-4 py-2 text-sm font-bold text-rose-300
+                    cursor-pointer transition duration-200
+                    hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-200"
                   >
                     삭제
                   </button>
