@@ -110,14 +110,61 @@ export default function QuestPage() {
     return map;
   }, [myLogs]);
 
-  const completedCount = myLogs.filter(
-      (log) => log.status === "SUCCESS",
+  // 현재 공개 퀘스트 기준 완료율을 계산해 비활성/삭제 퀘스트 로그가 분모를 넘지 않게 한다.
+  const completedCount = quests.filter((item) =>
+      logByQuestId.get(item.questId)?.status === "SUCCESS",
   ).length;
+
+  // 챕터 진행률은 별도 상태를 저장하지 않고 서버 퀘스트/성공 로그에서 계산한다.
+  // 공개 퀘스트가 하나도 없는 챕터는 완주 처리하지 않는다.
+  const chapterProgress = useMemo(() => {
+    const result = new Map<number, { total: number; completed: number }>();
+    quests.forEach((quest) => {
+      if (quest.chapterId == null) return;
+      const current = result.get(quest.chapterId) ?? { total: 0, completed: 0 };
+      current.total += 1;
+      if (logByQuestId.get(quest.questId)?.status === "SUCCESS") {
+        current.completed += 1;
+      }
+      result.set(quest.chapterId, current);
+    });
+    return result;
+  }, [quests, logByQuestId]);
 
   const visibleQuests = useMemo(() => {
     if (selectedChapterId == null) return quests;
     return quests.filter((quest) => quest.chapterId === selectedChapterId);
   }, [quests, selectedChapterId]);
+
+  // 독립 퀘스트 간 선행 관계를 표시한다. 기존 CHAIN 내부 단계와는 별개다.
+  const visibleCompletedCount = visibleQuests.filter((item) =>
+      logByQuestId.get(item.questId)?.status === "SUCCESS",
+  ).length;
+  const visiblePercent = visibleQuests.length > 0
+      ? Math.round((visibleCompletedCount / visibleQuests.length) * 100)
+      : 0;
+
+  // 최근 완료 내역은 이미 지급된 보상 스냅샷으로만 표시한다.
+  const recentClears = useMemo(() => myLogs
+      .filter((log) => log.status === "SUCCESS" && quests.some((quest) => quest.questId === log.questId))
+      .sort((a, b) => (b.clearDate ?? "").localeCompare(a.clearDate ?? ""))
+      .slice(0, 4), [myLogs, quests]);
+
+  const questById = useMemo(
+      () => new Map(quests.map((item) => [item.questId, item])),
+      [quests],
+  );
+  const storyQuests = useMemo(() => {
+    return visibleQuests
+        .filter((item) => (item.prerequisiteQuestIds?.length ?? 0) > 0 ||
+            quests.some((next) => next.prerequisiteQuestIds?.includes(item.questId)))
+        .sort((left, right) => left.questId - right.questId);
+  }, [quests, visibleQuests]);
+  const nextQuest = useMemo(() => {
+    const pending = visibleQuests.filter((item) => logByQuestId.get(item.questId)?.status !== "SUCCESS");
+    return pending.find((item) => logByQuestId.get(item.questId)?.status === "PROGRESS") ??
+        pending.find((item) => !item.locked && (item.questType === "LOCATION" || item.questType === "CHAIN")) ?? null;
+  }, [logByQuestId, visibleQuests]);
 
   const handleQuestSelect = useCallback(
       (questId: number) => navigate(`/quests/${questId}`),
@@ -189,29 +236,107 @@ export default function QuestPage() {
                   </button>
                   {chapters.map((chapter) => {
                     const selected = selectedChapterId === chapter.chapterId;
+                    const progress = chapterProgress.get(chapter.chapterId) ?? { total: 0, completed: 0 };
+                    const percent = progress.total > 0
+                        ? Math.round((progress.completed / progress.total) * 100)
+                        : 0;
+                    const cleared = progress.total > 0 && progress.completed === progress.total;
                     return (
                         <button
                             key={chapter.chapterId}
                             type="button"
                             disabled={chapter.locked}
                             onClick={() => setSelectedChapterId(chapter.chapterId)}
-                            className={`shrink-0 min-w-[160px] rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                            className={`shrink-0 min-w-[208px] rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
                                 selected
                                     ? "border-cyan-400 bg-cyan-500/10"
                                     : "border-slate-800 bg-slate-900 hover:border-slate-700"
                             }`}
                         >
                           <p className="flex items-center gap-1.5 text-xs font-black text-white">
-                            {chapter.locked ? "🔒" : "🗺️"} {chapter.chapterName}
+                            {cleared ? "🏆" : chapter.locked ? "🔒" : "🗺️"} {chapter.chapterName}
                           </p>
                           <p className="mt-1 text-[11px] text-slate-500">
                             {chapter.region ?? "미정"}
                             {chapter.locked ? ` · Lv.${chapter.requiredLevel} 필요` : ""}
                           </p>
+                          <div className="mt-3 flex items-center justify-between text-[11px] font-bold text-slate-300">
+                            <span>{progress.completed} / {progress.total}개 완료</span>
+                            <span className={cleared ? "text-emerald-300" : "text-cyan-300"}>
+                              {cleared ? "챕터 완주" : `${percent}%`}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-700"
+                               role="progressbar" aria-label={`${chapter.chapterName} 완료율`}
+                               aria-valuenow={progress.completed} aria-valuemin={0}
+                               aria-valuemax={progress.total}>
+                            <div className={`h-full rounded-full transition-all ${cleared ? "bg-emerald-400" : "bg-cyan-400"}`}
+                                 style={{ width: `${percent}%` }} />
+                          </div>
                         </button>
                     );
                   })}
                 </div>
+              </section>
+          )}
+
+          {!loading && !error && (
+              <section className="mt-6 rounded-3xl border border-cyan-500/20 bg-slate-900 p-5 md:p-6" aria-label="퀘스트 모험 진행도">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-black tracking-[0.18em] text-cyan-400">ADVENTURE PROGRESS</p>
+                    <h2 className="mt-1 text-lg font-black">나의 여행 모험</h2>
+                    <p className="mt-2 text-xs text-slate-400">
+                      {selectedChapterId == null ? "전체 모험" : "선택한 챕터"} {visibleQuests.length}개 중 {visibleCompletedCount}개 완료 ({visiblePercent}%) · 선행 미션을 완료하면 다음 도전이 열립니다.
+                    </p>
+                  </div>
+                  {nextQuest && (
+                      <Link to={`/quests/${nextQuest.questId}`}
+                            className="rounded-xl bg-cyan-500 px-4 py-3 text-xs font-black text-slate-950 hover:bg-cyan-400">
+                        다음 목표 · {nextQuest.questName} →
+                      </Link>
+                  )}
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800"
+                     role="progressbar" aria-valuemin={0} aria-valuemax={visibleQuests.length}
+                     aria-valuenow={visibleCompletedCount} aria-label="선택한 모험 퀘스트 완료율">
+                  <div className={`h-full rounded-full transition-all ${visiblePercent === 100 && visibleQuests.length > 0 ? "bg-emerald-400" : "bg-cyan-400"}`}
+                       style={{ width: `${visiblePercent}%` }} />
+                </div>
+                {visibleQuests.length > 0 && visibleCompletedCount === visibleQuests.length && (
+                    <p className="mt-3 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-300"
+                       role="status">
+                      {selectedChapterId == null ? "공개된 모든 퀘스트를 완주했습니다." : "선택한 챕터를 완주했습니다."}
+                      보상은 각 퀘스트 완료 시 지급된 기록을 기준으로 합니다.
+                    </p>
+                )}
+                {storyQuests.length > 0 && (
+                    <div className="mt-5 flex gap-3 overflow-x-auto pb-2" aria-label="선행 퀘스트 모험 경로">
+                      {storyQuests.map((item, index) => {
+                        const complete = logByQuestId.get(item.questId)?.status === "SUCCESS";
+                        const missing = item.missingPrerequisiteQuestIds ?? [];
+                        return (
+                            <div key={item.questId} className="flex shrink-0 items-center gap-3">
+                              {index > 0 && <span aria-hidden="true" className="text-slate-500">
+                                {item.prerequisiteQuestIds?.includes(storyQuests[index - 1].questId) ? "→" : "·"}
+                              </span>}
+                              <Link to={`/quests/${item.questId}`}
+                                    className={`w-48 rounded-2xl border border-white/10 p-3 shadow-[0_14px_28px_-16px_rgba(34,211,238,0.6)] transition duration-300 hover:-translate-y-1 hover:bg-white/10 ${complete ? "bg-emerald-500/10" : item.locked ? "bg-slate-950/90 opacity-80" : "bg-cyan-500/10"}`}>
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  {complete ? "완료" : missing.length ? `선행 ${missing.length}개 남음` : item.locked ? `Lv.${item.requiredLevel} 필요` : "도전 가능"}
+                                </span>
+                                <strong className="mt-1 block truncate text-sm text-white">{item.questName}</strong>
+                                {missing.length > 0 && (
+                                    <span className="mt-1 block truncate text-[11px] text-slate-400">
+                                      선행: {missing.map((id) => questById.get(id)?.questName ?? `#${id}`).join(", ")}
+                                    </span>
+                                )}
+                              </Link>
+                            </div>
+                        );
+                      })}
+                    </div>
+                )}
               </section>
           )}
 
@@ -221,6 +346,36 @@ export default function QuestPage() {
                   logs={myLogs}
                   onQuestSelect={handleQuestSelect}
               />
+          )}
+
+          {!loading && !error && recentClears.length > 0 && (
+              <section className="mt-7 rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-slate-900 to-emerald-950/30 p-5 md:p-6"
+                       aria-label="최근 완료한 퀘스트 기록">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-black tracking-[0.18em] text-emerald-300">QUEST JOURNAL</p>
+                    <h2 className="mt-1 text-lg font-black">최근 완료한 모험</h2>
+                  </div>
+                  <span className="text-xs text-slate-400">실제 지급 기록 기준</span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {recentClears.map((log) => (
+                      <Link key={log.logId} to={`/quests/${log.questId}`}
+                            className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 transition hover:border-emerald-300/40 hover:bg-slate-900">
+                        <p className="truncate text-sm font-black text-white">✓ {log.questName}</p>
+                        <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-emerald-300">
+                          <span>{log.earnedPoint == null ? "포인트 기록 없음" : `+${log.earnedPoint.toLocaleString()} P`}</span>
+                          <span>{log.earnedExp == null ? "경험치 기록 없음" : `+${log.earnedExp.toLocaleString()} EXP`}</span>
+                        </div>
+                        {log.clearDate && (
+                            <time dateTime={log.clearDate} className="mt-2 block text-[11px] text-slate-500">
+                              {log.clearDate.replace("T", " ").slice(0, 16)} 완료
+                            </time>
+                        )}
+                      </Link>
+                  ))}
+                </div>
+              </section>
           )}
 
           <section className="mt-8">
@@ -263,10 +418,10 @@ export default function QuestPage() {
                     return (
                         <article
                             key={quest.questId}
-                            className={`rounded-3xl border p-5 shadow-lg transition hover:-translate-y-0.5 ${
+                            className={`rounded-3xl border p-5 shadow-[0_18px_45px_-25px_rgba(34,211,238,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_60px_-22px_rgba(34,211,238,0.36)] ${
                                 quest.locked
-                                    ? "border-slate-800 bg-slate-900/60 opacity-60"
-                                    : "border-slate-800 bg-slate-900 hover:border-cyan-500/50"
+                                    ? "border-slate-700/50 bg-gradient-to-br from-slate-900 to-slate-950/90 opacity-80"
+                                    : "border-slate-700/70 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 hover:border-cyan-400/60"
                             }`}
                         >
                           <div className="flex items-start justify-between gap-4">
@@ -283,7 +438,9 @@ export default function QuestPage() {
                             </div>
                             {quest.locked ? (
                                 <span className="shrink-0 rounded-full bg-slate-800 px-3 py-1 text-xs font-black text-slate-400">
-                            🔒 Lv.{quest.requiredLevel}
+                            🔒 {quest.missingPrerequisiteQuestIds?.length
+                                ? `선행 ${quest.missingPrerequisiteQuestIds.length}개`
+                                : `Lv.${quest.requiredLevel}`}
                           </span>
                             ) : (
                                 <span
@@ -318,7 +475,7 @@ export default function QuestPage() {
                               }`}
                           >
                             {quest.locked
-                                ? "레벨 확인하기"
+                                ? (quest.missingPrerequisiteQuestIds?.length ? "선행 퀘스트 확인" : "레벨 확인하기")
                                 : status === "SUCCESS"
                                     ? "완료 기록 보기"
                                     : status === "NOT_STARTED"

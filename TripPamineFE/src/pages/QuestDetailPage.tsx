@@ -123,6 +123,16 @@ export default function QuestDetailPage() {
             null,
         );
 
+    // 실제 서버가 SUCCESS를 반환한 순간에만 성공 연출을 보여준다.
+    const [completionVisible, setCompletionVisible] = useState(false);
+    const [unlockedNextQuest, setUnlockedNextQuest] = useState<QuestResponse | null>(null);
+    // 챕터 완주 정보는 완료 이후 서버에서 다시 조회한 성공 로그만 기준으로 계산한다.
+    const [chapterClear, setChapterClear] = useState<{
+        chapterName: string;
+        completed: number;
+        total: number;
+    } | null>(null);
+
 
     const [
         loading,
@@ -193,6 +203,14 @@ export default function QuestDetailPage() {
         let cancelled =
             false;
 
+        // 같은 컴포넌트에서 다른 퀘스트로 이동해도 이전 완료 안내가 남지 않게 한다.
+        setCompletionVisible(false);
+        setUnlockedNextQuest(null);
+        setChapterClear(null);
+        setLevelUpMessage(null);
+        setSteps(null);
+        setQuest(null);
+        setQuestLog(null);
 
         const loadQuest =
             async () => {
@@ -387,6 +405,34 @@ export default function QuestDetailPage() {
                 log,
             );
 
+            if (log.status === "SUCCESS" && questLog?.status !== "SUCCESS") {
+                setCompletionVisible(true);
+                // 완료 직후의 서버 상태로 다음 퀘스트와 챕터 진행률을 함께 재계산한다.
+                // 오래된 화면 캐시나 프런트 추정값으로 해금을 확정하지 않는다.
+                if (quest) {
+                    void Promise.all([questApi.getQuests(), questApi.getMyLogs()])
+                        .then(([items, logs]) => {
+                            setUnlockedNextQuest(items.find((item) =>
+                                item.prerequisiteQuestIds?.includes(quest.questId) &&
+                                !item.locked &&
+                                logs.find((entry) => entry.questId === item.questId)?.status !== "SUCCESS",
+                            ) ?? null);
+                            if (quest.chapterId == null) return;
+                            const chapterQuests = items.filter((item) => item.chapterId === quest.chapterId);
+                            const completed = chapterQuests.filter((item) =>
+                                logs.some((entry) => entry.questId === item.questId && entry.status === "SUCCESS"),
+                            ).length;
+                            setChapterClear(chapterQuests.length > 0 ? {
+                                chapterName: quest.chapterName ?? "현재 챕터",
+                                total: chapterQuests.length,
+                                completed,
+                            } : null);
+                        })
+                        .catch((nextError) => {
+                            console.warn("완료 후 다음 퀘스트/챕터 조회 실패:", nextError);
+                        });
+                }
+            }
 
             /*
              * SUCCESS가 되면 trackingActive가 false로 바뀌면서
@@ -526,6 +572,41 @@ export default function QuestDetailPage() {
                 )}
 
 
+                {completionVisible && quest && (
+                    <div className="tp-quest-completion mt-5 rounded-[1.75rem] border border-emerald-300/40 bg-gradient-to-br from-emerald-950 via-slate-900 to-cyan-950 p-6 shadow-[0_26px_85px_-25px_rgba(16,185,129,0.55)]" role="status" aria-live="polite">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-black tracking-[0.22em] text-emerald-300">MISSION COMPLETED</p>
+                                <h2 className="mt-2 text-2xl font-black text-white">퀘스트 완료! 모험을 이어가세요</h2>
+                                <p className="mt-2 text-sm text-slate-300">{quest.questName}</p>
+                                <p className="mt-2 text-sm font-black text-amber-200">
+                                    {questLog?.earnedPoint == null ? "포인트 지급 기록 확인 필요" : `+${questLog.earnedPoint.toLocaleString()} P`}
+                                    {" · "}
+                                    {questLog?.earnedExp == null ? "경험치 지급 기록 확인 필요" : `+${questLog.earnedExp.toLocaleString()} EXP`}
+                                </p>
+                                {chapterClear && (
+                                    <p className="mt-2 text-xs font-semibold text-emerald-200">
+                                        {chapterClear.chapterName} · {chapterClear.completed}/{chapterClear.total} 완료
+                                        {chapterClear.completed === chapterClear.total ? " · 챕터 완주!" : ""}
+                                    </p>
+                                )}
+                                <p className="mt-1 text-[11px] text-slate-400">이미 지급된 보상과 완료 로그만 보여줍니다. 챕터 완주 별도 보상은 없습니다.</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {unlockedNextQuest && (
+                                    <Link to={`/quests/${unlockedNextQuest.questId}`}
+                                          className="rounded-xl bg-gradient-to-b from-cyan-300 to-cyan-600 px-4 py-3 text-xs font-black text-slate-950 shadow-lg">
+                                        다음 미션 · {unlockedNextQuest.questName} →
+                                    </Link>
+                                )}
+                                <Link to="/quests" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-xs font-bold text-white">모험 지도</Link>
+                                <button type="button" onClick={() => setCompletionVisible(false)}
+                                        className="rounded-xl border border-white/20 px-4 py-3 text-xs font-bold text-slate-300">닫기</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {loading ? (
                     <QuestDetailSkeleton />
                 ) : error &&
@@ -564,10 +645,11 @@ export default function QuestDetailPage() {
                         <section
                             className="
                   overflow-hidden
-                  rounded-2xl
+                  rounded-[1.75rem]
                   border
-                  border-slate-800
-                  bg-slate-900
+                  border-white/10
+                  bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/50
+                  shadow-[0_25px_75px_-38px_rgba(34,211,238,0.4)]
                 "
                         >
                             <div
@@ -614,7 +696,9 @@ export default function QuestDetailPage() {
 
                                         {quest.locked && (
                                             <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[10px] font-black text-slate-400">
-                                🔒 Lv.{quest.requiredLevel} 필요
+                                🔒 {quest.missingPrerequisiteQuestIds?.length
+                                  ? `선행 ${quest.missingPrerequisiteQuestIds.length}개 필요`
+                                  : `Lv.${quest.requiredLevel} 필요`}
                               </span>
                                         )}
                                     </div>
@@ -711,7 +795,19 @@ export default function QuestDetailPage() {
                  ================================================= */}
 
                         {!questLog ? (
-                            <MissionAcceptCard
+                            <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+                                {/* 수락 전에도 목표 위치를 지도에 미리 표시한다. 위치 권한은 시작 후 요청한다. */}
+                                <QuestMapView
+                                    quest={currentStep ? {
+                                        ...quest,
+                                        questName: `${quest.questName} · ${currentStep.stepOrder}단계: ${currentStep.stepName}`,
+                                        targetLat: currentStep.targetLat,
+                                        targetLng: currentStep.targetLng,
+                                        clearRadius: currentStep.clearRadius,
+                                    } : quest}
+                                    latitude={null} longitude={null} accuracy={null} active={false} preview
+                                />
+                                <MissionAcceptCard
                                 quest={
                                     quest
                                 }
@@ -723,7 +819,8 @@ export default function QuestDetailPage() {
                                 onStart={
                                     handleStartQuest
                                 }
-                            />
+                                />
+                            </section>
                         ) : (
                             /*
                              * 퀘스트 시작 이후.
@@ -981,7 +1078,7 @@ function MissionAcceptCard({
                 </div>
 
                 <p className="mt-5 text-[10px] font-black tracking-[0.18em] text-slate-500">
-                    LEVEL LOCKED
+                    {quest.missingPrerequisiteQuestIds?.length ? "QUEST LOCKED" : "LEVEL LOCKED"}
                 </p>
 
                 <h2 className="mt-2 text-xl font-black md:text-2xl">
@@ -989,9 +1086,21 @@ function MissionAcceptCard({
                 </h2>
 
                 <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-400">
-                    이 퀘스트는 레벨 {quest.requiredLevel} 이상부터 시작할 수 있습니다.
-                    다른 퀘스트를 먼저 클리어해서 레벨을 올려보세요.
+                    {quest.missingPrerequisiteQuestIds?.length
+                        ? `선행 퀘스트 ${quest.missingPrerequisiteQuestIds.map((id) => `#${id}`).join(", ")}을(를) 먼저 완료해주세요.`
+                        : `이 퀘스트는 레벨 ${quest.requiredLevel} 이상부터 시작할 수 있습니다. 다른 퀘스트를 먼저 클리어해서 레벨을 올려보세요.`}
                 </p>
+
+                {(quest.missingPrerequisiteQuestIds?.length ?? 0) > 0 && (
+                    <div className="mt-5 flex flex-wrap justify-center gap-2">
+                        {quest.missingPrerequisiteQuestIds?.map((id) => (
+                            <Link key={id} to={`/quests/${id}`}
+                                  className="rounded-lg bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20">
+                                선행 퀘스트 #{id} 확인 →
+                            </Link>
+                        ))}
+                    </div>
+                )}
 
                 <Link
                     to="/quests"

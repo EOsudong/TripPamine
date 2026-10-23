@@ -8,9 +8,10 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @Schema(description = "퀘스트 마스터 응답 DTO")
 public class QuestResponse {
@@ -35,6 +36,18 @@ public class QuestResponse {
     // 조회하는 사용자의 현재 레벨 기준으로 계산된 잠금 여부.
     // 관리자용 조회(from(Quest))에서는 항상 false.
     private boolean locked;
+
+    // 연결된 독립 선행퀘스트 ID / 아직 완료하지 않은 선행퀘스트 ID
+    private List<Long> prerequisiteQuestIds;
+    private List<Long> missingPrerequisiteQuestIds;
+
+    public QuestResponse withPrerequisites(List<Long> required, List<Long> missing) {
+        return toBuilder()
+            .prerequisiteQuestIds(required)
+            .missingPrerequisiteQuestIds(missing)
+            .locked(locked || !missing.isEmpty())
+            .build();
+    }
 
     public static QuestResponse from(Quest quest) {
         return from(quest, null);

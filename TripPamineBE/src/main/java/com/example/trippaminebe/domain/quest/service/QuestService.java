@@ -77,6 +77,9 @@ public class QuestService {
 	private final RpgStatsService
 			rpgStatsService;
 
+    // 기존 CHAIN 단계와 별개인 독립 퀘스트 선행 조건 검증기
+    private final QuestPrerequisiteService questPrerequisiteService;
+
 
 	/**
 	 * Spring Application Event 발행기.
@@ -112,11 +115,8 @@ public class QuestService {
 
 		Integer viewerLevel = rpgStatsService.findMyLevel(userId);
 
-		return questRepository
-				.findByIsActiveTrue()
-				.stream()
-				.map(quest -> QuestResponse.from(quest, viewerLevel))
-				.toList();
+        return questPrerequisiteService.toUserResponses(
+                questRepository.findByIsActiveTrue(), userId, viewerLevel);
 	}
 
 
@@ -141,10 +141,8 @@ public class QuestService {
 
 		Integer viewerLevel = rpgStatsService.findMyLevel(userId);
 
-		return QuestResponse.from(
-				getQuestOrThrow(questId),
-				viewerLevel
-		);
+        return questPrerequisiteService.toUserResponse(
+                getQuestOrThrow(questId), userId, viewerLevel);
 	}
 
 
@@ -243,6 +241,9 @@ public class QuestService {
 							+ requiredLevel + ", 현재 레벨: " + userLevel
 			);
 		}
+
+        // 레벨과 타입 검증 후, 연결된 모든 선행 퀘스트의 SUCCESS를 요구한다.
+        questPrerequisiteService.assertStartAllowed(questId, userId);
 
 		// 단계가 정의되지 않은 연쇄 퀘스트를 수락하면 사용자가 영원히 진행할 수 없게 된다.
 		if (quest.getQuestType() == QuestType.CHAIN
@@ -973,6 +974,11 @@ public class QuestService {
 	public void delete(
 			Long questId
 	) {
+        // 연결된 퀘스트를 삭제하면 다른 사용자의 해금 조건이 사라지므로 우선 해제해야 한다.
+        if (questPrerequisiteService.hasLinks(questId)) {
+            throw new QuestDeleteConflictException(
+                    "선행·후속 퀘스트 연결이 남아 있습니다. 먼저 관계를 해제해주세요.");
+        }
 
 		Quest quest =
 				getQuestOrThrow(

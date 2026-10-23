@@ -64,6 +64,7 @@ export default function QuestWorldMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const questOverlaysRef = useRef<any[]>([]);
+  const prerequisiteLinesRef = useRef<any[]>([]);
   const userOverlayRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
   const centeredOnUserRef = useRef(false);
@@ -97,7 +98,8 @@ export default function QuestWorldMap({
       return null;
     }
 
-    return visibleQuests
+    const candidates = visibleQuests.filter((quest) => !quest.locked);
+    return (candidates.length > 0 ? candidates : visibleQuests)
         .map((quest) => ({
           quest,
           distance: distanceMeters(
@@ -132,6 +134,8 @@ export default function QuestWorldMap({
     const clearMapObjects = () => {
       questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
       questOverlaysRef.current = [];
+      prerequisiteLinesRef.current.forEach((line) => line.setMap(null));
+      prerequisiteLinesRef.current = [];
       userOverlayRef.current?.setMap(null);
       accuracyCircleRef.current?.setMap(null);
       userOverlayRef.current = null;
@@ -183,6 +187,31 @@ export default function QuestWorldMap({
     const map = mapRef.current;
 
     questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
+    prerequisiteLinesRef.current.forEach((line) => line.setMap(null));
+    prerequisiteLinesRef.current = [];
+
+    // 서버에서 받은 선행 관계만 지도 위에 잇는다. 직선 연결은 도로 경로가 아니다.
+    const pointsById = new Map(visibleQuests.map((item) => [item.questId, item]));
+    visibleQuests.forEach((quest) => {
+      (quest.prerequisiteQuestIds ?? []).forEach((previousId) => {
+        const previous = pointsById.get(previousId);
+        if (!previous) return;
+        const previousCompleted = logByQuestId.get(previousId)?.status === "SUCCESS";
+        const line = new kakao.maps.Polyline({
+          path: [
+            new kakao.maps.LatLng(previous.targetLat, previous.targetLng),
+            new kakao.maps.LatLng(quest.targetLat, quest.targetLng),
+          ],
+          strokeWeight: 4,
+          strokeColor: previousCompleted ? "#10b981" : "#64748b",
+          strokeOpacity: previousCompleted ? 0.85 : 0.6,
+          strokeStyle: "dashed",
+        });
+        line.setMap(map);
+        prerequisiteLinesRef.current.push(line);
+      });
+    });
+
     questOverlaysRef.current = visibleQuests.map((quest) => {
       const status: QuestMapStatus =
           logByQuestId.get(quest.questId)?.status ?? "NOT_STARTED";
@@ -191,21 +220,10 @@ export default function QuestWorldMap({
       const markerButton = document.createElement("button");
       markerButton.type = "button";
       markerButton.title = quest.locked
-          ? `${quest.questName} (Lv.${quest.requiredLevel} 필요)`
+          ? `${quest.questName} (${(quest.missingPrerequisiteQuestIds?.length ?? 0) > 0 ? "선행 미완료" : `Lv.${quest.requiredLevel} 필요`})`
           : quest.questName;
-      markerButton.style.cssText = `
-        width: 38px;
-        height: 38px;
-        border-radius: 50% 50% 50% 8px;
-        border: 3px solid #ffffff;
-        background: ${markerColor};
-        color: #ffffff;
-        font-size: 17px;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.45);
-        cursor: pointer;
-        transform: rotate(-45deg);
-        ${quest.locked ? "opacity: 0.75;" : ""}
-      `;
+      markerButton.className = `tp-quest-world-pin ${quest.locked ? "tp-quest-world-pin--locked" : status === "SUCCESS" ? "tp-quest-world-pin--complete" : status === "PROGRESS" ? "tp-quest-world-pin--active" : ""}`;
+      markerButton.style.setProperty("--quest-pin-color", markerColor);
 
       const markerIcon = document.createElement("span");
       markerIcon.textContent = quest.locked
@@ -213,7 +231,7 @@ export default function QuestWorldMap({
           : status === "SUCCESS"
               ? "✓"
               : "◆";
-      markerIcon.style.cssText = "display:block; transform:rotate(45deg);";
+      markerIcon.className = "tp-quest-world-pin-icon";
       markerButton.appendChild(markerIcon);
       markerButton.addEventListener("click", () =>
           onQuestSelect(quest.questId),
@@ -231,6 +249,8 @@ export default function QuestWorldMap({
     return () => {
       questOverlaysRef.current.forEach((overlay) => overlay.setMap(null));
       questOverlaysRef.current = [];
+      prerequisiteLinesRef.current.forEach((line) => line.setMap(null));
+      prerequisiteLinesRef.current = [];
     };
   }, [mapReady, visibleQuests, logByQuestId, onQuestSelect]);
 
@@ -243,14 +263,11 @@ export default function QuestWorldMap({
 
     if (!userOverlayRef.current) {
       const userMarker = document.createElement("div");
-      userMarker.style.cssText = `
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        border: 4px solid #ffffff;
-        background: #2563eb;
-        box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.22);
-      `;
+      userMarker.className = "tp-quest-user-pulse";
+      userMarker.setAttribute("aria-label", "내 현재 위치");
+      const userCore = document.createElement("span");
+      userCore.className = "tp-quest-user-core";
+      userMarker.appendChild(userCore);
       userOverlayRef.current = new kakao.maps.CustomOverlay({
         position,
         content: userMarker,
@@ -290,7 +307,7 @@ export default function QuestWorldMap({
   };
 
   return (
-      <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl">
+      <section className="mt-8 overflow-hidden rounded-[2rem] border border-cyan-400/15 bg-slate-900 shadow-[0_35px_95px_-35px_rgba(34,211,238,0.26)]">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-5 py-4">
           <div>
             <p className="text-xs font-black tracking-[0.2em] text-cyan-400">
@@ -336,10 +353,10 @@ export default function QuestWorldMap({
         </div>
 
         <div className="grid lg:grid-cols-[1fr_280px]">
-          <div className="relative h-[440px] bg-slate-800">
+          <div className="relative h-[440px] bg-slate-800 shadow-[inset_0_8px_22px_rgba(2,6,23,0.32)]">
             <div ref={mapContainerRef} className="h-full w-full" />
             {mapReady && (
-                <div className="absolute left-4 top-4 z-10 rounded-full border border-cyan-500/30 bg-slate-950/90 px-3 py-1.5 text-xs font-black text-cyan-300 shadow-lg">
+                <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-xl border border-cyan-500/30 bg-slate-950/90 px-3 py-2 text-xs font-black text-cyan-300 shadow-2xl backdrop-blur-xl">
                   표시 중 {visibleQuests.length}개
                 </div>
             )}
@@ -397,12 +414,13 @@ export default function QuestWorldMap({
                 </button>
             )}
 
+            <p className="text-[11px] leading-5 text-slate-500">점선은 선행 퀘스트 연결을 뜻하며 실제 도로 이동 경로가 아닙니다.</p>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <Legend color={STATUS_COLOR.NOT_STARTED} label="도전 가능" />
               <Legend color={STATUS_COLOR.PROGRESS} label="진행 중" />
               <Legend color={STATUS_COLOR.FAILED} label="재도전" />
               <Legend color={STATUS_COLOR.SUCCESS} label="완료" />
-              <Legend color={LOCKED_COLOR} label="레벨 잠김" />
+              <Legend color={LOCKED_COLOR} label="레벨·선행 잠김" />
             </div>
           </aside>
         </div>

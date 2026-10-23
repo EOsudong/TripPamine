@@ -3,6 +3,8 @@ package com.example.trippaminebe.domain.quest.repository;
 import com.example.trippaminebe.domain.quest.entity.QuestStatus;
 import com.example.trippaminebe.domain.quest.entity.UserQuestLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +22,14 @@ public interface UserQuestLogRepository extends JpaRepository<UserQuestLog, Long
 
     // 관리자 단계 변경 전 진행/완료 이력 존재 여부 확인
     boolean existsByQuest_QuestId(Long questId);
+
+    // 선행 조건 판정 시 상태와 퀘스트 ID만 읽어 로그 전체 조회를 피한다.
+    @Query("select l.quest.questId from UserQuestLog l where l.user.id = :userId and l.status = :status")
+    List<Long> findQuestIdsByUserIdAndStatus(@Param("userId") Long userId,
+                                             @Param("status") QuestStatus status);
+
+    @Query("select l.quest.questId from UserQuestLog l where l.user.id = :userId")
+    List<Long> findQuestIdsByUserId(@Param("userId") Long userId);
 
     // AI 다이어리 생성 시 특정 유저의 퀘스트 성공률 산정용
     long countByUser_IdAndStatus(Long userId, QuestStatus status);

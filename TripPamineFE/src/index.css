@@ -395,3 +395,121 @@
     color: var(--color-slate-500);
   }
 }
+
+/* =========================================================
+ * Quest Adventure 3D HUD · Kakao CustomOverlay에도 적용되는 전역 스타일
+ * 지도 타일은 2D이고, 입체 효과는 가벼운 DOM/CSS 레이어로만 표현한다.
+ * ========================================================= */
+@layer components {
+  .tp-quest-beacon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 16px 16px 16px 5px;
+    border: 2px solid rgba(255,255,255,.95);
+    background: linear-gradient(145deg, #ffb18c 0%, #fb4d73 44%, #8d2ed5 100%);
+    box-shadow: inset 0 3px 5px rgba(255,255,255,.5), inset 0 -7px 11px rgba(53,17,90,.42),
+                0 13px 0 -6px rgba(89,34,113,.25), 0 16px 32px rgba(219,39,119,.5);
+    transform: rotate(-45deg);
+    pointer-events: none;
+    isolation: isolate;
+  }
+  .tp-quest-beacon::before {
+    content: "";
+    position: absolute;
+    inset: -14px;
+    border: 2px solid rgba(244,114,182,.45);
+    border-radius: 50%;
+    transform: scale(.85);
+    animation: tp-quest-ripple 2.7s ease-out infinite;
+    z-index: -1;
+  }
+  .tp-quest-beacon-core {
+    display: block;
+    transform: rotate(45deg);
+    color: white;
+    font-size: 21px;
+    text-shadow: 0 2px 5px rgba(0,0,0,.28);
+  }
+  .tp-quest-beacon--ready {
+    background: linear-gradient(145deg, #a7f3d0, #10b981 55%, #047857);
+    box-shadow: inset 0 3px 5px rgba(255,255,255,.55), 0 15px 32px rgba(16,185,129,.7);
+  }
+  .tp-quest-beacon--ready::before { border-color: rgba(16,185,129,.7); }
+  .tp-quest-user-pulse {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 29px;
+    height: 29px;
+    border-radius: 50%;
+    border: 3px solid white;
+    background: linear-gradient(135deg,#93c5fd,#1d4ed8);
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.75),0 6px 15px rgba(30,64,175,.38);
+    pointer-events: none;
+  }
+  .tp-quest-user-pulse::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    background: rgba(37,99,235,.19);
+    border: 2px solid rgba(37,99,235,.55);
+    animation: tp-quest-ripple 2.5s ease-out infinite;
+  }
+  .tp-quest-user-core {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 8px white;
+  }
+  .tp-quest-world-pin {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 2px solid #fff;
+    border-radius: 17px 17px 17px 6px;
+    background: linear-gradient(145deg,rgba(255,255,255,.5),transparent 45%),var(--quest-pin-color,#06b6d4);
+    color: white;
+    font-size: 20px;
+    font-weight: 900;
+    cursor: pointer;
+    transform: rotate(-45deg);
+    box-shadow: inset 0 4px 6px rgba(255,255,255,.35),inset 0 -5px 7px rgba(0,0,0,.22),
+                0 11px 0 -6px rgba(15,23,42,.28),0 14px 27px rgba(15,23,42,.44);
+    transition: filter .2s ease, box-shadow .2s ease;
+  }
+  .tp-quest-world-pin:hover,.tp-quest-world-pin:focus-visible {
+    filter: brightness(1.15);
+    box-shadow: inset 0 3px 6px rgba(255,255,255,.35),0 15px 33px rgba(6,182,212,.65);
+  }
+  .tp-quest-world-pin-icon { display:block; transform:rotate(45deg); }
+  .tp-quest-world-pin--locked { opacity: .72; filter: grayscale(.55); }
+  .tp-quest-world-pin--complete { box-shadow: 0 12px 26px rgba(16,185,129,.4); }
+  .tp-quest-world-pin--active { animation: tp-quest-map-glow 2.5s ease-in-out infinite; }
+  .tp-quest-progress-sheen { background-size:200% 100%; animation:tp-shimmer 3s linear infinite; }
+  .tp-quest-completion { animation: tp-quest-reveal .5s cubic-bezier(.2,.8,.2,1) both; }
+}
+@keyframes tp-quest-ripple {
+  0% { transform:scale(.75);opacity:.8; }
+  100% { transform:scale(1.9);opacity:0; }
+}
+@keyframes tp-quest-map-glow {
+  0%,100% { filter:drop-shadow(0 0 2px rgba(245,158,11,.3)); }
+  50% { filter:drop-shadow(0 0 12px rgba(245,158,11,.8)); }
+}
+@keyframes tp-quest-reveal {
+  from { opacity:0; transform: translateY(14px) scale(.98); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tp-quest-beacon::before,.tp-quest-user-pulse::before,
+  .tp-quest-world-pin--active,.tp-quest-progress-sheen,.tp-quest-completion {
+    animation: none !important;
+  }
+}
