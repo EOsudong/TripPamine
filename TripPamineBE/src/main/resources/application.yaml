@@ -167,3 +167,7 @@ kma:
 logging:
   level:
     oracle.jdbc: WARN
+
+lastfm:
+  api:
+    key: ${LASTFM_API_KEY:}

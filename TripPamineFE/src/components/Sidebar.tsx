@@ -38,6 +38,7 @@ type NavIconName =
     | "manager"
     | "travel"
     | "ai"
+    | "music"
     | "quest"
     | "user"
     | "finance"
@@ -184,6 +185,8 @@ const navItems: NavGroup[] = [
                 label: "금융상품",
                 to: "/finance",
             },
+
+        
         ],
     },
 
@@ -195,6 +198,11 @@ const navItems: NavGroup[] = [
                 icon: "board",
                 label: "게시판",
                 to: "/boards",
+            },
+            {
+                icon: "music",
+                label: "여행 플레이리스트",
+                to: "/music",
             },
         ],
     },
@@ -1008,6 +1016,16 @@ function NavIcon({
                     />
                 </svg>
             );
+
+            /* 여행 플레이리스트 */
+            case "music":
+                return (
+                    <svg {...commonProps}>
+                        <path d="M9 18V5l10-2v13" />
+                        <circle cx="6" cy="18" r="3" />
+                        <circle cx="16" cy="16" r="3" />
+                    </svg>
+                );
 
 
         /* 여행 */
