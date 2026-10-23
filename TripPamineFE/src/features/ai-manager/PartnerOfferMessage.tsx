@@ -80,7 +80,7 @@ function OfferLink({ id, url }: { id: string; url: string }) {
       }
     } catch {
       if (popup && !popup.closed) popup.close();
-      setError("상품 연결에 실패했어요. 제휴 링크를 확인한 후 다시 시도해 주세요.");
+      setError("상품 연결에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setPending(false);
     }

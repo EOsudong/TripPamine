@@ -61,19 +61,9 @@ public class EmotionChatService {
     private final AiUserSettingsRepository settingsRepository;
     // 본인 여행계획 조회 및 Qwen3 문맥 구성
     private final AiManagerTravelContextService travelContextService;
-    private final AiManagerVerifiedAnswerService verifiedAnswerService;
-    private final AiManagerGameAnswerService gameAnswerService;
-    private final AiManagerReadIntentRouter readIntentRouter;
-    private final AiManagerCompositeAnswerService compositeAnswerService;
-    private final AiManagerFinanceAnswerService financeAnswerService;
-    private final AiManagerTravelWeatherAnswerService travelWeatherAnswerService;
-    // 사용자가 허용한 GPS 좌표로 현재 날씨를 실제 API에서 조회한다.
-    private final AiManagerCurrentWeatherAnswerService currentWeatherAnswerService;
-    // 실제 추천 JSON에 저장된 날짜·순서·시간을 사용자 질문과 연결한다.
-    private final AiManagerItineraryAnswerService itineraryAnswerService;
-
-    // 일정 기준 주변 실내 장소를 검증된 좌표에서 검색한다.
-    private final AiManagerNearbyIndoorAnswerService nearbyIndoorAnswerService;
+    // 기능별 검증 및 조회 우선순위는 단일 라우터에서 관리한다.
+    // 인증, 금융 동의, 여행 소유권 검증은 각 도메인 서비스에서 계속 수행한다.
+    private final AiManagerUnifiedIntentRouter unifiedIntentRouter;
 
     public Long latestOpen(Long userId) {
         return persistence.latestOpen(userId);
@@ -158,84 +148,12 @@ public class EmotionChatService {
 
 
 
-        // 금융정보 조회 및 동의 확인
-        String verifiedAnswer = financeAnswerService.findAnswer(
-            userId,
-            message,
-            previousUserMessages
-        );
-
-        // "그 장소 근처" 요청은 일반 날씨 안내보다 먼저 실제 일정의 좌표로 검색한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = nearbyIndoorAnswerService.findAnswer(
-                    userId, message, previousUserMessages, previousAssistantMessages);
-        }
-
-        // 저장된 여행계획과 실제 날씨 예보 연결
-        if (verifiedAnswer == null) {
-            verifiedAnswer = travelWeatherAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 현재 위치 날씨 질문은 Qwen3 추측을 차단하고 기존 날씨 API로 직접 조회한다.
-        // 요청 좌표는 대화 기록에 저장하지 않는다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = currentWeatherAnswerService.findAnswer(
-                    message, request.latitude(), request.longitude());
-        }
-
-        // 날씨·GPS 질의가 아니라 실제 방문 순서/시간을 묻는 경우 검증된 JSON으로 답한다.
-        // 새로운 LLM 추천을 생성하거나 기존 여행 데이터를 저장하지 않는다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = itineraryAnswerService.findAnswer(
-                    userId, message, previousUserMessages);
-        }
-
-        // 기존 복합 질문과 불명확한 후속 질문 처리
-        if (verifiedAnswer == null) {
-            verifiedAnswer = compositeAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 기존 마스코트 도감 위치 안내는 유지한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer =
-                AiManagerFeatureCatalog.getVerifiedMascotDexGuide(message);
-        }
-
-        // 실제 DB 조회 기반 직접 응답
-        if (verifiedAnswer == null) {
-            verifiedAnswer = verifiedAnswerService.findAnswer(
-                userId,
-                message,
-                previousUserMessages
-            );
-        }
-
-        // 개인 게임정보의 의미 구분 및 의도 라우팅.
-        // 출처별 포인트 잔액, 누적 획득량 등의 미확인 수치를
-        // 일반 Qwen3 대화로 넘기지 않고 검증된 답변으로 처리한다.
-        if (verifiedAnswer == null) {
-            verifiedAnswer = readIntentRouter.findAnswer(
-                userId,
-                message
-            );
-        }
-
-        // 포인트,퀘스트,RPG,마스코트 검증된 DB 조회
-        if (verifiedAnswer == null) {
-            verifiedAnswer = gameAnswerService.findAnswer(
-                userId,
-                message
-            );
-        }
-
+        // 외부 상품·금융·여행·날씨 등 검증된 기능은 한곳에서 우선순위를 결정한다.
+        // 해결된 질문은 Qwen3를 호출하지 않고 결과를 그대로 사용한다.
+        AiManagerUnifiedIntentRouter.RoutingResult routing = unifiedIntentRouter.route(
+                userId, message, previousUserMessages, previousAssistantMessages,
+                request.latitude(), request.longitude());
+        String verifiedAnswer = routing.answer();
 
         // 직접 답할 수 없는 질문에 대해서만
         // 기존 여행정보 문맥을 Qwen3에 전달한다.

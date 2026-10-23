@@ -191,6 +191,15 @@ public class AiManagerNearbyIndoorAnswerService {
                     userId, planId, day, sequence, message);
         }
         boolean tourRequest = contains(q, "투어", "티켓", "입장권", "관광공사", "제휴");
+        // 상품을 직접 물어보는 경우에는 지도 후보와 관광정보를 길게 나열하지 않는다.
+        // 방문지 검증/여행 소유권 검사는 기존 탐색 및 상품 서비스에서 유지한다.
+        boolean productOnly = contains(q, "투어", "티켓", "입장권", "제휴")
+                && !contains(q, "관광지", "명소", "볼거리", "문화시설", "관광공사");
+        if (productOnly) {
+            NearbyTourPartnerResponse offers = tourPartnerDiscoveryService.suggest(
+                    userId, planId, day, sequence, DEFAULT_RADIUS_METERS, true, Set.of());
+            return formatProductOffers(offers);
+        }
         if (intent == TravelNearbyCategoryPoiService.Intent.GENERAL && tourRequest) {
             intent = TravelNearbyCategoryPoiService.Intent.TOURISM;
         }
@@ -251,7 +260,7 @@ public class AiManagerNearbyIndoorAnswerService {
         }
         text.append("\n관광정보는 위치 참고용이며 운영시간과 입장 가능 여부는 확인되지 않았습니다.");
         if (!"NOT_REQUESTED".equals(extra.partnerStatus())) {
-            text.append("\n\n[마이리얼트립 관련 투어·티켓]");
+            text.append("\n\n[관련 투어·티켓 상품]");
             if (extra.partnerProducts().isEmpty()) {
                 text.append("\n현재 연결 가능한 관련 상품이 없어요.");
             } else {
@@ -267,6 +276,30 @@ public class AiManagerNearbyIndoorAnswerService {
                     .append("표시가는 조회 시점 기준이며 옵션·재고·결제 금액은 예약 단계에서 달라질 수 있습니다. ")
                     .append("제휴 링크를 통해 확인하고 예약이 가능합니다.");
         }
+        return text.toString();
+    }
+
+    /** 투어·티켓 가격 질문에는 상품명, 조회 가격, 클릭 가능한 상품 링크만 보여준다. */
+    static String formatProductOffers(NearbyTourPartnerResponse offers) {
+        if (!"VERIFIED".equals(offers.referenceStatus())) {
+            return "방문지의 정확한 위치를 확인하지 못해 관련 상품을 검색할 수 없어요.";
+        }
+        StringBuilder text = new StringBuilder("[").append(offers.referenceName())
+                .append(" 관련 투어·티켓]");
+        if (offers.partnerProducts().isEmpty()) {
+            text.append("\n현재 연결 가능한 투어·티켓 상품을 찾지 못했어요.");
+        } else {
+            for (int i = 0; i < offers.partnerProducts().size(); i++) {
+                NearbyTourPartnerResponse.PartnerProduct product = offers.partnerProducts().get(i);
+                text.append("\n").append(i + 1).append(". ").append(product.itemName())
+                        .append(" · 조회 가격 ")
+                        .append(java.text.NumberFormat.getNumberInstance(Locale.KOREA)
+                                .format(product.salePrice()))
+                        .append("원 · [상품 보기](").append(product.productUrl()).append(")");
+            }
+        }
+        text.append("\n관련 체험·가이드 상품은 해당 시설의 입장권이 아닐 수 있으며, ")
+                .append("최종 금액과 이용 가능 여부는 상품 상세에서 확인해 주세요.");
         return text.toString();
     }
 
