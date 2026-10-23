@@ -52,7 +52,7 @@ public interface AiNegoLogRepository extends JpaRepository<AiNegoLog, Long> {
     List<AiNegoLog> findDisplayableOffers(@Param("userId") Long userId,
                                           @Param("now") LocalDateTime now);
 
-    // 동일 오퍼의 동시 수락 요청을 직렬화해서 모의 잔액·가계부가 중복 차감되지 않도록 보호한다.
+    // 동일 오퍼의 동시 수락 요청을 직렬화해서 잔액·가계부가 중복 차감되지 않도록 보호한다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select n from AiNegoLog n where n.negoId = :negoId")
     Optional<AiNegoLog> findByIdForUpdate(@Param("negoId") Long negoId);

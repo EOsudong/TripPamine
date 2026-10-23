@@ -8,6 +8,9 @@ type QuestRadiusFilter = 1000 | 5000 | 10000 | "ALL";
 interface QuestWorldMapProps {
   quests: QuestResponse[];
   logs: UserQuestLogResponse[];
+  // null: 내 주변 GPS 모드 / 값 있음: 선택한 지역 또는 챕터 지도 모드.
+  focusKey: string | null;
+  focusLabel: string | null;
   onQuestSelect: (questId: number) => void;
 }
 
@@ -59,6 +62,8 @@ function formatDistance(distance: number) {
 export default function QuestWorldMap({
                                         quests,
                                         logs,
+                                        focusKey,
+                                        focusLabel,
                                         onQuestSelect,
                                       }: QuestWorldMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -68,9 +73,15 @@ export default function QuestWorldMap({
   const userOverlayRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
   const centeredOnUserRef = useRef(false);
+  const previousFocusKeyRef = useRef<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState<QuestRadiusFilter>(10000);
+
+  useEffect(() => {
+    // 원거리 지역 선택 시 현재 GPS 기준 10km 필터 때문에 마커가 사라지지 않도록 한다.
+    setRadiusFilter(focusKey == null ? 10000 : "ALL");
+  }, [focusKey]);
 
   const { latitude, longitude, accuracy, gpsSignalStrength, error } =
       usePreciseGeolocation(true);
@@ -81,39 +92,53 @@ export default function QuestWorldMap({
     return map;
   }, [logs]);
 
-  const visibleQuests = useMemo(() => {
-    if (radiusFilter === "ALL" || latitude == null || longitude == null) {
-      return quests;
+  // 지역 탐색 시 반경 기준은 GPS가 아닌 선택 지역의 퀘스트 중심이다.
+  // GPS를 거부해도 발표용 지역 지도는 탐색할 수 있다.
+  const filterCenter = useMemo(() => {
+    if (focusKey != null && quests.length > 0) {
+      return {
+        lat: quests.reduce((sum, quest) => sum + quest.targetLat, 0) / quests.length,
+        lng: quests.reduce((sum, quest) => sum + quest.targetLng, 0) / quests.length,
+      };
     }
-
-    return quests.filter(
-        (quest) =>
-            distanceMeters(latitude, longitude, quest.targetLat, quest.targetLng) <=
-            radiusFilter,
+    return latitude == null || longitude == null ? null : { lat: latitude, lng: longitude };
+  }, [focusKey, latitude, longitude, quests]);
+  const visibleQuests = useMemo(() => {
+    if (radiusFilter === "ALL" || filterCenter == null) return quests;
+    return quests.filter((quest) =>
+        distanceMeters(filterCenter.lat, filterCenter.lng, quest.targetLat, quest.targetLng) <= radiusFilter,
     );
-  }, [latitude, longitude, quests, radiusFilter]);
+  }, [quests, radiusFilter, filterCenter]);
 
   const nearestQuest = useMemo(() => {
-    if (latitude == null || longitude == null || visibleQuests.length === 0) {
-      return null;
-    }
-
+    if (visibleQuests.length === 0) return null;
     const candidates = visibleQuests.filter((quest) => !quest.locked);
-    return (candidates.length > 0 ? candidates : visibleQuests)
-        .map((quest) => ({
-          quest,
-          distance: distanceMeters(
-              latitude,
-              longitude,
-              quest.targetLat,
-              quest.targetLng,
-          ),
-        }))
-        .sort((left, right) => left.distance - right.distance)[0];
-  }, [latitude, longitude, visibleQuests]);
+    const pool = candidates.length > 0 ? candidates : visibleQuests;
+    const distanceTo = (quest: QuestResponse) => latitude == null || longitude == null
+        ? null
+        : distanceMeters(latitude, longitude, quest.targetLat, quest.targetLng);
+    if (focusKey != null) {
+      // 지역 선택 중에는 서울·부산까지의 직선거리보다 현재 도전 가능한 미션을 우선한다.
+      const next = pool.find((quest) => logs.some((log) => log.questId === quest.questId && log.status === "PROGRESS"))
+          ?? pool.find((quest) => !logs.some((log) => log.questId === quest.questId && log.status === "SUCCESS"))
+          ?? pool[0];
+      return { quest: next, distance: distanceTo(next) };
+    }
+    return pool.map((quest) => ({ quest, distance: distanceTo(quest) }))
+        .sort((left, right) => (left.distance ?? Infinity) - (right.distance ?? Infinity))[0];
+  }, [latitude, longitude, visibleQuests, focusKey, logs]);
+
+  // 잠금이 풀렸고 아직 완료하지 않은 첫 미션을 지도에서 강조한다.
+  const highlightedQuestId = useMemo(() => {
+    const available = quests.filter((quest) =>
+        !quest.locked && logByQuestId.get(quest.questId)?.status !== "SUCCESS",
+    );
+    return (available.find((quest) => logByQuestId.get(quest.questId)?.status === "PROGRESS")
+        ?? available[0])?.questId ?? null;
+  }, [quests, logByQuestId]);
 
   const hasCurrentLocation = latitude != null && longitude != null;
-  const canInitializeMap = hasCurrentLocation || error != null;
+  const canInitializeMap = hasCurrentLocation || error != null || quests.length > 0;
 
   useEffect(() => {
     if (!mapContainerRef.current || !canInitializeMap) return;
@@ -149,21 +174,18 @@ export default function QuestWorldMap({
 
       try {
         const initialQuest = quests[0];
+        const startAtQuest = focusKey != null || !hasCurrentLocation;
         const center = new kakao.maps.LatLng(
-            hasCurrentLocation
-                ? latitude
-                : (initialQuest?.targetLat ?? SEOUL_CENTER.latitude),
-            hasCurrentLocation
-                ? longitude
-                : (initialQuest?.targetLng ?? SEOUL_CENTER.longitude),
+            startAtQuest ? (initialQuest?.targetLat ?? SEOUL_CENTER.latitude) : latitude,
+            startAtQuest ? (initialQuest?.targetLng ?? SEOUL_CENTER.longitude) : longitude,
         );
         const map = new kakao.maps.Map(mapContainerRef.current, {
           center,
-          level: hasCurrentLocation ? 5 : 7,
+          level: startAtQuest ? 6 : 5,
         });
 
         mapRef.current = map;
-        centeredOnUserRef.current = hasCurrentLocation;
+        centeredOnUserRef.current = hasCurrentLocation || focusKey != null;
         setMapReady(true);
         setMapError(null);
       } catch (initializationError) {
@@ -178,7 +200,26 @@ export default function QuestWorldMap({
       disposed = true;
       clearMapObjects();
     };
-  }, [canInitializeMap, hasCurrentLocation, quests]);
+  // 초기 SDK 로딩은 한 번만 수행한다. 지역/챕터 변경은 아래 setBounds로만 이동한다.
+  }, [canInitializeMap]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || focusKey == null || quests.length === 0) return;
+    const kakao = window.kakao;
+    const valid = quests.filter((quest) => Number.isFinite(quest.targetLat) && Number.isFinite(quest.targetLng));
+    if (valid.length === 0) return;
+    const map = mapRef.current;
+    if (valid.length === 1) {
+      map.setCenter(new kakao.maps.LatLng(valid[0].targetLat, valid[0].targetLng));
+      map.setLevel(4);
+    } else {
+      const bounds = new kakao.maps.LatLngBounds();
+      valid.forEach((quest) => bounds.extend(new kakao.maps.LatLng(quest.targetLat, quest.targetLng)));
+      map.setBounds(bounds);
+    }
+    // GPS 신호가 뒤늦게 도착하더라도 선택 지역 포커스가 바뀌지 않게 한다.
+    centeredOnUserRef.current = true;
+  }, [mapReady, focusKey, quests]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -222,7 +263,9 @@ export default function QuestWorldMap({
       markerButton.title = quest.locked
           ? `${quest.questName} (${(quest.missingPrerequisiteQuestIds?.length ?? 0) > 0 ? "선행 미완료" : `Lv.${quest.requiredLevel} 필요`})`
           : quest.questName;
-      markerButton.className = `tp-quest-world-pin ${quest.locked ? "tp-quest-world-pin--locked" : status === "SUCCESS" ? "tp-quest-world-pin--complete" : status === "PROGRESS" ? "tp-quest-world-pin--active" : ""}`;
+      const highlighted = quest.questId === highlightedQuestId;
+      markerButton.className = `tp-quest-world-pin ${quest.locked ? "tp-quest-world-pin--locked" : status === "SUCCESS" ? "tp-quest-world-pin--complete" : status === "PROGRESS" || highlighted ? "tp-quest-world-pin--active" : ""}`;
+      if (highlighted) markerButton.title += " · 다음 도전 추천";
       markerButton.style.setProperty("--quest-pin-color", markerColor);
 
       const markerIcon = document.createElement("span");
@@ -230,7 +273,7 @@ export default function QuestWorldMap({
           ? "🔒"
           : status === "SUCCESS"
               ? "✓"
-              : "◆";
+              : highlighted ? "★" : "◆";
       markerIcon.className = "tp-quest-world-pin-icon";
       markerButton.appendChild(markerIcon);
       markerButton.addEventListener("click", () =>
@@ -252,7 +295,7 @@ export default function QuestWorldMap({
       prerequisiteLinesRef.current.forEach((line) => line.setMap(null));
       prerequisiteLinesRef.current = [];
     };
-  }, [mapReady, visibleQuests, logByQuestId, onQuestSelect]);
+  }, [mapReady, visibleQuests, logByQuestId, highlightedQuestId, onQuestSelect]);
 
   useEffect(() => {
     if (!mapReady || latitude == null || longitude == null) return;
@@ -294,11 +337,25 @@ export default function QuestWorldMap({
       accuracyCircleRef.current.setRadius(accuracy ?? 0);
     }
 
-    if (!centeredOnUserRef.current) {
+    if (!centeredOnUserRef.current && focusKey == null) {
       map.panTo(position);
       centeredOnUserRef.current = true;
     }
-  }, [mapReady, latitude, longitude, accuracy]);
+  }, [mapReady, latitude, longitude, accuracy, focusKey]);
+
+  useEffect(() => {
+    // 지역 모드에서 내 주변으로 돌아올 때만 한 번 GPS 중심으로 이동한다.
+    const previous = previousFocusKeyRef.current;
+    previousFocusKeyRef.current = focusKey;
+    if (previous != null && focusKey == null) {
+      // 지역 탐색을 끝낼 때 GPS가 아직 없다면, 나중에 수신되는 좌표로 이동한다.
+      centeredOnUserRef.current = false;
+      if (mapReady && latitude != null && longitude != null) {
+        mapRef.current?.panTo(new window.kakao.maps.LatLng(latitude, longitude));
+        centeredOnUserRef.current = true;
+      }
+    }
+  }, [focusKey, mapReady, latitude, longitude]);
 
   const moveToMyLocation = () => {
     if (latitude == null || longitude == null || !mapRef.current) return;
@@ -313,23 +370,24 @@ export default function QuestWorldMap({
             <p className="text-xs font-black tracking-[0.2em] text-cyan-400">
               ADVENTURE MAP
             </p>
-            <h2 className="mt-1 text-xl font-black">주변 퀘스트 지도</h2>
+            <h2 className="mt-1 text-xl font-black">{focusLabel ? `${focusLabel} · 모험 지도` : "주변 퀘스트 지도"}</h2>
+            {focusKey && <p className="mt-1 text-[11px] text-slate-400">선택한 지역의 목적지를 기준으로 표시합니다. GPS 인증은 현장에서만 가능합니다.</p>}
           </div>
           <div
               className="flex rounded-xl border border-slate-700 bg-slate-950 p-1"
               role="group"
-              aria-label="퀘스트 검색 반경"
+              aria-label={focusKey ? "선택 지역 중심 검색 반경" : "내 주변 검색 반경"}
           >
             {RADIUS_FILTER_OPTIONS.map((option) => {
               const selected = radiusFilter === option.value;
-              const requiresLocation = option.value !== "ALL";
+              const requiresLocation = option.value !== "ALL" && filterCenter == null;
 
               return (
                   <button
                       key={option.label}
                       type="button"
                       onClick={() => setRadiusFilter(option.value)}
-                      disabled={requiresLocation && !hasCurrentLocation}
+                      disabled={requiresLocation}
                       aria-pressed={selected}
                       className={`rounded-lg px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
                           selected
@@ -364,10 +422,10 @@ export default function QuestWorldMap({
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900 text-center">
                   <span className="h-7 w-7 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
                   <p className="mt-3 text-sm font-bold text-slate-300">
-                    현재 위치를 확인하고 있습니다.
+                    모험 지도를 준비하고 있습니다.
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    위치 권한을 허용하면 내 주변부터 지도가 열립니다.
+                    지역을 선택하면 GPS 권한 없이도 모험 지도를 확인할 수 있습니다.
                   </p>
                 </div>
             )}
@@ -378,7 +436,7 @@ export default function QuestWorldMap({
             )}
             {mapReady && visibleQuests.length === 0 && (
                 <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-center text-xs text-slate-300 shadow-xl">
-                  선택한 반경 안에 등록된 퀘스트가 없습니다.
+                  {focusKey ? "선택한 지역 반경에 퀘스트가 없습니다. 전체 버튼을 선택하세요." : "선택한 반경 안에 등록된 퀘스트가 없습니다."}
                 </div>
             )}
           </div>
@@ -399,14 +457,14 @@ export default function QuestWorldMap({
                     className="w-full rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4 text-left transition hover:bg-cyan-500/20"
                 >
               <span className="text-[10px] font-black text-cyan-400">
-                NEAREST QUEST
+                {focusKey ? "NEXT REGIONAL MISSION" : "NEAREST QUEST"}
               </span>
                   <strong className="mt-1 block text-sm text-white">
                     {nearestQuest.quest.locked ? "🔒 " : ""}
                     {nearestQuest.quest.questName}
                   </strong>
                   <span className="mt-2 block text-xs text-slate-400">
-                현재 위치에서 약 {formatDistance(nearestQuest.distance)}
+                {nearestQuest.distance == null ? "GPS 위치 정보 없이 지역 탐색 중" : `내 현재 위치에서 직선거리 약 ${formatDistance(nearestQuest.distance)}`}
                     {nearestQuest.quest.locked
                         ? ` · Lv.${nearestQuest.quest.requiredLevel} 필요`
                         : ""}

@@ -36,7 +36,7 @@ public class AccountBookService {
    private final AccountBalanceService accountBalanceService;
    private final ApplicationEventPublisher eventPublisher;
 
-   // NEGO는 내부 AiNegoService가 생성한 모의 결제 기록의 전용 카테고리다.
+   // NEGO는 내부 AiNegoService가 생성한 결제 기록의 전용 카테고리다.
    // 일반 가계부 API 요청이 같은 카테고리를 임의로 만들어 결제 기록을 위장하지 못하게 한다.
    private static final String NEGO_CATEGORY = "NEGO";
 

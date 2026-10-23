@@ -19,6 +19,7 @@ public class AiManagerUnifiedIntentRouter {
 
     /** 실행된 실제 검증 서비스의 종류. 미처리 질문은 GENERAL_CONVERSATION이다. */
     public enum Intent {
+        ASSET_OVERVIEW,
         FINANCE_SUMMARY,
         BOOKING_SUPPORT,
         TOUR_TICKET_SEARCH,
@@ -42,6 +43,7 @@ public class AiManagerUnifiedIntentRouter {
         }
     }
 
+    private final AiManagerAssetOverviewAnswerService assetOverviewAnswerService;
     private final AiManagerFinanceAnswerService financeAnswerService;
     private final AiManagerTicketOfferAnswerService ticketOfferAnswerService;
     private final AiManagerNearbyIndoorAnswerService nearbyIndoorAnswerService;
@@ -66,7 +68,12 @@ public class AiManagerUnifiedIntentRouter {
             Double latitude,
             Double longitude
     ) {
-        String answer = financeAnswerService.findAnswer(userId, message, previousUserMessages);
+        // 명시적인 자산·여행 목표 질문은 일반 월별 가계부 조회보다 먼저 처리한다.
+        // 두 서비스 모두 별도의 금융 활용 동의 확인을 수행한다.
+        String answer = assetOverviewAnswerService.findAnswer(userId, message);
+        if (answer != null) return result(Intent.ASSET_OVERVIEW, answer);
+
+        answer = financeAnswerService.findAnswer(userId, message, previousUserMessages);
         if (answer != null) return result(Intent.FINANCE_SUMMARY, answer);
 
         // 독립 상품 검색과 환불·취소 안내 모두 기존 티켓 서비스가 안전하게 구분한다.

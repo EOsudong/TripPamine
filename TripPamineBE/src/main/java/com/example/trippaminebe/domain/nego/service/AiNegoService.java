@@ -117,7 +117,7 @@ public class AiNegoService {
 					"이름이 일치하는 과거 결제 내역이 있어 중복 결제를 확인해야 합니다.");
 		}
 
-		// [H1-B] 동일 오퍼 잠금 후 실제 결제 계좌도 행 잠금으로 보호한다.
+		// 동일 오퍼 잠금 후 실제 결제 계좌도 행 잠금으로 보호한다.
 		// 다른 오퍼 또는 일반 가계부 출금이 이 계좌의 잔액을 바꾸는 동안 기다렸다가
 		// 최신 잔액으로 다시 검증한다. 잠금은 현재 @Transactional 커밋까지 유지된다.
 		Account account = accountRepository.findOwnedForUpdate(accountId, userId)
@@ -125,7 +125,7 @@ public class AiNegoService {
 		if (!account.isActive()) {
 			throw new IllegalArgumentException("연동이 해지된 계좌입니다.");
 		}
-		// [H1-B] 0원·음수 오퍼 및 Long 범위를 넘는 금액은 모의 결제로 처리하지 않는다.
+		// 0원·음수 오퍼 및 Long 범위를 넘는 금액은 결제로 처리하지 않는다.
 		// TRANSACTIONS.AMOUNT는 Long, AI_NEGO_LOGS.OFFERED_PRICE는 BigDecimal이다.
 		BigDecimal offeredPrice = offer.getOfferedPrice();
 		if (offeredPrice == null || offeredPrice.signum() <= 0) {

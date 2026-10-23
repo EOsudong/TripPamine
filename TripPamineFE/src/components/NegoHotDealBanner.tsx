@@ -134,7 +134,7 @@ export default function NegoHotDealBanner() {
         ? "계좌 연동 필요"
         : insufficient
           ? "잔액 부족"
-          : "모의 거래 수락";
+          : "거래 수락";
 
   return (
     <>

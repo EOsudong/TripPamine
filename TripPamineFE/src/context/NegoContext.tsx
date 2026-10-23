@@ -22,7 +22,7 @@ interface NegoContextType {
   activeOffer: AiNegoLogResponse | null;
   /** 현재 오퍼 닫기. true를 전달하면 1시간 동안 모든 오퍼 팝업을 숨긴다. */
   dismiss: (snoozeOneHour?: boolean) => void;
-  /** 현재 오퍼를 지정한 계좌로 모의 거래 수락한다. 실패 시 예외를 그대로 던진다. */
+  /** 현재 오퍼를 지정한 계좌로 거래 수락한다. 실패 시 예외를 그대로 던진다. */
   accept: (accountId: number) => Promise<AiNegoLogResponse>;
 }
 
