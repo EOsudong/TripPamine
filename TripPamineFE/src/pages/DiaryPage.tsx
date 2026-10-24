@@ -2,13 +2,22 @@ import {useEffect, useState} from "react"
 import AppLayout from "../layout/AppLayout"
 import {getTravelPlansApi} from "../api/travel"
 import {getDiariesApi, generateDiaryApi, toggleDiaryShareApi, deleteDiaryApi, updateDiaryApi} from "../api/diary"
-import type {TravelDiary} from "../api/diary"
+import type {DiaryKeywordRequest, DiaryKeywordType, TravelDiary} from "../api/diary"
 import type {TravelPlan} from "../types"
 import axios from "axios"
 
 // 서버 검증(@Size)과 같은 길이 제한
 const TITLE_MAX = 150
 const CONTENT_MAX = 5000
+const KEYWORD_MAX = 50
+const KEYWORD_COUNT_MAX = 20
+
+// 해시태그 종류 표시 이름
+const KEYWORD_TYPE_LABEL: Record<DiaryKeywordType, string> = {
+  EMOTION: "감정",
+  EXPEND: "소비",
+  PLACE: "장소",
+}
 
 // 요청이 실패했을 때 사용자에게 보여 줄 문구를 만든다.
 // 서버가 이유를 보냈다면 그대로 쓰고, 아니면 상황(상태 코드)에 맞는 문구를 쓴다.
@@ -40,6 +49,9 @@ export default function DiaryPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [draftTitle, setDraftTitle] = useState("")
   const [draftContent, setDraftContent] = useState("")
+  const [draftKeywords, setDraftKeywords] = useState<DiaryKeywordRequest[]>([])
+  const [newKeywordType, setNewKeywordType] = useState<DiaryKeywordType>("EMOTION")
+  const [newKeywordName, setNewKeywordName] = useState("")
   const [editError, setEditError] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -87,17 +99,50 @@ export default function DiaryPage() {
     }
   }
 
-  // 수정 시작: 현재 제목/본문을 초안에 복사해서 입력창에 채운다
+  // 수정 시작: 현재 제목/본문/해시태그를 초안에 복사해서 입력창에 채운다
   const startEdit = (diary: TravelDiary) => {
     setEditingId(diary.diaryId)
     setDraftTitle(diary.aiTitle)
     setDraftContent(diary.aiContent)
+    setDraftKeywords(
+      diary.keywords.map((k) => ({keywordType: k.keywordType, keywordName: k.keywordName}))
+    )
+    setNewKeywordType("EMOTION")
+    setNewKeywordName("")
     setEditError("")
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setEditError("")
+  }
+
+  // 해시태그 추가 (앞의 '#'은 떼고, 같은 종류+이름 중복은 막는다)
+  const addKeyword = () => {
+    const name = newKeywordName.trim().replace(/^#+/, "").trim()
+    if (!name) {
+      setEditError("추가할 해시태그를 입력해 주세요.")
+      return
+    }
+    if (name.length > KEYWORD_MAX) {
+      setEditError(`해시태그는 ${KEYWORD_MAX}자까지 입력할 수 있어요.`)
+      return
+    }
+    if (draftKeywords.length >= KEYWORD_COUNT_MAX) {
+      setEditError(`해시태그는 최대 ${KEYWORD_COUNT_MAX}개까지 등록할 수 있어요.`)
+      return
+    }
+    if (draftKeywords.some((k) => k.keywordType === newKeywordType && k.keywordName === name)) {
+      setEditError("이미 추가된 해시태그예요.")
+      return
+    }
+    setDraftKeywords((prev) => [...prev, {keywordType: newKeywordType, keywordName: name}])
+    setNewKeywordName("")
+    setEditError("")
+  }
+
+  const removeKeyword = (index: number) => {
+    setDraftKeywords((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSave = async (diaryId: number) => {
@@ -115,10 +160,19 @@ export default function DiaryPage() {
       setEditError(`제목은 ${TITLE_MAX}자, 본문은 ${CONTENT_MAX}자까지 입력할 수 있어요.`)
       return
     }
+    // 입력창에 쓰다 만 해시태그가 있으면 저장 전에 알려 준다 (그냥 저장하면 사라지므로)
+    if (newKeywordName.trim()) {
+      setEditError("입력 중인 해시태그가 있어요. '추가'를 누르거나 입력창을 비워 주세요.")
+      return
+    }
     setSaving(true)
     setEditError("")
     try {
-      const updated = await updateDiaryApi(diaryId, {aiTitle: title, aiContent: content})
+      const updated = await updateDiaryApi(diaryId, {
+        aiTitle: title,
+        aiContent: content,
+        keywords: draftKeywords,
+      })
       setDiaries((prev) =>
         prev.map((d) =>
           (d.diaryId === diaryId ? updated : d)))
@@ -252,16 +306,81 @@ export default function DiaryPage() {
                   </p>
                 )}
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {diary.keywords.map((k) => (
-                    <span
-                      key={k.keywordId}
-                      className="rounded-full bg-white/10 px-3 py-1 text-xs"
-                    >
-                      #{k.keywordName}
-                    </span>
-                  ))}
-                </div>
+                {isEditing ? (
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-2">
+                      {draftKeywords.map((k, index) => (
+                        <span
+                          key={`${k.keywordType}-${k.keywordName}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1 pl-3 pr-1 text-xs"
+                        >
+                          <span className="text-slate-400">{KEYWORD_TYPE_LABEL[k.keywordType]}</span>
+                          #{k.keywordName}
+                          <button
+                            type="button"
+                            onClick={() => removeKeyword(index)}
+                            aria-label={`${k.keywordName} 해시태그 삭제`}
+                            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-slate-300
+                            transition duration-200 hover:bg-rose-500/30 hover:text-rose-100"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {draftKeywords.length === 0 && (
+                        <p className="text-xs text-slate-400">해시태그가 없어요. 아래에서 추가해 보세요.</p>
+                      )}
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <select
+                        value={newKeywordType}
+                        onChange={(e) => setNewKeywordType(e.target.value as DiaryKeywordType)}
+                        className="rounded-xl border border-white/30 bg-slate-900 px-3 py-2 text-sm"
+                      >
+                        {(Object.keys(KEYWORD_TYPE_LABEL) as DiaryKeywordType[]).map((type) => (
+                          <option key={type} value={type}>
+                            {KEYWORD_TYPE_LABEL[type]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={newKeywordName}
+                        onChange={(e) => setNewKeywordName(e.target.value)}
+                        onKeyDown={(e) => {
+                          // 한글 입력 중(조합 중) Enter는 무시하고, 확정된 Enter만 추가로 처리한다
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                            addKeyword()
+                          }
+                        }}
+                        maxLength={KEYWORD_MAX}
+                        placeholder="해시태그를 입력하세요 (예: 맛집탐방)"
+                        className="flex-1 rounded-xl border border-white/30 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-300/70"
+                      />
+                      <button
+                        type="button"
+                        onClick={addKeyword}
+                        className="rounded-xl border border-sky-400/60 bg-sky-500/20 px-4 py-2 text-sm font-bold text-sky-100
+                        cursor-pointer transition duration-200
+                        hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-500/35"
+                      >
+                        추가
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {diary.keywords.map((k) => (
+                      <span
+                        key={k.keywordId}
+                        className="rounded-full bg-white/10 px-3 py-1 text-xs"
+                      >
+                        #{k.keywordName}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {isEditing ? (
                   <div className="mt-5">

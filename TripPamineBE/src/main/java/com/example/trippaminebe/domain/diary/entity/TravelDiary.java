@@ -75,4 +75,11 @@ public class TravelDiary {
         this.aiTitle = aiTitle;
         this.aiContent = aiContent;
     }
+
+    // 해시태그 목록을 통째로 교체
+    // this.keywords에 새 List를 대입하면 JPA 오류가 나므로, 반드시 clear() 후 다시 채운다.
+    public void replaceKeywords(List<DiaryKeyword> newKeywords) {
+        this.keywords.clear();
+        newKeywords.forEach(this::addKeyword);
+    }
 }

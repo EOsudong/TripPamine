@@ -29,6 +29,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -71,6 +73,14 @@ public class TravelDiaryService {
 		TravelDiary diary = travelDiaryRepository.findByDiaryIdAndUser_Id(diaryId, userId)
 				.orElseThrow(() -> new TravelDiaryNotFoundException("다이어리를 찾을 수 없거나 접근 권한이 없습니다."));
 		diary.update(request.getAiTitle().trim(), request.getAiContent().trim());
+
+		// keywords가 null이면 해시태그는 그대로 둔다
+		if (request.getKeywords() != null) {
+			diary.replaceKeywords(toKeywordEntities(request.getKeywords()));
+		}
+
+		// 새 해시태그의 ID 시퀀스가 응답에 담기도록 먼저 flush
+		travelDiaryRepository.saveAndFlush(diary);
 		return TravelDiaryResponse.from(diary);
 	}
 
@@ -189,6 +199,22 @@ public class TravelDiaryService {
 	}
 
 	// --- Helper Methods ---
+
+	//요청의 해시태그를 엔티티로 변환한다. 앞쪽 '#' 제거, 공백 정리, 같은 종류+이름 중복 제거.
+	private List<DiaryKeyword> toKeywordEntities(List<TravelDiaryUpdateRequest.KeywordItem> items) {
+		Set<String> seen = new HashSet<>();
+		List<DiaryKeyword> result = new ArrayList<>();
+		for (TravelDiaryUpdateRequest.KeywordItem item : items) {
+			String name = item.getKeywordName().trim().replaceFirst("^#+", "").trim();
+			if (name.isEmpty()) continue;
+			if (!seen.add(item.getKeywordType() + ":" + name)) continue;
+			result.add(DiaryKeyword.builder()
+					.keywordType(item.getKeywordType())
+					.keywordName(name)
+					.build());
+		}
+		return result;
+	}
 
 	// try/catch는 JSON DATA가 깨져있을 때를 대비함, 장소가 없어도 다이어리는 만들어지도록 설정
 	private String buildPlacesText(Long planId) {

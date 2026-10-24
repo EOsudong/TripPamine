@@ -37,9 +37,17 @@ export const deleteDiaryApi = async (diaryId: number) => {
     await api.delete(`/diaries/${diaryId}`)
 }
 
+export type DiaryKeywordType = DiaryKeyword["keywordType"]
+
+export interface DiaryKeywordRequest {
+    keywordType: DiaryKeywordType
+    keywordName: string
+}
+
 export interface DiaryUpdateRequest {
     aiTitle: string
     aiContent: string
+    keywords?: DiaryKeywordRequest[]
 }
 
 export const updateDiaryApi = async (diaryId: number, data: DiaryUpdateRequest): Promise<TravelDiary> => {
