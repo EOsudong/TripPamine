@@ -1,0 +1,19 @@
+# Vision AI: YuNet / SFace 용 OpenCV contrib와 YOLO 추론을 위한 CPU 컨테이너.
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=4
+
+# PyTorch/YOLO 실행에서 필요한 최소 OS 라이브러리.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libglib2.0-0 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.local.txt /tmp/requirements.local.txt
+RUN python -m pip install --no-cache-dir -r /tmp/requirements.local.txt
+
+# 프로젝트 코드와 모델 파일은 실행 시 /app 호스트 볼륨에서 제공한다.
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

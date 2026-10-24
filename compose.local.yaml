@@ -1,0 +1,120 @@
+# TripPamine Windows Docker Desktop + WSL2 전용 개발 환경
+# EC2 / Tailscale 운영 라우팅에는 어떠한 변경도 가하지 않는다.
+name: trippamine-local
+
+services:
+  backend:
+    profiles: [app]
+    image: eclipse-temurin:21-jdk-noble
+    working_dir: /workspace
+    # 별도 파일을 사용해 기존 Windows .env를 변경하지 않는다.
+    env_file:
+      # Compose 2.24+: 선택형 AI만 실행할 때 backend.env가 없어도 구성 확인 가능.
+      - path: ./docker/local/secrets/backend.env
+        required: false
+    environment:
+      # Spring에서 로컬 Vision AI 프로세스를 중복 실행하지 않도록 한다.
+      SPRING_APPLICATION_JSON: '{"fastapi":{"auto-start":false,"watchdog-enabled":false,"url":"http://vision:8000"}}'
+      # Emotion Python 런타임은 현재 첨부 소스에 없으므로 PC에서 구동 중인 API를 먼저 연결한다.
+      TRIPPAMINE_AI_BASE_URL: ${EMOTION_URL:-http://host.docker.internal:18001}
+      # Qwen3 프로필을 켠 경우 qwen 컨테이너를 사용하고, 아니라면 다른 주소로 변경한다.
+      TRIPPAMINE_MANAGER_SLM_BASE_URL: ${QWEN_URL:-http://qwen:8080}
+      TRIPPAMINE_MANAGER_SLM_MODEL: trippamine-manager-base
+      OAUTH2_REDIRECT_URI: http://localhost:5173/oauth/callback
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174
+    volumes:
+      - ./TripPamineBE:/workspace
+      # dotenv-java가 Windows 원본 .env를 다시 읽지 않도록 빈 파일로 가린다.
+      - ./docker/local/empty.env:/workspace/.env:ro
+      - gradle_cache:/root/.gradle
+      # Windows DB_URL의 TNS_ADMIN을 /opt/trippamine/wallets로 교체해야 한다.
+      - ./TripPamineBE/src/main/resources/wallets:/opt/trippamine/wallets:ro
+      # 사진 업로드는 소스 디렉터리와 분리하여 Docker 볼륨에 보존한다.
+      - board_uploads:/workspace/uploads/board
+    ports:
+      - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
+    command: ["sh", "gradlew", "bootRun", "--no-daemon"]
+    restart: 'no'
+    networks: [trip-dev]
+
+  frontend:
+    profiles: [app]
+    image: node:22-bookworm-slim
+    working_dir: /workspace
+    environment:
+      VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-8080}
+      TUNNEL_HOST: ''
+    volumes:
+      - ./TripPamineFE:/workspace
+      - fe_node_modules:/workspace/node_modules
+    ports:
+      - '127.0.0.1:${FE_PORT:-5173}:5173'
+    command: ["sh", "-c", "npm ci && npm run dev -- --config vite.local.config.ts --host 0.0.0.0 --port 5173 --strictPort"]
+    restart: 'no'
+    networks: [trip-dev]
+
+  admin:
+    profiles: [app]
+    image: node:22-bookworm-slim
+    working_dir: /workspace
+    environment:
+      LOCAL_BACKEND_URL: http://backend:8080
+    volumes:
+      - ./TripPamineAdmin:/workspace
+      - admin_node_modules:/workspace/node_modules
+    ports:
+      - '127.0.0.1:${ADMIN_PORT:-5174}:5174'
+    command: ["sh", "-c", "npm ci && npm run dev -- --config vite.local.config.ts --host 0.0.0.0 --port 5174 --strictPort"]
+    restart: 'no'
+    networks: [trip-dev]
+
+  vision:
+    profiles: [vision]
+    build:
+      context: ./vision-ai-test
+      dockerfile: Dockerfile.local
+    working_dir: /app
+    # 실제 YOLO/YuNet/SFace 파일은 host 폴더에 유지해 재다운로드와 모델 분실을 방지한다.
+    volumes:
+      - ./vision-ai-test:/app
+    ports:
+      - '127.0.0.1:${VISION_PORT:-8000}:8000'
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: 'no'
+    networks: [trip-dev]
+
+  qwen:
+    profiles: [qwen]
+    # llama.cpp 공식 CPU 서버 이미지. GPU 사용은 별도 검증 후 선택한다.
+    image: ghcr.io/ggml-org/llama.cpp:server
+    volumes:
+      - ./docker/local/models/qwen:/models:ro
+    ports:
+      - '127.0.0.1:${QWEN_PORT:-18002}:8080'
+    command:
+      - '-m'
+      - '/models/${QWEN_GGUF_FILE:-MODEL_NOT_CONFIGURED.gguf}'
+      - '--alias'
+      - 'trippamine-manager-base'
+      - '--host'
+      - '0.0.0.0'
+      - '--port'
+      - '8080'
+      - '-c'
+      - '${QWEN_CTX:-2048}'
+      - '-t'
+      - '${QWEN_THREADS:-4}'
+      - '--n-gpu-layers'
+      - '0'
+    restart: 'no'
+    networks: [trip-dev]
+
+networks:
+  trip-dev:
+    driver: bridge
+
+volumes:
+  gradle_cache:
+  fe_node_modules:
+  admin_node_modules:
+  board_uploads:

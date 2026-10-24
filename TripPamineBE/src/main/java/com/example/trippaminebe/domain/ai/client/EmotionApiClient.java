@@ -11,6 +11,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -40,6 +41,8 @@ public class EmotionApiClient {
 	public EmotionHealthResponse health() {
 
 		try {
+
+			log.debug("TripPamineAI health 요청. method=GET, endpoint={}", safeEndpointForLog("/health"));
 
 			EmotionHealthResponse response =
 					restTemplate.getForObject(
@@ -72,7 +75,8 @@ public class EmotionApiClient {
 							.value();
 
 			log.warn(
-					"TripPamineAI health 호출 실패. HTTP={}",
+					"TripPamineAI health HTTP 오류. method=GET, endpoint={}, httpStatus={}",
+					safeEndpointForLog("/health"),
 					status
 			);
 
@@ -87,9 +91,7 @@ public class EmotionApiClient {
 				ResourceAccessException exception
 		) {
 
-			log.warn(
-					"TripPamineAI health 연결 실패"
-			);
+			logTransportFailure("GET", "/health", exception);
 
 			throw new EmotionApiException(
 					"TripPamineAI에 연결할 수 없습니다.",
@@ -130,6 +132,13 @@ public class EmotionApiClient {
 
 		try {
 
+			// 민감한 사용자 발화 내용은 남기지 않고 요청 개수와 목적지만 기록한다.
+			log.debug(
+					"TripPamineAI emotion 요청. method=POST, endpoint={}, humanTurnCount={}",
+					safeEndpointForLog("/api/v1/emotion/predict"),
+					normalizedTurns.size()
+			);
+
 			EmotionPredictResponse response =
 					restTemplate.postForObject(
 							baseUrl
@@ -163,7 +172,8 @@ public class EmotionApiClient {
 							.value();
 
 			log.warn(
-					"TripPamineAI emotion 호출 실패. HTTP={}",
+					"TripPamineAI emotion HTTP 오류. method=POST, endpoint={}, httpStatus={}",
+					safeEndpointForLog("/api/v1/emotion/predict"),
 					status
 			);
 
@@ -178,9 +188,7 @@ public class EmotionApiClient {
 				ResourceAccessException exception
 		) {
 
-			log.warn(
-					"TripPamineAI emotion 연결 실패"
-			);
+			logTransportFailure("POST", "/api/v1/emotion/predict", exception);
 
 			throw new EmotionApiException(
 					"TripPamineAI 감정 분석 서버에 연결할 수 없습니다.",
@@ -202,6 +210,57 @@ public class EmotionApiClient {
 					502,
 					exception
 			);
+		}
+	}
+
+	/**
+	 * HTTP 응답을 받지 못한 오류를 HTTP 4xx/5xx와 구분해 기록한다.
+	 * 원문 대화나 모델 응답 본문은 로그에 남기지 않는다.
+	 */
+	private void logTransportFailure(
+			String method,
+			String path,
+			ResourceAccessException exception
+	) {
+		Throwable rootCause = exception;
+		while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+			rootCause = rootCause.getCause();
+		}
+
+		String detail = rootCause.getMessage();
+		if (detail != null) {
+			// 한 줄 로그만 기록해 운영 로그 혼입을 방지한다.
+			detail = detail.replace('\n', ' ').replace('\r', ' ');
+			if (detail.length() > 160) {
+				detail = detail.substring(0, 160);
+			}
+		}
+
+		log.warn(
+				"TripPamineAI 연결/읽기 실패. method={}, endpoint={}, causeType={}, detail={}",
+				method,
+				safeEndpointForLog(path),
+				rootCause.getClass().getSimpleName(),
+				detail
+		);
+		log.debug("TripPamineAI 요청 실패 상세 스택", exception);
+	}
+
+	/**
+	 * 서버 주소의 사용자 정보·쿼리 값은 로그에서 제외한다.
+	 * 접속 방식, 호스트, 포트와 API 경로만 표시한다.
+	 */
+	private String safeEndpointForLog(String path) {
+		try {
+			URI uri = URI.create(baseUrl + path);
+			if (uri.getHost() == null || uri.getScheme() == null) {
+				return path + " (base-url 확인 필요)";
+			}
+			return uri.getScheme() + "://" + uri.getHost()
+					+ (uri.getPort() < 0 ? "" : ":" + uri.getPort())
+					+ uri.getPath();
+		} catch (IllegalArgumentException exception) {
+			return path + " (base-url 형식 오류)";
 		}
 	}
 

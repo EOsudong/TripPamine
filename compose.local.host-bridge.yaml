@@ -1,0 +1,7 @@
+# 기존 Windows 서비스와 Docker 개발 서비스를 안전하게 함께 실행하는 오버레이.
+# 기본 Compose 파일은 수정하지 않는다.
+services:
+  admin:
+    environment:
+      # 관리자 Vite 프록시는 Docker 내부 백엔드가 아니라 기존 Windows Java(8080)를 호출한다.
+      LOCAL_BACKEND_URL: http://host.docker.internal:8080

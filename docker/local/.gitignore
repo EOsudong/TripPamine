@@ -1,0 +1,5 @@
+# 비밀정보 및 대용량 모델 파일 Git 제외
+secrets/backend.env
+local.env
+models/qwen/*.gguf
+models/qwen/*.safetensors

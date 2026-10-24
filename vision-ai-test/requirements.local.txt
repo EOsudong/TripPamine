@@ -1,0 +1,8 @@
+# 실제 main.py/mosaic_service.py/multi_mosaic_service.py에서 사용하는 패키지.
+# 정확한 고정 버전은 현 Windows Vision venv 의 pip freeze로 확인한 후 고정할 것.
+fastapi
+uvicorn[standard]
+python-multipart
+numpy
+opencv-contrib-python-headless
+ultralytics
