@@ -1,0 +1,6 @@
+# 로컬 Docker 전용 Google OAuth 콜백 설정
+# Google 인증 후 브라우저가 접근할 수 있는 백엔드 주소를 사용한다.
+services:
+  backend:
+    environment:
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI: http://localhost:18081/login/oauth2/code/google
