@@ -316,17 +316,17 @@ export default function Sidebar({
 
 
     return (
-        <>
-            {/* ==================================================
+      <>
+        {/* ==================================================
           Mobile Backdrop
          ================================================== */}
 
-            {open && (
-                <button
-                    type="button"
-                    aria-label="사이드바 닫기"
-                    onClick={onClose}
-                    className="
+        {open && (
+          <button
+            type="button"
+            aria-label="사이드바 닫기"
+            onClick={onClose}
+            className="
             fixed
             inset-0
             top-16
@@ -335,19 +335,19 @@ export default function Sidebar({
             backdrop-blur-[2px]
             lg:hidden
           "
-                />
-            )}
+          />
+        )}
 
 
-            {/* ==================================================
+        {/* ==================================================
           Sidebar
          ================================================== */}
 
-            <aside
-                id="tp-sidebar"
-                aria-label="주 메뉴"
-                data-open={open}
-                className={`
+        <aside
+          id="tp-sidebar"
+          aria-label="주 메뉴"
+          data-open={open}
+          className={`
           tp-sidebar
           fixed
           bottom-0
@@ -369,8 +369,8 @@ export default function Sidebar({
           ease-out
 
           ${
-                    open
-                        ? `
+            open
+              ? `
                 w-[280px]
                 translate-x-0
                 shadow-[0_20px_50px_rgba(15,23,42,0.12)]
@@ -378,7 +378,7 @@ export default function Sidebar({
                 lg:w-64
                 lg:shadow-none
               `
-                        : `
+              : `
                 w-[280px]
                 -translate-x-full
 
@@ -386,42 +386,42 @@ export default function Sidebar({
                 lg:translate-x-0
                 lg:shadow-none
               `
-                }
+          }
         `}
-            >
-                {/* ==================================================
+        >
+          {/* ==================================================
             Sidebar Header
            ================================================== */}
 
-                {open && (
-                    <div
-                        className="
+          {open && (
+            <div
+              className="
               shrink-0
               border-b
               border-white/5
               px-3
               py-4
             "
-                    >
-                        <div
-                            className="
+            >
+              <div
+                className="
                 flex
                 items-center
                 justify-between
                 gap-3
               "
-                        >
-                            {/* AI Workspace Identity */}
-                            <div
-                                className="
+              >
+                {/* AI Workspace Identity */}
+                <div
+                  className="
                   flex
                   min-w-0
                   items-center
                   gap-3
                 "
-                            >
-                                <div
-                                    className="
+                >
+                  <div
+                    className="
                     relative
                     flex
                     h-9
@@ -438,9 +438,9 @@ export default function Sidebar({
                     shadow-[0_0_18px_rgba(124,108,255,0.65)]
                     shadow-violet-500/40
                   "
-                                >
+                  >
                   <span
-                      className="
+                    className="
                       h-2.5
                       w-2.5
                       rounded-full
@@ -448,40 +448,40 @@ export default function Sidebar({
                       shadow-[0_0_12px_rgba(255,255,255,0.9)]
                     "
                   />
-                                </div>
+                  </div>
 
-                                <div className="min-w-0">
-                                    <p
-                                        className="
+                  <div className="min-w-0">
+                    <p
+                      className="
                       truncate
                       text-xs
                       font-black
                       tracking-[0.13em]
                       text-white
                     "
-                                    >
-                                        AI WORKSPACE
-                                    </p>
+                    >
+                      AI WORKSPACE
+                    </p>
 
-                                    <p
-                                        className="
+                    <p
+                      className="
                       mt-0.5
                       truncate
                       text-[10px]
                       text-[#aaa5bf]
                     "
-                                    >
-                                        Hyper-Personal AI
-                                    </p>
-                                </div>
-                            </div>
+                    >
+                      Hyper-Personal AI
+                    </p>
+                  </div>
+                </div>
 
-                            {/* 모바일에서만 X 버튼 표시 */}
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                aria-label="사이드바 닫기"
-                                className="
+                {/* 모바일에서만 X 버튼 표시 */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="사이드바 닫기"
+                  className="
                   flex
                   h-11
                   w-11
@@ -498,32 +498,32 @@ export default function Sidebar({
 
                   lg:hidden
                 "
-                            >
-                                <svg
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={1.8}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                )}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
 
 
-                {/* ==================================================
+          {/* ==================================================
             Navigation
            ================================================== */}
 
-                <nav
-                    className={`
+          <nav
+            className={`
             flex-1
             overflow-y-auto
             [scrollbar-width:none]
@@ -533,22 +533,22 @@ export default function Sidebar({
             py-4
 
             ${
-                        open
-                            ? "px-3"
-                            : "px-2"
-                    }
+              open
+                ? "px-3"
+                : "px-2"
+            }
           `}
-                >
-                    <div className="space-y-5">
-                        {navItems.map(
-                            (group, groupIndex) => (
-                                <div
-                                    key={group.group}
-                                >
-                                    {/* 그룹 제목 */}
-                                    {open ? (
-                                        <p
-                                            className="
+          >
+            <div className="space-y-5">
+              {navItems.map(
+                (group, groupIndex) => (
+                  <div
+                    key={group.group}
+                  >
+                    {/* 그룹 제목 */}
+                    {open ? (
+                      <p
+                        className="
                         mb-2
                         px-3
 
@@ -559,70 +559,70 @@ export default function Sidebar({
 
                         text-[#aaa5bf]
                       "
-                                        >
-                                            {group.group}
-                                        </p>
-                                    ) : (
-                                        /*
-                                         * 접힌 Sidebar에서는
-                                         * 그룹 제목 대신 얇은 separator 사용.
-                                         */
-                                        groupIndex > 0 && (
-                                            <div
-                                                className="
+                      >
+                        {group.group}
+                      </p>
+                    ) : (
+                      /*
+                       * 접힌 Sidebar에서는
+                       * 그룹 제목 대신 얇은 separator 사용.
+                       */
+                      groupIndex > 0 && (
+                        <div
+                          className="
                           mx-auto
                           mb-3
                           h-px
                           w-7
                           bg-white/10
                         "
-                                            />
-                                        )
-                                    )}
+                        />
+                      )
+                    )}
 
 
-                                    <ul className="space-y-1">
-                                        {group.items.map(
-                                            (item) => {
-                                                const active =
-                                                    isActive(item);
+                    <ul className="space-y-1">
+                      {group.items.map(
+                        (item) => {
+                          const active =
+                            isActive(item);
 
-                                                return (
-                                                    <li
-                                                        key={
-                                                            item.label
-                                                        }
-                                                    >
-                                                        <button
-                                                            type="button"
+                          return (
+                            <li
+                              key={
+                                item.label
+                              }
+                            >
+                              <button
+                                type="button"
 
-                                                            onClick={() =>
-                                                                handleClick(
-                                                                    item.to,
-                                                                )
-                                                            }
+                                onClick={() =>
+                                  handleClick(
+                                    item.to,
+                                  )
+                                }
 
-                                                            /*
-                                                             * 접힌 모드에서는
-                                                             * 브라우저 tooltip으로 메뉴명을 확인할 수 있다.
-                                                             */
-                                                            title={
-                                                                open
-                                                                    ? undefined
-                                                                    : item.label
-                                                            }
+                                /*
+                                 * 접힌 모드에서는
+                                 * 브라우저 tooltip으로 메뉴명을 확인할 수 있다.
+                                 */
+                                title={
+                                  open
+                                    ? undefined
+                                    : item.label
+                                }
 
-                                                            aria-current={
-                                                                active
-                                                                    ? "page"
-                                                                    : undefined
-                                                            }
+                                aria-current={
+                                  active
+                                    ? "page"
+                                    : undefined
+                                }
 
-                                                            aria-label={
-                                                                item.label
-                                                            }
+                                aria-label={
+                                  item.label
+                                }
 
-                                                            className={`
+                                className={`
                                 group
                                 relative
 
@@ -636,37 +636,37 @@ export default function Sidebar({
                                 duration-200
 
                                 ${
-                                                                open
-                                                                    ? `
+                                  open
+                                    ? `
                                       gap-3
                                       px-3
                                       py-2.5
                                     `
-                                                                    : `
+                                    : `
                                       h-11
                                       justify-center
                                       px-0
                                     `
-                                                            }
+                                }
 
                                 ${
-                                                                active
-                                                                    ? `
+                                  active
+                                    ? `
                                       bg-gradient-to-r from-violet-500/25 via-violet-500/10 to-transparent
                                       text-white
                                     `
-                                                                    : `
+                                    : `
                                       text-[#c1b9d6]
                                       hover:bg-white/5
                                       hover:text-white
                                     `
-                                                            }
+                                }
                               `}
-                                                        >
-                                                            {/* Active Rail */}
-                                                            {active && (
-                                                                <span
-                                                                    className="
+                              >
+                                {/* Active Rail */}
+                                {active && (
+                                  <span
+                                    className="
                                     absolute
                                     -left-3
                                     top-1/2
@@ -679,13 +679,13 @@ export default function Sidebar({
                                     rounded-r-full
                                     bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]
                                   "
-                                                                />
-                                                            )}
+                                  />
+                                )}
 
 
-                                                            {/* Icon */}
-                                                            <span
-                                                                className={`
+                                {/* Icon */}
+                                <span
+                                  className={`
                                   flex
                                   h-8
                                   w-8
@@ -699,32 +699,32 @@ export default function Sidebar({
                                   duration-200
 
                                   ${
-                                                                    active
-                                                                        ? `
+                                    active
+                                      ? `
                                         tp-gradient-bg
                                         text-white
                                         shadow-[0_0_18px_rgba(124,108,255,0.65)]
                                       `
-                                                                        : `
+                                      : `
                                         text-[#aaa5bf]
                                         group-hover:text-white
                                       `
-                                                                }
+                                  }
                                 `}
-                                                            >
+                                >
                                 <NavIcon
-                                    name={
-                                        item.icon
-                                    }
+                                  name={
+                                    item.icon
+                                  }
                                 />
                               </span>
 
 
-                                                            {/* Label */}
-                                                            {open && (
-                                                                <>
+                                {/* Label */}
+                                {open && (
+                                  <>
                                   <span
-                                      className={`
+                                    className={`
                                       min-w-0
                                       flex-1
                                       truncate
@@ -732,74 +732,74 @@ export default function Sidebar({
                                       text-sm
 
                                       ${
-                                          active
-                                              ? "font-bold"
-                                              : "font-medium"
-                                      }
+                                      active
+                                        ? "font-bold"
+                                        : "font-medium"
+                                    }
                                     `}
                                   >
                                     {
-                                        item.label
+                                      item.label
                                     }
                                   </span>
 
-                                                                    {/* Active Dot */}
-                                                                    {active && (
-                                                                        <span
-                                                                            className="
+                                    {/* Active Dot */}
+                                    {active && (
+                                      <span
+                                        className="
                                         h-1.5
                                         w-1.5
                                         shrink-0
                                         rounded-full
                                         bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]
                                       "
-                                                                        />
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </li>
-                                                );
-                                            },
-                                        )}
-                                    </ul>
-                                </div>
-                            ),
-                        )}
-                    </div>
-                </nav>
+                                      />
+                                    )}
+                                  </>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        },
+                      )}
+                    </ul>
+                  </div>
+                ),
+              )}
+            </div>
+          </nav>
 
 
-                {/* ==================================================
+          {/* ==================================================
             Account Footer
            ================================================== */}
 
-                <div
-                    className={`
+          <div
+            className={`
             shrink-0
             border-t
             border-white/5
 
             ${
-                        open
-                            ? "p-3"
-                            : "p-2"
-                    }
+              open
+                ? "p-3"
+                : "p-2"
+            }
           `}
-                >
-                    {isLoggedIn ? (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                handleClick("/mypage")
-                            }
-                            aria-label={isLoggedIn ? "마이페이지" : "로그인"}
-                            title={
-                                open
-                                    ? undefined
-                                    : "마이페이지"
-                            }
-                            className={`
+          >
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleClick("/mypage")
+                }
+                aria-label={isLoggedIn ? "마이페이지" : "로그인"}
+                title={
+                  open
+                    ? undefined
+                    : "마이페이지"
+                }
+                className={`
                 group
                 flex
                 w-full
@@ -811,21 +811,21 @@ export default function Sidebar({
                 hover:bg-white/5
 
                 ${
-                                open
-                                    ? `
+                  open
+                    ? `
                       gap-3
                       px-3
                       py-2.5
                     `
-                                    : `
+                    : `
                       h-11
                       justify-center
                     `
-                            }
+                }
               `}
-                        >
-                            <div
-                                className="
+              >
+                <div
+                  className="
                   flex
                   h-8
                   w-8
@@ -841,69 +841,69 @@ export default function Sidebar({
 
                   text-[#c1b9d6]
                 "
-                            >
-                                <NavIcon
-                                    name="user"
-                                />
-                            </div>
+                >
+                  <NavIcon
+                    name="user"
+                  />
+                </div>
 
-                            {open && (
-                                <>
-                                    <div
-                                        className="
+                {open && (
+                  <>
+                    <div
+                      className="
                       min-w-0
                       flex-1
                       text-left
                     "
-                                    >
-                                        <p
-                                            className="
+                    >
+                      <p
+                        className="
                         truncate
                         text-xs
                         font-bold
                         text-white/90
                       "
-                                        >
-                                            내 계정
-                                        </p>
+                      >
+                        내 계정
+                      </p>
 
-                                        <p
-                                            className="
+                      <p
+                        className="
                         mt-0.5
                         text-[10px]
                         text-[#aaa5bf]
                       "
-                                        >
-                                            프로필 및 개인 설정
-                                        </p>
-                                    </div>
+                      >
+                        프로필 및 개인 설정
+                      </p>
+                    </div>
 
-                                    <span
-                                        className="
+                    <span
+                      className="
                       text-sm
                       text-[#aaa5bf]
                       transition
                       group-hover:text-cyan-300
                     "
-                                    >
+                    >
                     →
                   </span>
-                                </>
-                            )}
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                handleClick("/login")
-                            }
-                            aria-label={isLoggedIn ? "마이페이지" : "로그인"}
-                            title={
-                                open
-                                    ? undefined
-                                    : "로그인"
-                            }
-                            className={`
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  handleClick("/login")
+                }
+                aria-label={isLoggedIn ? "마이페이지" : "로그인"}
+                title={
+                  open
+                    ? undefined
+                    : "로그인"
+                }
+                className={`
                 flex
                 w-full
                 items-center
@@ -913,8 +913,8 @@ export default function Sidebar({
                 transition
 
                 ${
-                                open
-                                    ? `
+                  open
+                    ? `
                       gap-3
                       tp-gradient-bg
                       px-3
@@ -922,18 +922,18 @@ export default function Sidebar({
                       text-white
                       hover:brightness-110
                     `
-                                    : `
+                    : `
                       h-11
                       justify-center
                       tp-gradient-bg
                       text-white
                       hover:brightness-110
                     `
-                            }
+                }
               `}
-                        >
+              >
               <span
-                  className="
+                className="
                   flex
                   h-7
                   w-7
@@ -943,37 +943,37 @@ export default function Sidebar({
                 "
               >
                 <NavIcon
-                    name="user"
+                  name="user"
                 />
               </span>
 
-                            {open && (
-                                <div className="text-left">
-                                    <p
-                                        className="
+                {open && (
+                  <div className="text-left">
+                    <p
+                      className="
                       text-xs
                       font-bold
                     "
-                                    >
-                                        로그인
-                                    </p>
+                    >
+                      로그인
+                    </p>
 
-                                    <p
-                                        className="
+                    <p
+                      className="
                       mt-0.5
                       text-[10px]
                       text-white/60
                     "
-                                    >
-                                        AI Manager 시작하기
-                                    </p>
-                                </div>
-                            )}
-                        </button>
-                    )}
-                </div>
-            </aside>
-        </>
+                    >
+                      AI Manager 시작하기
+                    </p>
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+        </aside>
+      </>
     );
 }
 
@@ -986,21 +986,21 @@ export default function Sidebar({
  * 모든 주요 메뉴 아이콘을 같은 stroke 스타일로 통일한다.
  */
 function NavIcon({
-                     name,
+                   name,
                  }: {
-    name: NavIconName;
+  name: NavIconName;
 }) {
-    const commonProps = {
-        className: "h-[18px] w-[18px]",
-        fill: "none",
-        stroke: "currentColor",
-        viewBox: "0 0 24 24",
-        strokeWidth: 1.8,
-        strokeLinecap:
-            "round" as const,
-        strokeLinejoin:
-            "round" as const,
-    };
+  const commonProps = {
+    className: "h-[18px] w-[18px]",
+    fill: "none",
+    stroke: "currentColor",
+    viewBox: "0 0 24 24",
+    strokeWidth: 1.8,
+    strokeLinecap:
+      "round" as const,
+    strokeLinejoin:
+      "round" as const,
+  };
 
 
     switch (name) {
