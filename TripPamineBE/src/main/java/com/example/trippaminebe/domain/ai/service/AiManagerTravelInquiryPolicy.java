@@ -20,11 +20,13 @@ final class AiManagerTravelInquiryPolicy {
     static boolean isPersonalTravelLookup(String message) {
         String question = normalize(message);
 
+        // 표현이 달라도 등록된 여행 목록을 조회할 수 있도록 동의어를 추가한다.
         boolean personalTravel = contains(
-                question,
-                "내여행", "나의여행", "저장된여행", "저장한여행",
-                "등록된여행", "등록한여행", "여행계획목록",
-                "현재여행계획", "내일정", "나의일정"
+            question,
+            "내여행", "나의여행", "저장된여행", "저장한여행",
+            "등록된여행", "등록한여행", "계획된여행",
+            "여행계획목록", "현재여행계획",
+            "내일정", "나의일정"
         );
 
         boolean lookup = contains(
