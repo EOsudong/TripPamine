@@ -56,6 +56,7 @@ public class TravelDiary {
     private LocalDateTime createDate;
 
     @OneToMany(mappedBy = "travelDiary", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("keywordId ASC") // 조회할 때마다 해시태그 순서가 바뀌지 않도록 고정
     @Builder.Default
     private List<DiaryKeyword> keywords = new ArrayList<>();
 
