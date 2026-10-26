@@ -214,7 +214,6 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
     setHelpOpen(false);
     setIsMapOpen(false);
     setIsSosOpen(false);
-    void loadWeather(plan.planId, selection);
     try {
       const response = await getAiRecommendationApi(plan.planId);
       if (selection !== selectionRef.current) return;
@@ -222,6 +221,9 @@ function RecommendationWorkspace({ isLoggedIn }: { isLoggedIn: boolean }) {
         response,
         parsed: parseRecommendation(response.recommendJson),
       });
+      // 최초 선택이면 위 요청이 추천을 생성해 저장하므로, 저장이 끝난 뒤에 날씨를 요청한다.
+      // (동시에 요청하면 날씨 쪽이 "추천 일정이 아직 등록되지 않았습니다" 오류로 실패한다)
+      void loadWeather(plan.planId, selection);
     } catch (error) {
       if (selection === selectionRef.current)
         setRecommendError(

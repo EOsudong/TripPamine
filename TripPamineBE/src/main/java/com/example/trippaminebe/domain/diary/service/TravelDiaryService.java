@@ -45,6 +45,10 @@ public class TravelDiaryService {
 	private final OpenAiDiaryGenerationService openAiDiaryGenerationService;
 	private final AiTravelRecommendationRepository aiTravelRecommendationRepository;
 
+	// DB 컬럼 길이 (TRAVEL_DIARIES.AI_TITLE / DIARY_KEYWORDS.KEYWORD_NAME)
+	private static final int TITLE_MAX = 150;
+	private static final int KEYWORD_MAX = 50;
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Transactional(readOnly = true)
@@ -157,13 +161,13 @@ public class TravelDiaryService {
 			);
 			JsonNode root = objectMapper.readTree(extractJson(json));
 
-			title = root.path("title").asText(plan.getPlanName() + " 여행 다이어리");
+			title = truncate(root.path("title").asText(plan.getPlanName() + " 여행 다이어리"), TITLE_MAX);
 			content = root.path("content").asText("여행을 다녀왔습니다.");
 			dopamineScore = clampScore(root.path("dopamineScore").asLong(calculateFallbackScore(totalCount, successCount)));
 			keywordsByType = parseKeywords(root.path("keywords"));
 		} catch (Exception e) {
 			log.warn("AI 다이어리 생성 실패, 기본값으로 대체합니다. planId={}, error={}", planId, e.getMessage());
-			title = plan.getPlanName() + " 정복 일기";
+			title = truncate(plan.getPlanName() + " 정복 일기", TITLE_MAX);
 			content = String.format("이번 여행 '%s'은(는) 총 %s원을 소비하고, 퀘스트 %d개 중 %d개를 성공했습니다!",
 					plan.getPlanName(), totalSpent, totalCount, successCount);
 			dopamineScore = calculateFallbackScore(totalCount, successCount);
@@ -263,6 +267,11 @@ public class TravelDiaryService {
 		return Math.round((successCount * 100.0) / totalCount);
 	}
 
+	// DB 컬럼 길이를 넘는 문자열을 잘라낸다
+	private String truncate(String text, int max) {
+		return text.length() <= max ? text : text.substring(0, max);
+	}
+
 	private long clampScore(long score) {
 		return Math.max(0, Math.min(100, score));
 	}
@@ -278,7 +287,13 @@ public class TravelDiaryService {
 	private void putKeywordList(Map<KeywordType, List<String>> map, KeywordType type, JsonNode arrayNode) {
 		List<String> names = new ArrayList<>();
 		if (arrayNode.isArray()) {
-			arrayNode.forEach(node -> names.add(node.asText()));
+			arrayNode.forEach(node -> {
+				// AI가 "#"을 붙이거나 빈 값/null을 보내도, 길이를 넘겨도 DB 오류가 나지 않게 정리한다
+				String name = truncate(node.asText("").trim().replaceFirst("^#+", "").trim(), KEYWORD_MAX);
+				if (!name.isEmpty() && !names.contains(name)) {
+					names.add(name);
+				}
+			});
 		}
 		if (!names.isEmpty()) {
 			map.put(type, names);

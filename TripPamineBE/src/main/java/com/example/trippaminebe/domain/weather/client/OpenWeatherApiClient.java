@@ -2,6 +2,7 @@ package com.example.trippaminebe.domain.weather.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -12,7 +13,15 @@ import java.net.URI;
 @Component
 public class OpenWeatherApiClient {
 
-  private final RestTemplate restTemplate = new RestTemplate();
+  private final RestTemplate restTemplate;
+
+  // 외부 서버가 응답하지 않을 때 요청이 무한정 대기하지 않도록 타임아웃을 건다
+  public OpenWeatherApiClient() {
+    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+    factory.setConnectTimeout(3000); // 연결 3초
+    factory.setReadTimeout(5000);    // 응답 읽기 5초
+    this.restTemplate = new RestTemplate(factory);
+  }
 
   @Value("${openweathermap.api.base-url:}")
   private String baseUrl;

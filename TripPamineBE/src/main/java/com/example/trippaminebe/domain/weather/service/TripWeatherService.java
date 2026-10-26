@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 
@@ -64,26 +66,35 @@ public class TripWeatherService {
 
     List<TripDayWeather> result = new ArrayList<>();
     for (DayPlace p : extractFirstPlaces(json, startDate)) {
-      Optional<KakaoPlace> found = Optional.empty();   // 아직 못 찾은 상태로 시작
       String usedName = null;                          // 어느 장소로 찾았는지 기억
-      for (String name : p.placeNames()) {                 // 그날 장소 이름들
-        found = kakaoLocalClient.searchFirstPlace(name);
-        if (found.isPresent()) {                        // 찾았으면
-          usedName = name;
-          break;                                   // 더 찾을 필요 없음
-        }
-      }
       DailyWeatherSummary summary;
-      if (found.isPresent()) {
-        KakaoPlace k = found.get();
-        summary = weatherSummaryService.getDailySummary(
-            k.latitude().doubleValue(),
-            k.longitude().doubleValue(),
-            p.date());
-      } else {
+      // 하루치 조회가 실패해도(카카오/날씨 API 일시 오류 등) 다른 날의 날씨는 계속 보여 준다
+      try {
+        Optional<KakaoPlace> found = Optional.empty();   // 아직 못 찾은 상태로 시작
+        for (String name : p.placeNames()) {                 // 그날 장소 이름들
+          found = kakaoLocalClient.searchFirstPlace(name);
+          if (found.isPresent()) {                        // 찾았으면
+            usedName = name;
+            break;                                   // 더 찾을 필요 없음
+          }
+        }
+        if (found.isPresent()) {
+          KakaoPlace k = found.get();
+          summary = weatherSummaryService.getDailySummary(
+              k.latitude().doubleValue(),
+              k.longitude().doubleValue(),
+              p.date());
+        } else {
+          summary = DailyWeatherSummary.builder()
+              .available(false)
+              .notices(List.of("장소 위치를 찾지 못해 날씨를 제공할 수 없습니다."))
+              .build();
+        }
+      } catch (Exception e) {
+        log.warn("날씨 조회 실패, planId={}, day={}, error={}", planId, p.day(), e.getMessage());
         summary = DailyWeatherSummary.builder()
             .available(false)
-            .notices(List.of("장소 위치를 찾지 못해 날씨를 제공할 수 없습니다."))
+            .notices(List.of("해당 날짜의 날씨 정보를 불러오지 못했습니다."))
             .build();
       }
       result.add(new TripDayWeather(p.day(), p.date(), usedName, summary));
