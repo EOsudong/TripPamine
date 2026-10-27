@@ -45,7 +45,7 @@ export async function getTravelMusicRecommendation(
 
 
   const response = await fetch(
-    "http://localhost:8080/api/music/recommend",
+      "/api/music/recommend",
     {
       method: "POST",
 

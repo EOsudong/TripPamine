@@ -13,5 +13,11 @@ export default defineConfig({
     strictPort: true,
     // Windows 파일 마운트에서 변경 이벤트가 유실되는 경우를 보완한다.
     watch: { usePolling: true, interval: 350 },
+    proxy: {
+      "/api/music": {
+        target: process.env.LOCAL_BACKEND_URL ?? "http://backend:8080",
+        changeOrigin: true,
+      },
+    },
   },
 })
